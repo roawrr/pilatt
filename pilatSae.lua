@@ -17176,19 +17176,95 @@ local function loadAllSections()
                         end)
                 end
 
-                -- ── Egg sell loop (pilatSae tbl10.startAutoSellEggLoop) ──────────────────
+                -- ── Egg sell loop (ported 1:1 dari pilatSae tbl10.startAutoSellEggLoop) ──
+                -- Termasuk rateOf/value filter yang berfungsi penuh via AssetEarnings.
                 local eggSellRunning = false
+                local eggSellBusy    = false
+
+                -- value parser: "1b" → 1000000000, "800m" → 800000000, dll.
+                local function parseValue(arg)
+                        local str = string.lower(tostring(arg or "")):gsub("[%s,]", "")
+                        if str == "" then return 0 end
+                        local num, suffix = string.match(str, "^([%d]+%.?[%d]*)([kmb]?)$")
+                        num = tonumber(num)
+                        if not num then return 0 end
+                        return num * (suffix == "k" and 1e3 or suffix == "m" and 1e6 or suffix == "b" and 1e9 or 1)
+                end
+
+                -- rateOf: baca money/s dari AssetEarnings — sama persis dengan pilatSae tbl12.rateOf
+                local _AssetEarnings
+                local function getAssetEarnings()
+                        if _AssetEarnings then return _AssetEarnings end
+                        local ok, ae = pcall(function()
+                                return require(ReplicatedStorage2.Shared.Util.AssetEarnings)
+                        end)
+                        if ok and ae then _AssetEarnings = ae end
+                        return _AssetEarnings
+                end
+
+                local function rateOf(egg)
+                        -- coba webhook dulu kalau ada (sama dengan pilatSae)
+                        local wh = genv2.__PilatV4Webhook
+                        if wh and type(wh.rateOf) == "function" then
+                                local ok, r = pcall(wh.rateOf, egg)
+                                if ok and type(r) == "number" and r > 0 then return r end
+                        end
+                        local ae = getAssetEarnings()
+                        if not ae then return 0 end
+                        local scale = tonumber(egg.AssetScale) or 1
+                        local tbl = {
+                                Category     = egg.AssetCategory,
+                                Scale        = scale,
+                                AssetScale   = scale,
+                                BaseMutation = egg.BaseMutation,
+                                Mutations    = egg.Mutations or {},
+                        }
+                        for _, method in ipairs({"LiveRatePerSecond", "RatePerSecond", "CatalogRatePerSecond"}) do
+                                if type(ae[method]) == "function" then
+                                        local ok, r = pcall(ae[method], tbl)
+                                        if ok and type(r) == "number" and r > 0 then return r end
+                                end
+                        end
+                        return 0
+                end
+
+                -- compact number formatter untuk status text
+                local function fmtCompact(x)
+                        local wh = genv2.__PilatV4Webhook
+                        if wh and type(wh.compact) == "function" then
+                                local ok, t = pcall(wh.compact, x)
+                                if ok and t then return t end
+                        end
+                        return string.format("%.0f", x)
+                end
 
                 local function eggSellList()
                         local list = {}
-                        if not pilatV4Config.AutoSellEgg then genv2.__PilatV4EggSellStatus = "Off" return list end
-                        local hs = ctx and ctx.hubSettings
-                        if not hs or not hs.sellEggs then genv2.__PilatV4EggSellStatus = "Off" return list end
+                        local function why(text)
+                                genv2.__PilatV4EggSellStatus = text
+                                return list
+                        end
 
+                        if not pilatV4Config.AutoSellEgg then return why("Off") end
+
+                        -- baca rarity filter dari pilatSae config
+                        local sellRarities = type(pilatV4Config.SellEggRarities) == "table" and pilatV4Config.SellEggRarities or {}
+                        local noRarity = #sellRarities == 0 or table.find(sellRarities, "None") ~= nil
+
+                        -- baca value limit — pilatV4Config.SellEggMaxRate diset dari UI input (fn130)
+                        local maxRate = tonumber(pilatV4Config.SellEggMaxRate) or 0
+
+                        -- kalau tidak ada rarity DAN tidak ada value limit → tidak jalan
+                        if noRarity and maxRate <= 0 then
+                                return why("Tidak jalan: pilih rarity atau isi batas value")
+                        end
+
+                        -- load Assets directory
                         local okA, Assets = pcall(function() return require(ReplicatedStorage2.Data.Assets) end)
-                        if not okA then genv2.__PilatV4EggSellStatus = "Error: Assets not ready" return list end
-                        local directory = Assets.Directory
+                        local directory = okA and Assets and Assets.Directory
+                        if not directory then return why("Tidak jalan: data game (Assets) belum siap") end
 
+                        -- baca egg inventory — coba EggState dulu, fallback ke Save.EggInventory
                         local eggs
                         local okE, EggState = pcall(function() return require(ReplicatedStorage2.Client.EggState) end)
                         if okE and type(EggState) == "table" and type(EggState.ReadOwnerEggs) == "function" then
@@ -17200,108 +17276,165 @@ local function loadAllSections()
                                 local d = okS and Save2 and (Save2.Peek or Save2.Get) and (Save2.Peek or Save2.Get)()
                                 eggs = d and d.EggInventory
                         end
-                        if type(eggs) ~= "table" then genv2.__PilatV4EggSellStatus = "Error: egg inventory unreadable" return list end
+                        if type(eggs) ~= "table" then return why("Tidak jalan: inventory egg belum terbaca") end
 
+                        -- egg yang dipegang / dibawa Auto Steal → skip
                         local char = localPlayer2.Character
                         local tool = char and char:FindFirstChildWhichIsA("Tool")
                         local held = tool and tool:GetAttribute("UID")
                         local rt = genv2.__PilatV4EggRuntime
-                        local carryUid = rt and not rt.destroyed and rt.carry and rt.carry.active == true and rt.carry.uid or nil
+                        local carryUid = rt and not rt.destroyed and rt.carry
+                                and rt.carry.active == true and rt.carry.uid or nil
 
-                        -- pilatSae's SellEggKeepMutated / Blacklist / SellEggRarities
                         local keepMutated = pilatV4Config.SellEggKeepMutated ~= false
-                        local blacklist = type(pilatV4Config.SellEggBlacklist) == "table" and pilatV4Config.SellEggBlacklist or {}
-                        local sellRarities = type(pilatV4Config.SellEggRarities) == "table" and pilatV4Config.SellEggRarities or {}
-                        local noRarity = #sellRarities == 0 or table.find(sellRarities, "None") ~= nil
+                        local blacklist   = type(pilatV4Config.SellEggBlacklist) == "table" and pilatV4Config.SellEggBlacklist or {}
+                        local blockAll    = table.find(blacklist, "All") ~= nil
 
-                        -- Also check v7 hub rule
-                        local ruleEggs = hs.sellEggs
-                        local state2 = ctx and ctx.state
-                        local RIDX = state2 and state2.RIDX
-                        local maxRarityIdx = type(ruleEggs) == "table" and ruleEggs.mx
-
-                        local maxRate = tonumber(pilatV4Config.SellEggMaxRate) or 0
+                        local n = {total=0, placed=0, held=0, carried=0, black=0, mutated=0, rate=0, rarity=0, unknown=0}
+                        local exRate -- contoh value egg yang di atas limit (untuk status)
 
                         for uid, egg in pairs(eggs) do
-                                if type(egg) == "table" and egg.Placement == nil and uid ~= held and uid ~= carryUid then
-                                        local entry = directory[egg.AssetCategory]
-                                        local rarityName = entry and entry.Rarity and (entry.Rarity.DisplayName or entry.Rarity._id)
-                                        local eggName = entry and (entry.DisplayName or entry._id or entry.Name)
-                                        local mutated = type(egg.Mutations) == "table" and next(egg.Mutations) ~= nil
+                                if type(egg) == "table" then
+                                        n.total += 1
+                                        if egg.Placement ~= nil then
+                                                n.placed += 1
+                                        elseif uid == held then
+                                                n.held += 1
+                                        elseif carryUid ~= nil and uid == carryUid then
+                                                n.carried += 1
+                                        else
+                                                local entry    = directory[egg.AssetCategory]
+                                                local rarityName = entry and entry.Rarity and (entry.Rarity.DisplayName or entry.Rarity._id)
+                                                local eggName  = entry and (entry.DisplayName or entry._id or entry.Name)
+                                                local mutated  = type(egg.Mutations) == "table" and next(egg.Mutations) ~= nil
 
-                                        local blocked = table.find(blacklist, "All") ~= nil or (eggName and table.find(blacklist, eggName) ~= nil)
-                                        if not blocked then
-                                                if keepMutated and mutated then
-                                                        -- skip
-                                                elseif not noRarity and rarityName and not table.find(sellRarities, rarityName) then
-                                                        -- rarity not in pilatSae filter
-                                                elseif RIDX and maxRarityIdx and rarityName and RIDX[rarityName] and RIDX[rarityName] < maxRarityIdx then
-                                                        -- rarity higher than v7 filter (too rare to sell)
+                                                if blockAll or (eggName ~= nil and table.find(blacklist, eggName) ~= nil) then
+                                                        n.black += 1
                                                 else
-                                                        list[#list + 1] = uid
+                                                        -- ── value check (ini yang tadinya broken) ──
+                                                        local rateOk = true
+                                                        if maxRate > 0 then
+                                                                local r = rateOf(egg)
+                                                                if r <= 0 then
+                                                                        -- value tidak terbaca → simpan (jangan jual)
+                                                                        rateOk = false
+                                                                        n.unknown += 1
+                                                                elseif r > maxRate then
+                                                                        -- value di atas limit → simpan
+                                                                        rateOk = false
+                                                                        n.rate += 1
+                                                                        exRate = exRate or r
+                                                                end
+                                                        end
+
+                                                        if not rateOk then
+                                                                -- di atas limit, sudah dihitung di atas
+                                                        elseif keepMutated and mutated then
+                                                                n.mutated += 1
+                                                        elseif not noRarity and not table.find(sellRarities, rarityName or "Unknown") then
+                                                                n.rarity += 1
+                                                        else
+                                                                list[#list + 1] = uid
+                                                        end
                                                 end
                                         end
                                 end
                         end
-                        genv2.__PilatV4EggSellStatus = #list > 0 and string.format("Ready to sell %d egg(s)", #list) or "Waiting: no matching eggs"
-                        return list
+
+                        -- status text
+                        local limitText = maxRate > 0
+                                and (" - batas value <= " .. fmtCompact(maxRate) .. "/s" .. (noRarity and ", semua rarity" or ""))
+                                or ""
+                        if #list > 0 then
+                                return why(string.format("Siap jual %d egg%s", #list, limitText))
+                        end
+                        if n.total == 0 then
+                                return why("Menunggu: tidak ada egg di inventory")
+                        end
+                        local parts = {}
+                        local function add(count, label) if count > 0 then parts[#parts+1] = count .. " " .. label end end
+                        add(n.rarity,  "rarity tidak cocok")
+                        add(n.mutated, "mutated disimpan")
+                        add(n.black,   "blacklist")
+                        add(n.rate,    "di atas batas value" .. (exRate and (" (contoh " .. fmtCompact(exRate) .. "/s > " .. fmtCompact(maxRate) .. "/s)") or ""))
+                        add(n.unknown, "value tidak terbaca (disimpan)")
+                        add(n.placed,  "sedang ditaruh")
+                        add(n.held,    "dipegang")
+                        add(n.carried, "dibawa Auto Steal")
+                        return why("Menunggu: tidak ada egg yang bisa dijual (" .. table.concat(parts, ", ") .. ")")
+                end
+
+                -- lookup remote sell sekali, cache supaya tidak FindFirstChild setiap loop
+                local _sellRemote
+                local function sellRemote()
+                        if _sellRemote and _sellRemote.Parent then return _sellRemote end
+                        local pkg = ReplicatedStorage2:FindFirstChild("Packages")
+                        local net = pkg and pkg:FindFirstChild("Networking")
+                        local re  = net and net:FindFirstChild("RE/PetSatchel/SellSelection")
+                        if re and re:IsA("RemoteEvent") then _sellRemote = re return re end
+                        return nil
                 end
 
                 genv2.__PilatV4IsAutoSellEggBusy = function()
-                        return eggSellRunning or #eggSellList() > 0
+                        return eggSellBusy or #eggSellList() > 0
                 end
 
                 local function eggSellLoop()
                         if eggSellRunning then return end
                         eggSellRunning = true
                         task.spawn(function()
-                                while pilatV4Config.AutoSellEgg and ctx do
+                                while pilatV4Config.AutoSellEgg and fn2() do
                                         local okL, list = pcall(eggSellList)
                                         if not okL then
                                                 genv2.__PilatV4EggSellStatus = "Error: " .. tostring(list)
                                                 list = {}
                                         end
                                         if #list > 0 then
-                                                genv2.__PilatV4EggSellStatus = string.format("Selling %d egg(s)", #list)
-                                                -- Use batch remote (pilatSae approach)
-                                                local remote
-                                                pcall(function()
-                                                        local pkg = ReplicatedStorage2:FindFirstChild("Packages")
-                                                        local net = pkg and pkg:FindFirstChild("Networking")
-                                                        local re = net and net:FindFirstChild("RE/PetSatchel/SellSelection")
-                                                        if re and re:IsA("RemoteEvent") then remote = re end
-                                                end)
+                                                eggSellBusy = true
+                                                genv2.__PilatV4EggSellStatus = string.format("Menjual %d egg", #list)
                                                 local sent = 0
+                                                local remote = sellRemote()
                                                 if remote then
+                                                        -- batch 50 per packet (pilatSae style)
                                                         local i = 1
                                                         while i <= #list and pilatV4Config.AutoSellEgg do
                                                                 local batch = {}
-                                                                for j = i, math.min(i + 49, #list) do batch[#batch + 1] = list[j] end
+                                                                for j = i, math.min(i + 49, #list) do
+                                                                        batch[#batch + 1] = list[j]
+                                                                end
                                                                 pcall(remote.FireServer, remote, {Eggs = batch, Assets = {}})
                                                                 sent += #batch
                                                                 i += 50
                                                                 if i <= #list then task.wait(0.3) end
                                                         end
                                                 else
-                                                        local okR, Rem = pcall(function() return require(ReplicatedStorage2.Shared.Remotes) end)
-                                                        if okR then
+                                                        -- fallback satu per satu via Shared.Remotes
+                                                        local okR, Rem = pcall(function()
+                                                                return require(ReplicatedStorage2.Shared.Remotes)
+                                                        end)
+                                                        if okR and Rem then
                                                                 for _, uid in ipairs(list) do
                                                                         if not pilatV4Config.AutoSellEgg then break end
                                                                         pcall(function() Rem.PetSatchel.SellPet:FireServer({uid}) end)
                                                                         sent += 1
                                                                         task.wait(0.25)
                                                                 end
+                                                        else
+                                                                genv2.__PilatV4EggSellStatus = "Gagal: remote jual egg tidak ditemukan"
                                                         end
                                                 end
                                                 if sent > 0 then
-                                                        genv2.__PilatV4EggSellLast = string.format("%d egg(s) sold (%s)", sent, os.date("%H:%M:%S"))
+                                                        genv2.__PilatV4EggSellLast = string.format(
+                                                                "%d egg dijual (%s)", sent, os.date("%H:%M:%S"))
                                                 end
                                                 task.wait(1)
+                                                eggSellBusy = false
                                         end
+                                        eggSellBusy = false
                                         task.wait(0.5)
                                 end
-                                eggSellRunning = false
-                                genv2.__PilatV4EggSellStatus = pilatV4Config.AutoSellEgg and "Stopped" or "Off"
+                                eggSellBusy, eggSellRunning = false, false
+                                genv2.__PilatV4EggSellStatus = pilatV4Config.AutoSellEgg and "Berhenti" or "Off"
                         end)
                 end
 
