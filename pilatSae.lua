@@ -704,7 +704,7 @@ local function createUiLibrary()
                                         local function formatValue(v)
                                                 v = tonumber(v) or 0
                                                 if v <= 0 then return "0" end
-                                                local units = {{"Qa",1000000000000000},{"T",1000000000000},{"B",1000000000},{"M",1000000000},{"K",1000}}
+                                                local units = {{"Qa",1000000000000000},{"T",1000000000000},{"B",1000000000},{"M",1000000},{"K",1000}}
                                                 for _, u in ipairs(units) do
                                                         if v >= u[2] then
                                                                 return string.format("%.2f", v / u[2]):gsub("%.?0+$", "") .. u[1]
@@ -1268,13 +1268,14 @@ local function createUiLibrary()
         return items
 end
 
+pilatV4Config = pilatV4Config or {}
 local uiLibrary = createUiLibrary()
 pcall(getgenv().PilatHubLoadStep, 1)
 
 -- ==== 02_sae : main feature script - owns ctx, then dispatches the runStep sections below ====
 local function loadAllSections()
         local ctx = {}
-        local totalSteps, completedSteps, milestoneStep, parts = 43, 0, 0, {}
+        local totalSteps, completedSteps, milestoneStep, parts = 44, 0, 0, {}
 
         local function runStep(stepName, stepFunction)
                 pcall(writefile, "PilatLibrary/SAE_LoadPart.txt", stepName)
@@ -1711,6 +1712,23 @@ local function loadAllSections()
                         or 1, m = checkStateResult, ms = tempValue2}, ctx.getDisplayName
                 state.n = getDisplayName(firstValue)
                 state.a = data.AreaId
+                -- FIX: use the game's own AssetEarnings (same source as pilatSae rateOf / egg predictor)
+                -- so Sell Value compares against the real money/s, not the rough estimate.
+                pcall(function()
+                        local ae = require(ReplicatedStorage.Shared.Util.AssetEarnings)
+                        local sc = tonumber(assetScale) or 1
+                        local rec = {Category = firstValue, Scale = sc, AssetScale = sc,
+                                BaseMutation = data.BaseMutation, Mutations = data.Mutations or {}}
+                        for _, m in ipairs({"LiveRatePerSecond", "RatePerSecond", "CatalogRatePerSecond"}) do
+                                if type(ae[m]) == "function" then
+                                        local ok, r = pcall(ae[m], rec)
+                                        if ok and type(r) == "number" and r > 0 then
+                                                state.v = r
+                                                return
+                                        end
+                                end
+                        end
+                end)
                 return state
         end
 
@@ -3072,7 +3090,7 @@ local function loadAllSections()
                 end
         end
 
-        local cacheCore, entries4, itemsCore = {}, {}, {{"Farm", nil, {"+Auto Steal", "Auto Progression",
+        local cacheCore, entries4, itemsCore = {}, {}, {{"Farm", nil, {"+Auto Steal", "+Egg Checker", "Auto Progression",
                 "Auto Mutation", "Auto Place Egg", "Auto Treadmill", "Auto Hatch & Equip", "Auto Sell", "Auto Fuse Machine", "Auto Favorite", "Priority Rotation", "Priority"}}, {"Event", nil, {"Pumpkin Boss", "Halloween Dimension", "Halloween Monsters", "Ghost Dog & Fishing", "Phantom Express", "Shooting Star", "Butterfly Bloom", "The Hollow"}}, {"Admin Abuse", "Right", {"Capture The Egg", "Admin Treadmill", "Instant Steal V3", "Minigame Eggs", "Cursed Island Wars"}}, {"Player", nil, {"ESP", "+Movement", "+Character", "+Combat"}}, {"Predictor", nil, {"Discord Webhook", "+Egg Predictor"}}, {"Server", nil, {"+Server"}}, {"Misc", nil, {"+Performance", "+Utility"}}, {"Auto Hop", nil, {"+Pilat Finder"}}}
 
         for index, item in ipairs(itemsCore) do
@@ -4440,6 +4458,7 @@ local function loadAllSections()
                         doStep7ResultSteal.row.lb.Text = "Delivery"
                 end)
 
+                ctx.state.stealMoveCtl, ctx.state.stealDelCtl, ctx.state.stealTpDelCtl = hubSettings3, doStep7Result, doStep7ResultSteal
                 hubSettingsSteal = ctx.state
                 doStep7(hubSettings, "Teleport Zones", "tpZones", hubSettingsSteal.TZ, {"Titan Temple", "Light Dark",
                         "Enchanted Forest"}, nil, true):When(hubSettings3, (getValue("Teleport")))
@@ -16826,7 +16845,8 @@ local function loadAllSections()
                         info = true}), cacheCore["Auto Sell"], {"Rarity Only", "Value Only", "Rarity And Value", "Rarity Or Value"}
 
                 local function doStepFarm(text, textFarm, keyName, input)
-                        local state = {rule = "Rarity And Value", mx = keyName}
+                        local defRule = (text == "Egg") and "Value Only" or "Rarity And Value"
+                        local state = {rule = defRule, mx = keyName}
                         local tempValueFarm, doStepCoreResult = autoSell:Text(text .. " Sell Preview",
                                 text .. (" matches  -  0 " .. (text:lower() .. "s"))), doStepCore(autoSell, "Auto Sell " .. text, textFarm, false, nil, input)
 
@@ -16843,7 +16863,7 @@ local function loadAllSections()
                                 state.rule = rule
                         end
 
-                        autoSell:Dropdown("Sell " .. text2, onlyList, "Rarity And Value", handler, false,
+                        autoSell:Dropdown("Sell " .. text2, onlyList, defRule, handler, false,
                                 "Which checks must pass to sell", doStepCoreResult)
                         handler, text2 = text .. " Max Rarity", ctx.state
                         local rnum, state3 = text2.RNUM, ctx.state
@@ -17020,446 +17040,8 @@ local function loadAllSections()
                 doStepFarm.sellRun = scanItems3
         end)
 
-        -- ==== pilatSae Auto Sell Engine (ported) ====
-        -- Replaces v7's hub-native sell loop with the proven pilatSae engine.
-        -- The UI toggles above (Auto Sell Pet / Auto Sell Egg) still drive pilatV4Config;
-        -- these loops read that config and do the actual selling.
-        runStep("pilatSae_sell_engine", function()
-                local genv2 = getgenv and getgenv() or _G
-                local ReplicatedStorage2 = game:GetService("ReplicatedStorage")
-                local Players2 = game:GetService("Players")
-                local RunService2 = game:GetService("RunService")
-                local localPlayer2 = Players2.LocalPlayer
-
-                -- ── helper: read filter dropdown for a given GUI element ──────────────────
-                -- v7 stores sell settings in hubSettings (ctx.hubSettings) not GUI dropdowns.
-                -- We bridge pilatSae's fn33/fn34 pattern to v7's hubSettings state.
-                local function getSellRule(kind)
-                        -- kind: "pets" or "eggs"
-                        local hs = ctx and ctx.hubSettings
-                        if not hs then return nil end
-                        return kind == "pets" and hs.sellPets or hs.sellEggs
-                end
-
-                -- ── Pet sell loop (pilatSae tbl10.startAutoSellLoop) ─────────────────────
-                local petSellRunning = false
-                local petSellStatus = {status = "", petPending = false, petBusy = false}
-
-                local function petSellLoop()
-                        if petSellRunning then return end
-                        petSellRunning = true
-                        task.spawn(function()
-                                local ok2, Assets = pcall(function() return require(ReplicatedStorage2.Data.Assets) end)
-                                local ok3, Save = pcall(function() return require(ReplicatedStorage2.Shared.Save) end)
-                                local ok4, AssetRoster = pcall(function() return require(ReplicatedStorage2.Client.AssetRoster) end)
-                                local ok5, Remotes = pcall(function() return require(ReplicatedStorage2.Shared.Remotes) end)
-                                if not (ok2 and ok3 and ok4 and ok5) then petSellRunning = false return end
-
-                                local function getPlaced()
-                                        local ok, res = pcall(function() return AssetRoster.ReadOwnerPen(localPlayer2.UserId) end)
-                                        if not ok or type(res) ~= "table" then return nil end
-                                        local m = {}
-                                        for k, v in pairs(res) do
-                                                if type(k) == "string" then m[k] = true end
-                                                if type(v) == "table" and v.UID then m[v.UID] = true end
-                                        end
-                                        return m
-                                end
-
-                                local function petMatchesSellRule(petName, rarityName)
-                                        -- Use v7 hub's sell filter via ctx.state if available, otherwise allow all
-                                        local hs = ctx and ctx.hubSettings
-                                        if not hs or not hs.sellPets then return false end
-                                        -- Check rarity against v7's sell rarity setting (sellPets stores rule object)
-                                        local rule = hs.sellPets
-                                        if type(rule) == "table" then
-                                                local state = ctx and ctx.state
-                                                -- Use v7's built-in match: state.sellMatch if available
-                                                if state and type(state.sellMatch) == "function" then
-                                                        local ok, res = pcall(state.sellMatch, "pets", petName, rarityName)
-                                                        if ok then return res end
-                                                end
-                                                -- Fallback: rarity index check
-                                                local rnum = state and state.RNUM
-                                                if rnum then
-                                                        local ridx = state and state.RIDX
-                                                        local maxRarityIdx = type(rule) == "table" and rule.mx
-                                                        if maxRarityIdx and ridx then
-                                                                local petRidx = ridx[rarityName]
-                                                                if petRidx and maxRarityIdx and petRidx > maxRarityIdx then
-                                                                        return false
-                                                                end
-                                                        end
-                                                end
-                                                return true
-                                        end
-                                        return type(rule) == "boolean" and rule
-                                end
-
-                                while pilatV4Config.AutoSell and ctx do
-                                        local ok, err = pcall(function()
-                                                local hs = ctx.hubSettings
-                                                if not hs or not hs.sellPets then
-                                                        petSellStatus.petPending = false
-                                                        return
-                                                end
-                                                local placed = getPlaced()
-                                                if not placed then
-                                                        warn("[pilatSae AutoSell] Placed pet map unreadable — skip round")
-                                                        return
-                                                end
-                                                local okSave, data = pcall(function() return (Save.Peek or Save.Get)() end)
-                                                local inventory = okSave and data and data.Inventory or {}
-                                                local toSell = {}
-                                                local n = 0
-                                                for k, v in pairs(inventory) do
-                                                        n += 1
-                                                        if n % 250 == 0 then RunService2.Heartbeat:Wait() end
-                                                        if type(v) == "table" then
-                                                                local isFav = v.IsFavorite == true or v.Favorite == true
-                                                                local isEquipped = table.find(data.EquippedAssets or {}, k) ~= nil
-                                                                local isPlaced = placed[k] == true
-                                                                local inFuse = v.InFuse == true
-                                                                if not isFav and not isEquipped and not isPlaced and not inFuse then
-                                                                        local cat = v.Category or v.id or v.AssetCategory or v.ItemId
-                                                                        local entry = Assets.Directory[cat]
-                                                                        local dname = entry and (entry.DisplayName or entry._id or entry.Name) or "Unknown"
-                                                                        local rname = entry and entry.Rarity and (entry.Rarity.DisplayName or entry.Rarity._id) or "Unknown"
-                                                                        if petMatchesSellRule(dname, rname) then
-                                                                                table.insert(toSell, {uid = k, petName = dname, rarity = rname})
-                                                                        end
-                                                                end
-                                                        end
-                                                end
-                                                petSellStatus.petPending = #toSell > 0
-                                                if #toSell > 0 then
-                                                        petSellStatus.petBusy = true
-                                                        petSellStatus.status = string.format("Selling %d pet%s", #toSell, #toSell == 1 and "" or "s")
-                                                        for _, pet in ipairs(toSell) do
-                                                                if not pilatV4Config.AutoSell then break end
-                                                                local char = localPlayer2.Character
-                                                                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-                                                                local tool
-                                                                for _, container in ipairs({localPlayer2.Backpack, char}) do
-                                                                        if container then
-                                                                                for _, child in ipairs(container:GetChildren()) do
-                                                                                        if child:IsA("Tool") and child:GetAttribute("UID") == pet.uid then
-                                                                                                tool = child break
-                                                                                        end
-                                                                                end
-                                                                        end
-                                                                        if tool then break end
-                                                                end
-                                                                if tool and humanoid then
-                                                                        humanoid:EquipTool(tool)
-                                                                        task.wait(0.2)
-                                                                        if not pilatV4Config.AutoSell then break end
-                                                                        -- Re-verify before selling
-                                                                        local placed2 = getPlaced()
-                                                                        if placed2 and not placed2[pet.uid] then
-                                                                                local okR, Rem = pcall(function() return require(ReplicatedStorage2.Shared.Remotes) end)
-                                                                                if okR then
-                                                                                        pcall(function() Rem.PetSatchel.SellPet:FireServer({pet.uid}) end)
-                                                                                end
-                                                                                task.wait(0.05)
-                                                                        end
-                                                                end
-                                                        end
-                                                        petSellStatus.petBusy = false
-                                                        petSellStatus.status = ""
-                                                end
-                                        end)
-                                        if not ok then warn("[pilatSae AutoSell Pet] Error:", err) end
-                                        task.wait(1.5)
-                                end
-                                petSellRunning = false
-                        end)
-                end
-
-                -- ── Egg sell loop (ported 1:1 dari pilatSae tbl10.startAutoSellEggLoop) ──
-                -- Termasuk rateOf/value filter yang berfungsi penuh via AssetEarnings.
-                local eggSellRunning = false
-                local eggSellBusy    = false
-
-                -- value parser: "1b" → 1000000000, "800m" → 800000000, dll.
-                local function parseValue(arg)
-                        local str = string.lower(tostring(arg or "")):gsub("[%s,]", "")
-                        if str == "" then return 0 end
-                        local num, suffix = string.match(str, "^([%d]+%.?[%d]*)([kmb]?)$")
-                        num = tonumber(num)
-                        if not num then return 0 end
-                        return num * (suffix == "k" and 1e3 or suffix == "m" and 1e6 or suffix == "b" and 1e9 or 1)
-                end
-
-                -- rateOf: baca money/s dari AssetEarnings — sama persis dengan pilatSae tbl12.rateOf
-                local _AssetEarnings
-                local function getAssetEarnings()
-                        if _AssetEarnings then return _AssetEarnings end
-                        local ok, ae = pcall(function()
-                                return require(ReplicatedStorage2.Shared.Util.AssetEarnings)
-                        end)
-                        if ok and ae then _AssetEarnings = ae end
-                        return _AssetEarnings
-                end
-
-                local function rateOf(egg)
-                        -- coba webhook dulu kalau ada (sama dengan pilatSae)
-                        local wh = genv2.__PilatV4Webhook
-                        if wh and type(wh.rateOf) == "function" then
-                                local ok, r = pcall(wh.rateOf, egg)
-                                if ok and type(r) == "number" and r > 0 then return r end
-                        end
-                        local ae = getAssetEarnings()
-                        if not ae then return 0 end
-                        local scale = tonumber(egg.AssetScale) or 1
-                        local tbl = {
-                                Category     = egg.AssetCategory,
-                                Scale        = scale,
-                                AssetScale   = scale,
-                                BaseMutation = egg.BaseMutation,
-                                Mutations    = egg.Mutations or {},
-                        }
-                        for _, method in ipairs({"LiveRatePerSecond", "RatePerSecond", "CatalogRatePerSecond"}) do
-                                if type(ae[method]) == "function" then
-                                        local ok, r = pcall(ae[method], tbl)
-                                        if ok and type(r) == "number" and r > 0 then return r end
-                                end
-                        end
-                        return 0
-                end
-
-                -- compact number formatter untuk status text
-                local function fmtCompact(x)
-                        local wh = genv2.__PilatV4Webhook
-                        if wh and type(wh.compact) == "function" then
-                                local ok, t = pcall(wh.compact, x)
-                                if ok and t then return t end
-                        end
-                        return string.format("%.0f", x)
-                end
-
-                local function eggSellList()
-                        local list = {}
-                        local function why(text)
-                                genv2.__PilatV4EggSellStatus = text
-                                return list
-                        end
-
-                        if not pilatV4Config.AutoSellEgg then return why("Off") end
-
-                        -- baca rarity filter dari pilatSae config
-                        local sellRarities = type(pilatV4Config.SellEggRarities) == "table" and pilatV4Config.SellEggRarities or {}
-                        local noRarity = #sellRarities == 0 or table.find(sellRarities, "None") ~= nil
-
-                        -- baca value limit — pilatV4Config.SellEggMaxRate diset dari UI input (fn130)
-                        local maxRate = tonumber(pilatV4Config.SellEggMaxRate) or 0
-
-                        -- kalau tidak ada rarity DAN tidak ada value limit → tidak jalan
-                        if noRarity and maxRate <= 0 then
-                                return why("Tidak jalan: pilih rarity atau isi batas value")
-                        end
-
-                        -- load Assets directory
-                        local okA, Assets = pcall(function() return require(ReplicatedStorage2.Data.Assets) end)
-                        local directory = okA and Assets and Assets.Directory
-                        if not directory then return why("Tidak jalan: data game (Assets) belum siap") end
-
-                        -- baca egg inventory — coba EggState dulu, fallback ke Save.EggInventory
-                        local eggs
-                        local okE, EggState = pcall(function() return require(ReplicatedStorage2.Client.EggState) end)
-                        if okE and type(EggState) == "table" and type(EggState.ReadOwnerEggs) == "function" then
-                                local okR, res = pcall(EggState.ReadOwnerEggs, localPlayer2.UserId)
-                                if okR and type(res) == "table" then eggs = res end
-                        end
-                        if not eggs then
-                                local okS, Save2 = pcall(function() return require(ReplicatedStorage2.Shared.Save) end)
-                                local d = okS and Save2 and (Save2.Peek or Save2.Get) and (Save2.Peek or Save2.Get)()
-                                eggs = d and d.EggInventory
-                        end
-                        if type(eggs) ~= "table" then return why("Tidak jalan: inventory egg belum terbaca") end
-
-                        -- egg yang dipegang / dibawa Auto Steal → skip
-                        local char = localPlayer2.Character
-                        local tool = char and char:FindFirstChildWhichIsA("Tool")
-                        local held = tool and tool:GetAttribute("UID")
-                        local rt = genv2.__PilatV4EggRuntime
-                        local carryUid = rt and not rt.destroyed and rt.carry
-                                and rt.carry.active == true and rt.carry.uid or nil
-
-                        local keepMutated = pilatV4Config.SellEggKeepMutated ~= false
-                        local blacklist   = type(pilatV4Config.SellEggBlacklist) == "table" and pilatV4Config.SellEggBlacklist or {}
-                        local blockAll    = table.find(blacklist, "All") ~= nil
-
-                        local n = {total=0, placed=0, held=0, carried=0, black=0, mutated=0, rate=0, rarity=0, unknown=0}
-                        local exRate -- contoh value egg yang di atas limit (untuk status)
-
-                        for uid, egg in pairs(eggs) do
-                                if type(egg) == "table" then
-                                        n.total += 1
-                                        if egg.Placement ~= nil then
-                                                n.placed += 1
-                                        elseif uid == held then
-                                                n.held += 1
-                                        elseif carryUid ~= nil and uid == carryUid then
-                                                n.carried += 1
-                                        else
-                                                local entry    = directory[egg.AssetCategory]
-                                                local rarityName = entry and entry.Rarity and (entry.Rarity.DisplayName or entry.Rarity._id)
-                                                local eggName  = entry and (entry.DisplayName or entry._id or entry.Name)
-                                                local mutated  = type(egg.Mutations) == "table" and next(egg.Mutations) ~= nil
-
-                                                if blockAll or (eggName ~= nil and table.find(blacklist, eggName) ~= nil) then
-                                                        n.black += 1
-                                                else
-                                                        -- ── value check (ini yang tadinya broken) ──
-                                                        local rateOk = true
-                                                        if maxRate > 0 then
-                                                                local r = rateOf(egg)
-                                                                if r <= 0 then
-                                                                        -- value tidak terbaca → simpan (jangan jual)
-                                                                        rateOk = false
-                                                                        n.unknown += 1
-                                                                elseif r > maxRate then
-                                                                        -- value di atas limit → simpan
-                                                                        rateOk = false
-                                                                        n.rate += 1
-                                                                        exRate = exRate or r
-                                                                end
-                                                        end
-
-                                                        if not rateOk then
-                                                                -- di atas limit, sudah dihitung di atas
-                                                        elseif keepMutated and mutated then
-                                                                n.mutated += 1
-                                                        elseif not noRarity and not table.find(sellRarities, rarityName or "Unknown") then
-                                                                n.rarity += 1
-                                                        else
-                                                                list[#list + 1] = uid
-                                                        end
-                                                end
-                                        end
-                                end
-                        end
-
-                        -- status text
-                        local limitText = maxRate > 0
-                                and (" - batas value <= " .. fmtCompact(maxRate) .. "/s" .. (noRarity and ", semua rarity" or ""))
-                                or ""
-                        if #list > 0 then
-                                return why(string.format("Siap jual %d egg%s", #list, limitText))
-                        end
-                        if n.total == 0 then
-                                return why("Menunggu: tidak ada egg di inventory")
-                        end
-                        local parts = {}
-                        local function add(count, label) if count > 0 then parts[#parts+1] = count .. " " .. label end end
-                        add(n.rarity,  "rarity tidak cocok")
-                        add(n.mutated, "mutated disimpan")
-                        add(n.black,   "blacklist")
-                        add(n.rate,    "di atas batas value" .. (exRate and (" (contoh " .. fmtCompact(exRate) .. "/s > " .. fmtCompact(maxRate) .. "/s)") or ""))
-                        add(n.unknown, "value tidak terbaca (disimpan)")
-                        add(n.placed,  "sedang ditaruh")
-                        add(n.held,    "dipegang")
-                        add(n.carried, "dibawa Auto Steal")
-                        return why("Menunggu: tidak ada egg yang bisa dijual (" .. table.concat(parts, ", ") .. ")")
-                end
-
-                -- lookup remote sell sekali, cache supaya tidak FindFirstChild setiap loop
-                local _sellRemote
-                local function sellRemote()
-                        if _sellRemote and _sellRemote.Parent then return _sellRemote end
-                        local pkg = ReplicatedStorage2:FindFirstChild("Packages")
-                        local net = pkg and pkg:FindFirstChild("Networking")
-                        local re  = net and net:FindFirstChild("RE/PetSatchel/SellSelection")
-                        if re and re:IsA("RemoteEvent") then _sellRemote = re return re end
-                        return nil
-                end
-
-                genv2.__PilatV4IsAutoSellEggBusy = function()
-                        return eggSellBusy or #eggSellList() > 0
-                end
-
-                local function eggSellLoop()
-                        if eggSellRunning then return end
-                        eggSellRunning = true
-                        task.spawn(function()
-                                while pilatV4Config.AutoSellEgg and fn2() do
-                                        local okL, list = pcall(eggSellList)
-                                        if not okL then
-                                                genv2.__PilatV4EggSellStatus = "Error: " .. tostring(list)
-                                                list = {}
-                                        end
-                                        if #list > 0 then
-                                                eggSellBusy = true
-                                                genv2.__PilatV4EggSellStatus = string.format("Menjual %d egg", #list)
-                                                local sent = 0
-                                                local remote = sellRemote()
-                                                if remote then
-                                                        -- batch 50 per packet (pilatSae style)
-                                                        local i = 1
-                                                        while i <= #list and pilatV4Config.AutoSellEgg do
-                                                                local batch = {}
-                                                                for j = i, math.min(i + 49, #list) do
-                                                                        batch[#batch + 1] = list[j]
-                                                                end
-                                                                pcall(remote.FireServer, remote, {Eggs = batch, Assets = {}})
-                                                                sent += #batch
-                                                                i += 50
-                                                                if i <= #list then task.wait(0.3) end
-                                                        end
-                                                else
-                                                        -- fallback satu per satu via Shared.Remotes
-                                                        local okR, Rem = pcall(function()
-                                                                return require(ReplicatedStorage2.Shared.Remotes)
-                                                        end)
-                                                        if okR and Rem then
-                                                                for _, uid in ipairs(list) do
-                                                                        if not pilatV4Config.AutoSellEgg then break end
-                                                                        pcall(function() Rem.PetSatchel.SellPet:FireServer({uid}) end)
-                                                                        sent += 1
-                                                                        task.wait(0.25)
-                                                                end
-                                                        else
-                                                                genv2.__PilatV4EggSellStatus = "Gagal: remote jual egg tidak ditemukan"
-                                                        end
-                                                end
-                                                if sent > 0 then
-                                                        genv2.__PilatV4EggSellLast = string.format(
-                                                                "%d egg dijual (%s)", sent, os.date("%H:%M:%S"))
-                                                end
-                                                task.wait(1)
-                                                eggSellBusy = false
-                                        end
-                                        eggSellBusy = false
-                                        task.wait(0.5)
-                                end
-                                eggSellBusy, eggSellRunning = false, false
-                                genv2.__PilatV4EggSellStatus = pilatV4Config.AutoSellEgg and "Berhenti" or "Off"
-                        end)
-                end
-
-                -- Hook into pilatV4Config setters so loops start when toggles fire
-                local origAutoSell = pilatV4Config.AutoSell
-                local origAutoSellEgg = pilatV4Config.AutoSellEgg
-
-                -- Watch for toggle changes (v7 fires callbacks via doStepCore)
-                -- We also poll so it catches config loads
-                task.spawn(function()
-                        while ctx do
-                                if pilatV4Config.AutoSell and not petSellRunning then
-                                        petSellLoop()
-                                end
-                                if pilatV4Config.AutoSellEgg and not eggSellRunning then
-                                        eggSellLoop()
-                                end
-                                task.wait(2)
-                        end
-                end)
-
-                -- Expose for Stop & Unload
-                genv2.__PilatV4SaeSellPetLoop = petSellLoop
-                genv2.__PilatV4SaeSellEggLoop = eggSellLoop
-        end)
+        -- (dead ported pilatSae sell engine removed: it read an undefined pilatV4Config and never ran;
+        --  selling is handled by the native scanItems3 loop above)
 
         -- ==== 20_farm#6 part 6/7 ====
         runStep("20_farm#6", function()
@@ -18285,6 +17867,757 @@ local function loadAllSections()
                                         return
                                 end
                         end
+                end
+        end)
+
+        -- ==== 21_eggchecker#1 (Egg Checker window, ported from pilatSae) ====
+        runStep("21_eggchecker#1", function()
+                local UserInputService = game:GetService("UserInputService")
+                local ReplicatedStorage2 = game:GetService("ReplicatedStorage")
+                local GUI_NAME = "__PilatEggChecker"
+
+                local C = {
+                        bg = Color3.fromRGB(18, 20, 28), panel = Color3.fromRGB(26, 29, 40),
+                        row = Color3.fromRGB(32, 36, 50), stroke = Color3.fromRGB(58, 64, 86),
+                        accent = Color3.fromRGB(110, 120, 255), text = Color3.fromRGB(235, 238, 248),
+                        muted = Color3.fromRGB(150, 158, 182), good = Color3.fromRGB(126, 224, 151),
+                }
+
+                local W, H = 420, 540
+                local checker = {sort = "value", rarity = "All", picked = {}, rows = {}}
+
+                -- ===== helpers =====
+                local function fmtNum(n)
+                        n = tonumber(n) or 0
+                        local units = {{1e15, "Qa"}, {1e12, "T"}, {1e9, "B"}, {1e6, "M"}, {1e3, "K"}}
+                        for _, u in ipairs(units) do
+                                if n >= u[1] then
+                                        return string.format("%.2f%s", n / u[1], u[2])
+                                end
+                        end
+                        return string.format("%d", n)
+                end
+
+                local function fmtKg(n)
+                        n = tonumber(n) or 0
+                        local s = (n >= 100) and string.format("%.1f", n) or string.format("%.2f", n)
+                        local int, dec = s:match("^(%d+)(%.%d+)$")
+                        int = (int or s):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+                        return int .. (dec or "") .. " kg"
+                end
+
+                local function esc(s)
+                        return (tostring(s):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+                end
+
+                local function dirOf(cat)
+                        local ok, d = pcall(function()
+                                return ctx.modules.Assets.Directory[cat]
+                        end)
+                        return (ok and type(d) == "table") and d or nil
+                end
+
+                local function normImage(v)
+                        if type(v) == "string" and v ~= "" then
+                                if v:find("rbxassetid") or v:find("rbxthumb") then
+                                        return v
+                                end
+                                if v:match("^%d+$") then
+                                        return "rbxassetid://" .. v
+                                end
+                        elseif type(v) == "number" and v > 0 then
+                                return "rbxassetid://" .. tostring(v)
+                        end
+                        return nil
+                end
+
+                local function iconOf(d)
+                        if type(d) ~= "table" then
+                                return nil
+                        end
+                        local keys = {"Image", "Icon", "Thumbnail", "ImageId", "IconId", "Texture", "Asset", "DisplayImage"}
+                        for _, k in ipairs(keys) do
+                                local img = normImage(d[k])
+                                if img then
+                                        return img
+                                end
+                        end
+                        if type(d.Egg) == "table" then
+                                for _, k in ipairs(keys) do
+                                        local img = normImage(d.Egg[k])
+                                        if img then
+                                                return img
+                                        end
+                                end
+                        end
+                        return nil
+                end
+
+                local function mutsOf(rec)
+                        local list, seen = {}, {}
+                        local function add(v)
+                                if type(v) == "string" and v ~= "" and v ~= "Normal" and v ~= "None" and not seen[v] then
+                                        seen[v] = true
+                                        list[#list + 1] = v
+                                end
+                        end
+                        add(rec.BaseMutation)
+                        if type(rec.Mutations) == "table" then
+                                for k, v in pairs(rec.Mutations) do
+                                        if type(k) == "string" and v == true then
+                                                add(k)
+                                        else
+                                                add(v)
+                                        end
+                                end
+                        end
+                        return list
+                end
+
+                local function rateOf(d, scale, muts)
+                        if not d then
+                                return 0
+                        end
+                        scale = tonumber(scale) or 1
+                        local base
+                        if scale > 5 then
+                                base = ((scale / 5) ^ 1.2) * 19.637875755794113
+                        else
+                                base = scale ^ 1.85
+                        end
+                        local mult = 1
+                        pcall(function()
+                                mult = tonumber(ctx.modules.Mut.EarningsFor(muts)) or 1
+                        end)
+                        return (tonumber(d.EarningRate) or 0) * base * mult
+                end
+
+                local function kgOf(cat, scale)
+                        local kg = 0
+                        local ok = pcall(function()
+                                kg = ctx.modules.Rec.WeightKgForScale(cat, scale)
+                        end)
+                        if not ok or not tonumber(kg) then
+                                pcall(function()
+                                        kg = require(ReplicatedStorage2.Shared.Util.EggRecords).WeightKgForScale(cat, scale)
+                                end)
+                        end
+                        return tonumber(kg) or 0
+                end
+
+                -- ===== scan field eggs (same filter as pilatSae egg checker) =====
+                local function scan()
+                        local out = {}
+                        local ok, records = pcall(ctx.readFieldEggs)
+                        if not ok or type(records) ~= "table" then
+                                return out
+                        end
+                        for _, rec in pairs(records) do
+                                if type(rec) == "table" and rec.Uid and rec.State ~= "Claimed" and rec.State ~= "Carried"
+                                        and not rec.CarrierUserId and typeof(rec.BottomCFrame) == "CFrame"
+                                        and not tostring(rec.Uid):find("FirstAreaEgg") then
+                                        local cat = rec.AssetCategory or rec.Category
+                                        local d = cat and dirOf(cat)
+                                        local scale = tonumber(rec.AssetScale or rec.Scale) or 1
+                                        local rar = d and d.Rarity
+                                        local muts = mutsOf(rec)
+                                        out[#out + 1] = {
+                                                uid = rec.Uid,
+                                                name = (d and d.DisplayName) or tostring(cat or "Egg"),
+                                                rarity = (rar and (rar.DisplayName or rar._id)) or "?",
+                                                rnum = (rar and tonumber(rar.RarityNumber or rar.Rank)) or 0,
+                                                color = (rar and typeof(rar.Color) == "Color3") and rar.Color or C.text,
+                                                area = tostring(rec.AreaId or "?"),
+                                                rate = rateOf(d, scale, muts),
+                                                kg = kgOf(cat, scale),
+                                                scale = scale,
+                                                muts = muts,
+                                                icon = iconOf(d),
+                                        }
+                                end
+                        end
+                        return out
+                end
+
+                -- ===== queue picked eggs into the steal queue (same as HUD "Steal now") =====
+                local function queueEggs(uids)
+                        local state = ctx.state
+                        local n = 0
+                        for _, uid in ipairs(uids) do
+                                if state.skip then
+                                        state.skip[uid] = nil
+                                end
+                                if not table.find(state.pick, uid) then
+                                        table.insert(state.pick, uid)
+                                end
+                                n = n + 1
+                        end
+                        if state.rank then
+                                state.rank.Steal = 0
+                        end
+                        if type(state.order) == "function" then
+                                pcall(state.order)
+                        end
+                        if not ctx.hubSettings.steal and state.autoSteal then
+                                pcall(function()
+                                        state.autoSteal:Set(true)
+                                end)
+                        end
+                        return n
+                end
+
+                -- ===== steal-setting bridge (movement / delivery / teleport delivery) =====
+                local MOVE_OPTS = {{"Teleport", "Teleport"}, {"Walk", "Tween"}}
+                local DEL_OPTS = {{"Walk", "Walk"}, {"Instant Steps", "Instant Steps"}, {"Fast Tween", "Fast Tween"}}
+                local TPDEL_OPTS = {{"Walk", "Walk"}, {"Quick Steps", "Quick Steps"}, {"Fast Tween", "Fast Tween"}}
+
+                local function applySetting(ctl, key, value)
+                        ctx.hubSettings[key] = value
+                        if ctl and type(ctl.Set) == "function" then
+                                pcall(ctl.Set, ctl, value)
+                        end
+                        ctx.hubSettings[key] = value
+                        pcall(checkState3)
+                end
+
+                -- ===== UI =====
+                local function corner(inst, r)
+                        local c = Instance.new("UICorner")
+                        c.CornerRadius = UDim.new(0, r or 8)
+                        c.Parent = inst
+                        return c
+                end
+
+                local function stroke(inst, color, t)
+                        local s = Instance.new("UIStroke")
+                        s.Color = color or C.stroke
+                        s.Transparency = t or 0.4
+                        s.Thickness = 1
+                        s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                        s.Parent = inst
+                        return s
+                end
+
+                local function label(parent, text, size, color, bold, align)
+                        local l = Instance.new("TextLabel")
+                        l.BackgroundTransparency = 1
+                        l.Font = bold and Enum.Font.GothamBold or Enum.Font.GothamMedium
+                        l.TextSize = size or 12
+                        l.TextColor3 = color or C.text
+                        l.TextXAlignment = align or Enum.TextXAlignment.Left
+                        l.Text = text or ""
+                        l.Parent = parent
+                        return l
+                end
+
+                local function makeSeg(parent, pos, size, options, onPick, scrolling)
+                        local holder
+                        if scrolling then
+                                holder = Instance.new("ScrollingFrame")
+                                holder.ScrollBarThickness = 0
+                                holder.ScrollingDirection = Enum.ScrollingDirection.X
+                                holder.AutomaticCanvasSize = Enum.AutomaticSize.X
+                                holder.CanvasSize = UDim2.new()
+                        else
+                                holder = Instance.new("Frame")
+                        end
+                        holder.BackgroundTransparency = 1
+                        holder.BorderSizePixel = 0
+                        holder.Position = pos
+                        holder.Size = size
+                        holder.Parent = parent
+
+                        if scrolling then
+                                local ll = Instance.new("UIListLayout")
+                                ll.FillDirection = Enum.FillDirection.Horizontal
+                                ll.Padding = UDim.new(0, 4)
+                                ll.SortOrder = Enum.SortOrder.LayoutOrder
+                                ll.Parent = holder
+                        else
+                                local gl = Instance.new("UIGridLayout")
+                                gl.CellSize = UDim2.new(1 / #options, -4, 1, 0)
+                                gl.CellPadding = UDim2.fromOffset(4, 0)
+                                gl.SortOrder = Enum.SortOrder.LayoutOrder
+                                gl.Parent = holder
+                        end
+
+                        local seg = {buttons = {}, value = nil}
+                        for i, opt in ipairs(options) do
+                                local b = Instance.new("TextButton")
+                                b.AutoButtonColor = false
+                                b.BorderSizePixel = 0
+                                b.LayoutOrder = i
+                                b.Font = Enum.Font.GothamBold
+                                b.TextSize = 12
+                                b.Text = opt[2]
+                                b.BackgroundColor3 = C.panel
+                                b.TextColor3 = C.muted
+                                if scrolling then
+                                        b.AutomaticSize = Enum.AutomaticSize.X
+                                        b.Size = UDim2.new(0, 0, 1, 0)
+                                        local pad = Instance.new("UIPadding")
+                                        pad.PaddingLeft = UDim.new(0, 10)
+                                        pad.PaddingRight = UDim.new(0, 10)
+                                        pad.Parent = b
+                                end
+                                corner(b, 7)
+                                b.Parent = holder
+                                b.MouseButton1Click:Connect(function()
+                                        onPick(opt[1])
+                                end)
+                                seg.buttons[opt[1]] = b
+                        end
+
+                        seg.set = function(value)
+                                seg.value = value
+                                for k, b in pairs(seg.buttons) do
+                                        local on = (k == value)
+                                        b.BackgroundColor3 = on and C.accent or C.panel
+                                        b.TextColor3 = on and Color3.fromRGB(255, 255, 255) or C.muted
+                                end
+                        end
+                        seg.holder = holder
+                        return seg
+                end
+
+                local function makeButton(parent, text, pos, size, primary, onClick)
+                        local b = Instance.new("TextButton")
+                        b.AutoButtonColor = false
+                        b.BorderSizePixel = 0
+                        b.Font = Enum.Font.GothamBold
+                        b.TextSize = 13
+                        b.Text = text
+                        b.BackgroundColor3 = primary and C.accent or C.panel
+                        b.TextColor3 = primary and Color3.fromRGB(255, 255, 255) or C.text
+                        b.Position = pos
+                        b.Size = size
+                        corner(b, 8)
+                        if not primary then
+                                stroke(b, C.stroke, 0.4)
+                        end
+                        b.Parent = parent
+                        b.MouseButton1Click:Connect(onClick)
+                        return b
+                end
+
+                local function destroyOld(parentGui)
+                        pcall(function()
+                                local old = parentGui:FindFirstChild(GUI_NAME)
+                                if old then
+                                        old:Destroy()
+                                end
+                        end)
+                end
+
+                local function build()
+                        local parentGui = (gethui and gethui()) or game:GetService("CoreGui")
+                        destroyOld(parentGui)
+
+                        local gui = Instance.new("ScreenGui")
+                        gui.Name = GUI_NAME
+                        gui.ResetOnSpawn = false
+                        gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+                        gui.DisplayOrder = 99999
+                        gui.Parent = parentGui
+                        checker.gui = gui
+
+                        local frame = Instance.new("Frame")
+                        frame.Name = "Window"
+                        frame.AnchorPoint = Vector2.new(0.5, 0.5)
+                        frame.Size = UDim2.fromOffset(W, H)
+                        frame.BackgroundColor3 = C.bg
+                        frame.BorderSizePixel = 0
+                        frame.Active = true
+                        corner(frame, 12)
+                        stroke(frame, C.stroke, 0.3)
+                        frame.Parent = gui
+                        checker.frame = frame
+
+                        local scale = Instance.new("UIScale")
+                        scale.Parent = frame
+                        local cam = workspace.CurrentCamera
+                        local vp = cam and cam.ViewportSize or Vector2.new(1024, 768)
+                        scale.Scale = math.clamp(math.min(1, (vp.X * 0.94) / W, (vp.Y * 0.92) / H), 0.6, 1)
+                        frame.Position = UDim2.fromOffset(math.floor(vp.X / 2), math.floor(vp.Y / 2))
+
+                        -- header (drag handle)
+                        local header = Instance.new("Frame")
+                        header.BackgroundTransparency = 1
+                        header.Size = UDim2.new(1, 0, 0, 38)
+                        header.Active = true
+                        header.Parent = frame
+
+                        local title = label(header, "Egg Checker", 15, C.text, true)
+                        title.Position = UDim2.fromOffset(14, 0)
+                        title.Size = UDim2.new(1, -140, 1, 0)
+
+                        checker.countLbl = label(header, "0 eggs", 11, C.muted, false, Enum.TextXAlignment.Right)
+                        checker.countLbl.AnchorPoint = Vector2.new(1, 0)
+                        checker.countLbl.Position = UDim2.new(1, -44, 0, 0)
+                        checker.countLbl.Size = UDim2.fromOffset(80, 38)
+
+                        local closeBtn = makeButton(header, "X", UDim2.new(1, -36, 0, 6), UDim2.fromOffset(26, 26), false, function()
+                                frame.Visible = false
+                        end)
+                        closeBtn.TextSize = 12
+
+                        local dragging, dragStart, startPos = false, nil, nil
+                        header.InputBegan:Connect(function(input)
+                                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                                        dragging, dragStart, startPos = true, input.Position, frame.Position
+                                        input.Changed:Connect(function()
+                                                if input.UserInputState == Enum.UserInputState.End then
+                                                        dragging = false
+                                                end
+                                        end)
+                                end
+                        end)
+                        local dragConn = UserInputService.InputChanged:Connect(function(input)
+                                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                                        local d = input.Position - dragStart
+                                        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+                                end
+                        end)
+                        gui.Destroying:Connect(function()
+                                dragConn:Disconnect()
+                        end)
+
+                        -- rarity filter (scrolling chips)
+                        local rarOpts, seen = {{"All", "All"}}, {}
+                        pcall(function()
+                                local items = {}
+                                for _, d in pairs(ctx.modules.Assets.Directory or {}) do
+                                        if type(d) == "table" and d.Rarity then
+                                                local name = d.Rarity.DisplayName or d.Rarity._id
+                                                if name and not seen[name] then
+                                                        seen[name] = true
+                                                        items[#items + 1] = {name, tonumber(d.Rarity.RarityNumber or d.Rarity.Rank) or 0}
+                                                end
+                                        end
+                                end
+                                table.sort(items, function(a, b)
+                                        return a[2] > b[2]
+                                end)
+                                for _, it in ipairs(items) do
+                                        rarOpts[#rarOpts + 1] = {it[1], it[1]}
+                                end
+                        end)
+                        checker.raritySeg = makeSeg(frame, UDim2.fromOffset(14, 42), UDim2.new(1, -28, 0, 28), rarOpts, function(v)
+                                checker.rarity = v
+                                checker.refresh()
+                        end, true)
+
+                        -- sort + clear
+                        checker.sortSeg = makeSeg(frame, UDim2.fromOffset(14, 76), UDim2.new(1, -96, 0, 28),
+                                {{"value", "Best value"}, {"weight", "Best weight"}, {"rarity", "Rarity"}}, function(v)
+                                        checker.sort = v
+                                        checker.refresh()
+                                end, false)
+                        makeButton(frame, "Clear", UDim2.new(1, -78, 0, 76), UDim2.fromOffset(64, 28), false, function()
+                                checker.picked = {}
+                                checker.paintRows()
+                        end)
+
+                        -- steal settings box
+                        local box = Instance.new("Frame")
+                        box.BackgroundColor3 = C.panel
+                        box.BorderSizePixel = 0
+                        box.Position = UDim2.fromOffset(14, 112)
+                        box.Size = UDim2.new(1, -28, 0, 74)
+                        corner(box, 8)
+                        stroke(box, C.stroke, 0.5)
+                        box.Parent = frame
+
+                        local moveLbl = label(box, "Movement", 11, C.muted, true)
+                        moveLbl.Position = UDim2.fromOffset(10, 6)
+                        moveLbl.Size = UDim2.fromOffset(86, 28)
+                        checker.moveSeg = makeSeg(box, UDim2.fromOffset(98, 6), UDim2.new(1, -108, 0, 28), MOVE_OPTS, function(v)
+                                applySetting(ctx.state.stealMoveCtl, "moveTo", v)
+                                checker.syncSettings()
+                        end, false)
+
+                        checker.detLbl = label(box, "Delivery", 11, C.muted, true)
+                        checker.detLbl.Position = UDim2.fromOffset(10, 40)
+                        checker.detLbl.Size = UDim2.fromOffset(86, 28)
+                        checker.delSeg = makeSeg(box, UDim2.fromOffset(98, 40), UDim2.new(1, -108, 0, 28), DEL_OPTS, function(v)
+                                applySetting(ctx.state.stealDelCtl, "insDel", v)
+                                checker.syncSettings()
+                        end, false)
+                        checker.tpDelSeg = makeSeg(box, UDim2.fromOffset(98, 40), UDim2.new(1, -108, 0, 28), TPDEL_OPTS, function(v)
+                                applySetting(ctx.state.stealTpDelCtl, "tpDel", v)
+                                checker.syncSettings()
+                        end, false)
+
+                        -- list
+                        checker.headLbl = label(frame, "Tap eggs to pick them", 11, C.muted)
+                        checker.headLbl.Position = UDim2.fromOffset(16, 190)
+                        checker.headLbl.Size = UDim2.new(1, -32, 0, 16)
+
+                        local list = Instance.new("ScrollingFrame")
+                        list.BackgroundTransparency = 1
+                        list.BorderSizePixel = 0
+                        list.Position = UDim2.fromOffset(14, 208)
+                        list.Size = UDim2.new(1, -28, 1, -208 - 56)
+                        list.ScrollBarThickness = 3
+                        list.ScrollBarImageColor3 = C.accent
+                        list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                        list.CanvasSize = UDim2.new()
+                        list.ScrollingDirection = Enum.ScrollingDirection.Y
+                        list.Parent = frame
+                        local ll = Instance.new("UIListLayout")
+                        ll.Padding = UDim.new(0, 6)
+                        ll.SortOrder = Enum.SortOrder.LayoutOrder
+                        ll.Parent = list
+                        checker.list = list
+
+                        checker.emptyLbl = label(frame, "No eggs on the field right now.", 12, C.muted, false, Enum.TextXAlignment.Center)
+                        checker.emptyLbl.Position = UDim2.fromOffset(14, 260)
+                        checker.emptyLbl.Size = UDim2.new(1, -28, 0, 30)
+                        checker.emptyLbl.Visible = false
+
+                        -- bottom bar
+                        makeButton(frame, "Refresh", UDim2.new(0, 14, 1, -46), UDim2.fromOffset(96, 34), false, function()
+                                checker.refresh()
+                        end)
+                        checker.stealBtn = makeButton(frame, "Steal selected", UDim2.new(0, 118, 1, -46), UDim2.new(1, -132, 0, 34), true, function()
+                                local uids = {}
+                                for uid in pairs(checker.picked) do
+                                        uids[#uids + 1] = uid
+                                end
+                                if #uids == 0 then
+                                        checker.stealBtn.Text = "Pick an egg first"
+                                        task.delay(1.5, function()
+                                                checker.paintRows()
+                                        end)
+                                        return
+                                end
+                                local n = queueEggs(uids)
+                                checker.picked = {}
+                                checker.stealBtn.Text = "Queued " .. tostring(n)
+                                task.delay(1.5, function()
+                                        checker.paintRows()
+                                end)
+                                checker.refresh()
+                        end)
+
+                        -- row pool
+                        local function newRow()
+                                local row = {}
+                                local b = Instance.new("TextButton")
+                                b.AutoButtonColor = false
+                                b.Text = ""
+                                b.BorderSizePixel = 0
+                                b.BackgroundColor3 = C.row
+                                b.Size = UDim2.new(1, -6, 0, 54)
+                                corner(b, 8)
+                                row.stroke = stroke(b, C.stroke, 0.7)
+                                b.Parent = list
+
+                                row.tick = Instance.new("Frame")
+                                row.tick.BackgroundColor3 = C.accent
+                                row.tick.BackgroundTransparency = 0.86
+                                row.tick.BorderSizePixel = 0
+                                row.tick.Position = UDim2.fromOffset(10, 16)
+                                row.tick.Size = UDim2.fromOffset(22, 22)
+                                corner(row.tick, 6)
+                                stroke(row.tick, C.accent, 0.5)
+                                row.tick.Parent = b
+
+                                row.check = label(row.tick, "✓", 13, Color3.fromRGB(255, 255, 255), true, Enum.TextXAlignment.Center)
+                                row.check.Size = UDim2.fromScale(1, 1)
+                                row.check.Visible = false
+
+                                row.icon = Instance.new("ImageLabel")
+                                row.icon.BackgroundTransparency = 1
+                                row.icon.Position = UDim2.fromOffset(40, 9)
+                                row.icon.Size = UDim2.fromOffset(36, 36)
+                                row.icon.ScaleType = Enum.ScaleType.Fit
+                                row.icon.Parent = b
+
+                                row.name = label(b, "", 14, C.text, true)
+                                row.name.RichText = true
+                                row.name.Position = UDim2.fromOffset(84, 6)
+                                row.name.Size = UDim2.new(1, -194, 0, 19)
+                                row.name.TextTruncate = Enum.TextTruncate.AtEnd
+
+                                row.sub = label(b, "", 12, C.muted)
+                                row.sub.RichText = true
+                                row.sub.Position = UDim2.fromOffset(84, 27)
+                                row.sub.Size = UDim2.new(1, -194, 0, 20)
+                                row.sub.TextTruncate = Enum.TextTruncate.AtEnd
+
+                                row.rate = label(b, "", 14, C.good, true, Enum.TextXAlignment.Right)
+                                row.rate.AnchorPoint = Vector2.new(1, 0.5)
+                                row.rate.Position = UDim2.new(1, -10, 0.5, 0)
+                                row.rate.Size = UDim2.fromOffset(100, 20)
+
+                                b.MouseButton1Click:Connect(function()
+                                        if row.uid == nil then
+                                                return
+                                        end
+                                        local k = tostring(row.uid)
+                                        if checker.picked[k] then
+                                                checker.picked[k] = nil
+                                        else
+                                                checker.picked[k] = true
+                                        end
+                                        checker.paintRows()
+                                end)
+                                row.frame = b
+                                return row
+                        end
+                        checker.newRow = newRow
+
+                        checker.refresh()
+                        checker.syncSettings()
+                        return gui
+                end
+
+                checker.paintRows = function()
+                        local n = 0
+                        for _, row in ipairs(checker.rows) do
+                                if row.frame.Visible and row.uid ~= nil then
+                                        local on = checker.picked[tostring(row.uid)] == true
+                                        if on then
+                                                n = n + 1
+                                        end
+                                        row.frame.BackgroundTransparency = on and 0.02 or 0.12
+                                        row.stroke.Transparency = on and 0.1 or 0.7
+                                        row.stroke.Color = on and C.accent or C.stroke
+                                        row.tick.BackgroundTransparency = on and 0.1 or 0.86
+                                        row.check.Visible = on
+                                end
+                        end
+                        if checker.stealBtn then
+                                checker.stealBtn.Text = n > 0 and ("Steal selected (" .. n .. ")") or "Steal selected"
+                        end
+                        if checker.headLbl then
+                                checker.headLbl.Text = n > 0 and (n .. " picked") or "Tap eggs to pick them"
+                        end
+                end
+
+                checker.syncSettings = function()
+                        if not checker.moveSeg then
+                                return
+                        end
+                        local hs = ctx.hubSettings
+                        local move = (hs.moveTo == "Teleport") and "Teleport" or "Walk"
+                        checker.moveSeg.set(move)
+                        checker.delSeg.set(hs.insDel or "Walk")
+                        checker.tpDelSeg.set(hs.tpDel or "Walk")
+                        local tp = (move == "Teleport")
+                        checker.delSeg.holder.Visible = not tp
+                        checker.tpDelSeg.holder.Visible = tp
+                        checker.detLbl.Text = tp and "Teleport Delivery" or "Delivery"
+                        checker.detLbl.TextSize = tp and 10 or 11
+                end
+
+                checker.refresh = function()
+                        if not checker.gui or not checker.gui.Parent then
+                                return
+                        end
+                        local eggs = scan()
+
+                        -- drop picks for eggs that left the field
+                        local alive = {}
+                        for _, e in ipairs(eggs) do
+                                alive[tostring(e.uid)] = true
+                        end
+                        for k in pairs(checker.picked) do
+                                if not alive[k] then
+                                        checker.picked[k] = nil
+                                end
+                        end
+
+                        if checker.rarity ~= "All" then
+                                local f = {}
+                                for _, e in ipairs(eggs) do
+                                        if e.rarity == checker.rarity then
+                                                f[#f + 1] = e
+                                        end
+                                end
+                                eggs = f
+                        end
+
+                        table.sort(eggs, function(a, b)
+                                if checker.sort == "weight" then
+                                        if a.kg ~= b.kg then
+                                                return a.kg > b.kg
+                                        end
+                                        return a.rate > b.rate
+                                elseif checker.sort == "rarity" then
+                                        if a.rnum ~= b.rnum then
+                                                return a.rnum > b.rnum
+                                        end
+                                        return a.rate > b.rate
+                                end
+                                if a.rate ~= b.rate then
+                                        return a.rate > b.rate
+                                end
+                                return a.rnum > b.rnum
+                        end)
+
+                        for i, e in ipairs(eggs) do
+                                local row = checker.rows[i]
+                                if not row then
+                                        row = checker.newRow()
+                                        checker.rows[i] = row
+                                end
+                                row.frame.LayoutOrder = i
+                                row.frame.Visible = true
+                                row.uid = e.uid
+                                row.icon.Image = e.icon or ""
+                                local mtxt = ""
+                                if #e.muts > 0 then
+                                        mtxt = '  <font color="#9AA3B5" size="11">' .. esc(table.concat(e.muts, " + ")) .. "</font>"
+                                end
+                                row.name.Text = esc(e.name) .. mtxt
+                                row.name.TextColor3 = e.color
+                                row.sub.Text = string.format("%s  ·  %s  ·  <b>%s</b>  ·  <b>x%.2f</b>", esc(e.rarity), esc(e.area), fmtKg(e.kg), e.scale)
+                                row.rate.Text = fmtNum(e.rate) .. "/s"
+                        end
+                        for i = #eggs + 1, #checker.rows do
+                                checker.rows[i].frame.Visible = false
+                                checker.rows[i].uid = nil
+                        end
+
+                        checker.emptyLbl.Visible = #eggs == 0
+                        checker.countLbl.Text = #eggs .. (#eggs == 1 and " egg" or " eggs")
+                        checker.raritySeg.set(checker.rarity)
+                        checker.sortSeg.set(checker.sort)
+                        checker.paintRows()
+                end
+
+                local function openChecker()
+                        if checker.gui and checker.gui.Parent then
+                                checker.frame.Visible = not checker.frame.Visible
+                                if checker.frame.Visible then
+                                        checker.refresh()
+                                        checker.syncSettings()
+                                end
+                                return
+                        end
+                        checker.rows = {}
+                        checker.picked = {}
+                        build()
+                        task.spawn(function()
+                                while checker.gui and checker.gui.Parent do
+                                        if checker.frame.Visible then
+                                                pcall(checker.refresh)
+                                                pcall(checker.syncSettings)
+                                        end
+                                        task.wait(1.5)
+                                end
+                        end)
+                end
+                ctx.state.openEggChecker = openChecker
+
+                -- ===== Farm tab button =====
+                local sec = cacheCore["Egg Checker"]
+                if sec then
+                        sec:Button("Egg Checker", "Open Egg Checker", function()
+                                openChecker()
+                        end, "Pick eggs off the field by hand, then send them to the steal queue. Movement, Delivery and Teleport Delivery can be set right inside the window.")
                 end
         end)
 
@@ -21388,6 +21721,76 @@ local function loadAllSections()
                         end)
                 end})
 
+                -- Butterflies Caught: status + icon grid with owned counts (same idea as pilatSae)
+                do
+                        local bfNames = {Green = "Emerald", Blue = "Sapphire", Purple = "Amethyst", Golden = "Radiant"}
+                        local bfMeta = {}
+                        for _, it in ipairs(items) do
+                                local col = Color3.fromRGB(255, 255, 255)
+                                pcall(function()
+                                        col = Color3.fromHex(it[3])
+                                end)
+                                bfMeta[it[1]] = {icon = it[2], color = col}
+                        end
+
+                        local function bfFmt(n)
+                                n = tonumber(n) or 0
+                                if n >= 1000000 then
+                                        return string.format("%.2fM", n / 1000000)
+                                elseif n >= 10000 then
+                                        return string.format("%.1fK", n / 1000)
+                                end
+                                return tostring(math.floor(n))
+                        end
+
+                        configMap.statusCtl = butterflyBloom:Text("Bloom Status", "Reading the Bloom schedule...")
+
+                        local bfGrid
+                        pcall(function()
+                                local raw = butterflyBloom._pilat
+                                if raw and type(raw.AddIconGrid) == "function" then
+                                        bfGrid = raw:AddIconGrid({Title = "Butterflies Caught", Note = "", Columns = 4})
+                                end
+                        end)
+                        local bfText = (not bfGrid) and butterflyBloom:Text("Butterflies Caught", "Reading butterflies...") or nil
+
+                        local bfLast, bfSession = {}, {}
+                        configMap.updateGrid = function(counts, essence)
+                                counts = counts or {}
+                                local list, total, parts = {}, 0, {}
+                                for _, key in ipairs({"Green", "Blue", "Purple", "Golden"}) do
+                                        local n = tonumber(counts[key]) or 0
+                                        total = total + n
+                                        if bfLast[key] and n > bfLast[key] then
+                                                bfSession[key] = (bfSession[key] or 0) + (n - bfLast[key])
+                                        end
+                                        bfLast[key] = n
+                                        local gain = bfSession[key] or 0
+                                        local meta = bfMeta[key] or {}
+                                        list[#list + 1] = {
+                                                Name = bfNames[key] or key,
+                                                Icon = meta.icon,
+                                                Color = meta.color,
+                                                Value = bfFmt(n),
+                                                Sub = gain > 0 and string.format("+%d session", gain) or "",
+                                                SubColor = gain > 0 and Color3.fromRGB(74, 222, 128) or nil,
+                                        }
+                                        parts[#parts + 1] = string.format("%s %s", bfNames[key] or key, bfFmt(n))
+                                end
+                                local note = string.format("Total %s  -  Essence %d", bfFmt(total), tonumber(essence) or 0)
+                                if bfGrid then
+                                        pcall(function()
+                                                bfGrid:SetItems(list)
+                                        end)
+                                        pcall(function()
+                                                bfGrid:SetNote(note)
+                                        end)
+                                elseif bfText then
+                                        bfText:Set(table.concat(parts, "  -  ") .. "\n" .. note)
+                                end
+                        end
+                end
+
                 local autoButterflyBloom = doStepCore(butterflyBloom, "Auto Butterfly Bloom", "bloom", false,
                         function(input)
                         if not (input) then
@@ -22100,6 +22503,16 @@ local function loadAllSections()
                         state4.Purple = counts.Purple
                         state4.Golden = counts.Golden
                         state4.Essence = doStep12Result.Essence
+
+                        if configMap.updateGrid then
+                                pcall(configMap.updateGrid, counts, doStep12Result.Essence)
+                        end
+
+                        if configMap.statusCtl then
+                                pcall(function()
+                                        configMap.statusCtl:Set(tostring(bfSay))
+                                end)
+                        end
 
                         doStep5("bst", function()
                                 if not (configMap.st) then
