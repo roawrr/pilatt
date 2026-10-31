@@ -39032,7 +39032,7 @@ local function loadAllSections()
 
         -- ==== 50_system#1 part 1/5 ====
         runStep("50_system#1", function()
-                local server, queueOnTeleport, textValue = cacheCore.Server, ((queue_on_teleport or queueonteleport) or (syn and syn.queue_on_teleport)) or (fluxus and fluxus.queue_on_teleport), "local ok, on = pcall(function() return game:GetService(\"TeleportService\"):GetTeleportSetting(\"__PilatAutoLoadScriptEnabled\") end)\nif ok and on == true then\n  if not game:IsLoaded() then game.Loaded:Wait() end\n  loadstring(game:HttpGet(\"https://raw.githubusercontent.com/roawrr/pilatt/main/Pilat.lua\"))()\nend"
+                local server, queueOnTeleport, textValue = cacheCore.Server, ((queue_on_teleport or queueonteleport) or (syn and syn.queue_on_teleport)) or (fluxus and fluxus.queue_on_teleport), "local ok, on = pcall(function() return game:GetService(\"TeleportService\"):GetTeleportSetting(\"__PilatAutoLoadScriptEnabled\") end)\nif ok and on == true then\n  if not game:IsLoaded() then game.Loaded:Wait() end\n  loadstring(game:HttpGet(\"https://raw.githubusercontent.com/roawrr/pilatt/refs/heads/main/pilatSae.lua\"))()\nend"
 
                 local function tryTeleportService(input)
                         pcall(function()
