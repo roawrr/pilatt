@@ -16890,20 +16890,29 @@ local function loadAllSections()
                         end
                 end)
 
-                local function scanItemsFarm(input, inputFarm, keyName)
-                        local uids, ipairsFn = {}, ipairs
+                -- ── scanItemsFarm (Chilli logic) ─────────────────────────────────────────
+                -- Filters items by rule, rarity, value, blacklist, and keepMutated flag.
+                -- items   : flat array with fields .r .v .m .n .uid .cat
+                -- state   : sell-rule table  {rule, mx, v, no}
+                -- keyName : "sellPetsKeep" | "sellEggsKeep"  (hubSettings key)
+                local function scanItemsFarm(items, state, keyName)
+                        local uids = {}
+                        local hs   = ctx.hubSettings
 
-                        for index, item in ipairsFn(input) do
-                                local isRecent, isRecentFarm = item.r <= (inputFarm.mx or 0), ((inputFarm.v or 0) > 0)
-                                        and (item.v < inputFarm.v)
-                                index = ((((inputFarm.rule == "Value Only") and isRecentFarm) or (((inputFarm.rule == "Rarity And Value") and isRecent) and isRecentFarm)) or ((inputFarm.rule == "Rarity Or Value") and (isRecent or isRecentFarm)))
-                                        or ((inputFarm.rule == "Rarity Only") and isRecent)
+                        for _, item in ipairs(items) do
+                                local passRarity = item.r <= (state.mx or 0)
+                                local passValue  = (state.v or 0) > 0 and (item.v < state.v)
 
-                                if index then
-                                        if not (inputFarm.no and inputFarm.no[item.n]) then
-                                                isRecent = ctx.hubSettings
+                                local passes =
+                                        (state.rule == "Value Only"         and passValue)
+                                        or (state.rule == "Rarity Only"     and passRarity)
+                                        or (state.rule == "Rarity And Value" and passRarity and passValue)
+                                        or (state.rule == "Rarity Or Value"  and (passRarity or passValue))
 
-                                                if isRecent[keyName] then
+                                if passes then
+                                        if not (state.no and state.no[item.n]) then
+                                                if hs[keyName] then
+                                                        -- keepMutated ON: skip items that have mutations
                                                         if not (#item.m > 0) then
                                                                 uids[#uids + 1] = item.uid
                                                         end
@@ -16917,95 +16926,93 @@ local function loadAllSections()
                         return uids
                 end
 
+                -- ── scanItems3 (Chilli scanAndSell, adapted for pila ctx) ─────────────────
                 local function scanItems3(input)
-                        local peekSave = ctx.peekSave
-                        local result2 = peekSave()
-                        if not (result2) then
-                                return 0, 0
-                        end
-                        peekSave = ctx.scanInventory
-                        local resultResult, ipairsRef = peekSave(result2)
-                        local scanItemsFarmResult, scanItemsFarmResultFarm = scanItemsFarm(resultResult, Pet,
-                                "sellPetsKeep"), scanItemsFarm(ipairsRef, Egg, "sellEggsKeep")
-                        local length = #scanItemsFarmResult
-                        local lengthFarm, count = #scanItemsFarmResultFarm, 0
+                        local save = ctx.peekSave()
+                        if not save then return 0, 0 end
 
-                        for _, item in ipairs(ipairsRef) do
-                                if cache[item.cat] and table.find(scanItemsFarmResultFarm, item.uid) then
-                                        count += 1
-                                else
+                        local pets, eggs = ctx.scanInventory(save)
+
+                        local petUids = scanItemsFarm(pets, Pet,  "sellPetsKeep")
+                        local eggUids = scanItemsFarm(eggs, Egg, "sellEggsKeep")
+
+                        -- count Halloween eggs among candidates
+                        local hwCount = 0
+                        for _, egg in ipairs(eggs) do
+                                if cache[egg.cat] and table.find(eggUids, egg.uid) then
+                                        hwCount += 1
                                 end
                         end
 
-                        local amount, amountFarm, AssetItems = 0, 0
-                        resultResult = tryCall2()
+                        -- price preview
+                        local petValue, eggValue = 0, 0
+                        local AssetItems
 
                         pcall(function()
                                 AssetItems = require(ReplicatedStorage.Shared.Util.AssetItems)
                         end)
 
-                        for index, item in ipairs(scanItemsFarmResult) do
-                                index = result2.Inventory[item]
-                                item, peekSave = pcall(AssetItems.SalePrice, index)
-                                amount += (item and tonumber(peekSave)) or (toNumberOrDefault2(index).v * 100)
-                        end
+                        local Rec = ctx.modules and ctx.modules.Rec
 
-                        ipairsRef = ipairs
-
-                        for index, item in ipairsRef(scanItemsFarmResultFarm) do
-                                index, peekSave, result2 = ctx.modules, pcall(ctx.modules.Rec.SellPrice, resultResult[item])
-                                amountFarm += (peekSave and tonumber(result2)) or 0
-                        end
-
-                        local function formatCompact(amount4)
-                                local unitSuffixes2 = {"", "K", "M", "B", "T", "Qa", "Qi"}
-                                local bestValue = 1
-
-                                while (math.abs(amount4) >= 1000) and (bestValue < #unitSuffixes2) do
-                                        amount4, bestValue = amount4 / 1000, bestValue + 1
+                        for _, uid in ipairs(petUids) do
+                                local data = save.Inventory and save.Inventory[uid]
+                                if data then
+                                        local ok, price = pcall(function()
+                                                return AssetItems and AssetItems.SalePrice(data)
+                                        end)
+                                        petValue += (ok and tonumber(price)) or ((data.v or 0) * 100)
                                 end
+                        end
 
-                                return (((bestValue == 1) and "$%.0f%s") or "$%.2f%s"):format(amount4, unitSuffixes2[bestValue])
+                        local recSave = tryCall2()
+                        for _, uid in ipairs(eggUids) do
+                                local ok, price = pcall(function()
+                                        return Rec and Rec.SellPrice and Rec.SellPrice(recSave[uid])
+                                end)
+                                eggValue += (ok and tonumber(price)) or 0
+                        end
+
+                        local function formatCompact(amount)
+                                local suffixes = {"", "K", "M", "B", "T", "Qa", "Qi"}
+                                local idx = 1
+                                while math.abs(amount) >= 1000 and idx < #suffixes do
+                                        amount = amount / 1000
+                                        idx    = idx + 1
+                                end
+                                return ((idx == 1) and "$%.0f%s" or "$%.2f%s"):format(amount, suffixes[idx])
                         end
 
                         doStep5("sellTx", function()
-                                tempValue6:Set(("Pet matches  -  %d pets for %s"):format(length, formatCompact(amount)))
-                                tempValue7:Set(("Egg matches  -  %d eggs (%d Halloween) for %s"):format(lengthFarm, count, formatCompact(amountFarm)))
+                                tempValue6:Set(("Pet matches  -  %d pets for %s"):format(#petUids, formatCompact(petValue)))
+                                tempValue7:Set(("Egg matches  -  %d eggs (%d Halloween) for %s"):format(#eggUids, hwCount, formatCompact(eggValue)))
                         end)
 
-                        if input then
-                                if input == "pets" then
-                                        scanItemsFarmResultFarm = {}
-                                else
-                                        scanItemsFarmResult = {}
-                                end
+                        -- respect enabled flags / one-type run
+                        if input == "pets" then
+                                eggUids = {}
+                        elseif input == "eggs" then
+                                petUids = {}
                         else
-                                resultResult, ipairsRef = ctx.hubSettings, ctx.hubSettings
-                                scanItemsFarmResult, scanItemsFarmResultFarm = if resultResult.sellPets then scanItemsFarmResult else {}, if ipairsRef.sellEggs then scanItemsFarmResultFarm else {}
+                                local hs = ctx.hubSettings
+                                if not hs.sellPets then petUids = {} end
+                                if not hs.sellEggs then eggUids = {} end
                         end
 
-                        for index = 1, math.max(#scanItemsFarmResult, #scanItemsFarmResultFarm), 50 do
-                                fireServer2("RE/PetSatchel/SellSelection", {Eggs = {table.unpack(scanItemsFarmResultFarm, index,
-                                        math.min(index + 49,
-                                        #scanItemsFarmResultFarm))}, Assets = {table.unpack(scanItemsFarmResult, index, math.min(index + 49, #scanItemsFarmResult))}})
+                        -- fire in batches of 50
+                        for i = 1, math.max(#petUids, #eggUids), 50 do
+                                fireServer2("RE/PetSatchel/SellSelection", {
+                                        Assets = {table.unpack(petUids, i, math.min(i + 49, #petUids))},
+                                        Eggs   = {table.unpack(eggUids, i, math.min(i + 49, #eggUids))},
+                                })
                                 task.wait(0.3)
                         end
 
-                        return #scanItemsFarmResult, #scanItemsFarmResultFarm
+                        return #petUids, #eggUids
                 end
 
                 doStep9ResultFarm.on = function()
-                        local hubSettings = ctx.hubSettings
-                        local sellPets, sellPets2 = hubSettings.sellPets
-
-                        if sellPets then
-                                sellPets2 = sellPets
-                        else
-                                hubSettings = ctx.hubSettings
-                                sellPets2 = hubSettings.sellEggs
-                        end
-
-                        return sellPets2 or (getOpen("Farm"))
+                        local hs = ctx.hubSettings
+                        return hs.sellPets or hs.sellEggs or getOpen("Farm")
                 end
 
                 doStep9ResultFarm.fn = scanItems3
