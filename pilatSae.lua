@@ -16884,8 +16884,8 @@ local function loadAllSections()
                         text2 = text:lower() .. "s at or below this rarity"
                         autoSell:Dropdown(handler, rnum, input, helper, false, "Sell " .. text2, doStepCoreResult)
 
-                        autoSell:Slider(text .. " Sell Value", 0, 0, 0, function(inputFarm)
-                                state.v = inputFarm
+                        state.ctrl = autoSell:Slider(text .. " Sell Value", 0, 0, 0, function(inputFarm)
+                                state.v = tonumber(inputFarm) or state.v
                         end, "log", nil, "Sell " .. (text:lower() .. "s worth less than this (0 = off)"), doStepCoreResult)
 
                         doStepCore(autoSell, "Keep Mutated " .. (text .. "s"), textFarm .. "Keep", text ~= "Egg", nil,
@@ -16956,6 +16956,22 @@ local function loadAllSections()
                 -- FIX: read bag eggs the same way pilatSae does (Egg.ReadOwnerEggs) and keep a breakdown
                 -- so the preview can say WHY an egg is skipped.
                 local dbg = {read = 0, placed = 0, held = 0, err = 0}
+                -- FIX: if the typed limit never reached state.v (callback missed), read it from the box itself
+                for _, st in ipairs({Pet, Egg}) do
+                        if (tonumber(st.v) or 0) <= 0 and st.ctrl then
+                                local okR, raw = pcall(function() return st.ctrl:Real() end)
+                                if okR and raw ~= nil then
+                                        local n = tonumber(raw)
+                                        if not n then
+                                                local t = tostring(raw):gsub("[%s,]", ""):upper()
+                                                local num, suf = t:match("^([%d%.]+)(%a*)$")
+                                                local mult = ({K = 1e3, M = 1e6, B = 1e9, T = 1e12, QA = 1e15})[suf or ""] or 1
+                                                n = tonumber(num) and tonumber(num) * mult or nil
+                                        end
+                                        if n and n > 0 then st.v = n end
+                                end
+                        end
+                end
                 do
                         local okE, owned = pcall(tryCall2)
                         local rebuilt = {}
