@@ -18238,8 +18238,8 @@ local function loadAllSections()
                         local state = {}
                         state.Hud = {Color = scanTable3({{0, color3FromRGB(78, 112, 196)}, {1, color3FromRGB(112, 152, 226)}}),
                                 Rotation = -90, Stroke = color3FromRGB(20, 30, 64), Light = color3FromRGB(196, 212, 246)}
-                        state.Steal = {Color = scanTable3({{0, color3FromRGB(58, 158, 128)}, {1, color3FromRGB(86, 190, 156)}}),
-                                Rotation = -90, Stroke = color3FromRGB(14, 52, 42), Light = color3FromRGB(188, 232, 216)}
+                        state.Steal = {Color = scanTable3({{0, color3FromRGB(20, 110, 82)}, {1, color3FromRGB(38, 148, 108)}}),
+                                Rotation = -90, Stroke = color3FromRGB(6, 30, 22), Light = color3FromRGB(120, 190, 160)}
                         state.Queued = {Color = scanTable3({{0, color3FromRGB(98, 106, 128)}, {1, color3FromRGB(142, 150, 172)}}),
                                 Rotation = -90, Stroke = color3FromRGB(24, 27, 38), Light = color3FromRGB(206, 211, 226)}
                         state.PriorityOn = {Color = scanTable3({{0, color3FromRGB(224, 176, 84)}, {1, color3FromRGB(204, 140, 68)}}),
