@@ -16953,6 +16953,41 @@ local function loadAllSections()
 
                         local pets, eggs = ctx.scanInventory(save)
 
+                -- FIX: read bag eggs the same way pilatSae does (Egg.ReadOwnerEggs) and keep a breakdown
+                -- so the preview can say WHY an egg is skipped.
+                local dbg = {read = 0, placed = 0, held = 0, err = 0}
+                do
+                        local okE, owned = pcall(tryCall2)
+                        local rebuilt = {}
+                        local heldUid
+                        pcall(function()
+                                local ch = ctx.localPlayer.Character
+                                local tool = ch and ch:FindFirstChildWhichIsA("Tool")
+                                heldUid = tool and tool:GetAttribute("UID")
+                        end)
+                        if okE and type(owned) == "table" then
+                                for uid, egg in pairs(owned) do
+                                        if type(egg) == "table" then
+                                                dbg.read += 1
+                                                if egg.Placement ~= nil then
+                                                        dbg.placed += 1
+                                                elseif uid == heldUid then
+                                                        dbg.held += 1
+                                                else
+                                                        local okN, nv = pcall(toNumberOrDefault2, egg)
+                                                        if okN and type(nv) == "table" then
+                                                                nv.uid = uid
+                                                                rebuilt[#rebuilt + 1] = nv
+                                                        else
+                                                                dbg.err += 1
+                                                        end
+                                                end
+                                        end
+                                end
+                                eggs = rebuilt
+                        end
+                end
+
                         local petUids = scanItemsFarm(pets, Pet,  "sellPetsKeep")
                         local eggUids = scanItemsFarm(eggs, Egg, "sellEggsKeep")
 
@@ -17004,7 +17039,7 @@ local function loadAllSections()
 
                         doStep5("sellTx", function()
                                 tempValue6:Set(("Pet matches  -  %d pets for %s"):format(#petUids, formatCompact(petValue)))
-                                tempValue7:Set(("Egg matches  -  %d eggs (%d Halloween) for %s"):format(#eggUids, hwCount, formatCompact(eggValue)))
+                                tempValue7:Set(("Egg matches  -  %d eggs (%d Halloween) for %s  |  bag %d, placed %d, held %d, err %d  |  rule %s, limit %s"):format(#eggUids, hwCount, formatCompact(eggValue), dbg.read, dbg.placed, dbg.held, dbg.err, tostring(Egg.rule), formatCompact(Egg.v or 0)))
                         end)
 
                         -- respect enabled flags / one-type run
@@ -17035,7 +17070,13 @@ local function loadAllSections()
                         return hs.sellPets or hs.sellEggs or getOpen("Farm")
                 end
 
-                doStep9ResultFarm.fn = scanItems3
+                doStep9ResultFarm.fn = function(...)
+                        local okS, errS = pcall(scanItems3, ...)
+                        if not okS then
+                                warn("[Pilat] Auto Sell error: " .. tostring(errS))
+                                pcall(function() tempValue7:Set("Egg matches  -  ERROR: " .. tostring(errS):sub(1, 90)) end)
+                        end
+                end
                 doStepFarm = ctx.state
                 doStepFarm.sellRun = scanItems3
         end)
