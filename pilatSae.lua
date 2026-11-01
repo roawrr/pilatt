@@ -1003,7 +1003,7 @@ local function createUiLibrary()
                 window.Opts = Opts
                 window.ByPath = {}
                 window.St = St
-                window.open = false
+                window.open = true -- FIX: the real UI never calls Show/Select, so every getOpen()-gated status/preview task stayed off
                 window.cur = nil
                 window.gui = nil
                 window.par = nil
@@ -3109,7 +3109,7 @@ local function loadAllSections()
         end
 
         local function getOpen(keyName)
-                return mainWindow.open and (mainWindow.Cur == entries4[keyName])
+                return mainWindow.open == true
         end
 
         -- ==== 02_admin#1 ====
@@ -18118,11 +18118,21 @@ local function loadAllSections()
                 -- ===== scan field eggs (same filter as pilatSae egg checker) =====
                 local function scan()
                         local out = {}
+                        local dbg = {records = 0, noCF = 0, state = 0, carried = 0, first = 0}
+                        checker.dbg = dbg
                         local ok, records = pcall(ctx.readFieldEggs)
                         if not ok or type(records) ~= "table" then
+                                dbg.err = tostring(records)
                                 return out
                         end
                         for key, rec in pairs(records) do
+                                dbg.records += 1
+                                if type(rec) == "table" then
+                                        if typeof(rec.BottomCFrame) ~= "CFrame" then dbg.noCF += 1
+                                        elseif rec.State == "Claimed" or rec.State == "Carried" then dbg.state += 1
+                                        elseif rec.CarrierUserId then dbg.carried += 1
+                                        elseif tostring(rec.Uid or key):find("FirstAreaEgg") then dbg.first += 1 end
+                                end
                                 -- FIX: records are keyed by uid; many have no .Uid field (the steal code uses item.Uid or key)
                                 local recUid = type(rec) == "table" and (rec.Uid or key) or nil
                                 if type(rec) == "table" and type(recUid) == "string" and rec.State ~= "Claimed" and rec.State ~= "Carried"
@@ -18628,7 +18638,15 @@ local function loadAllSections()
                         if not checker.gui or not checker.gui.Parent then
                                 return
                         end
-                        local eggs = scan()
+                        local okS, eggs = xpcall(scan, function(e) return tostring(e) end)
+                        if not okS then
+                                warn("[Pilat] Egg Checker scan error: " .. tostring(eggs))
+                                if checker.emptyLbl then
+                                        checker.emptyLbl.Text = "Scan error: " .. tostring(eggs):sub(1, 120)
+                                        checker.emptyLbl.Visible = true
+                                end
+                                return
+                        end
 
                         -- drop picks for eggs that left the field
                         local alive = {}
@@ -18694,6 +18712,12 @@ local function loadAllSections()
                         end
 
                         checker.emptyLbl.Visible = #eggs == 0
+                        if #eggs == 0 and checker.dbg then
+                                local d = checker.dbg
+                                checker.emptyLbl.Text = d.err and ("Cannot read field eggs: " .. d.err:sub(1, 100))
+                                        or string.format("No eggs. field records %d (no position %d, claimed/carried %d, held by player %d, first-area %d)",
+                                                d.records, d.noCF, d.state, d.carried, d.first)
+                        end
                         checker.countLbl.Text = #eggs .. (#eggs == 1 and " egg" or " eggs")
                         checker.raritySeg.set(checker.rarity)
                         checker.sortSeg.set(checker.sort)
