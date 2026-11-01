@@ -1276,6 +1276,6226 @@ pilatV4Config = pilatV4Config or {}
 local uiLibrary = createUiLibrary()
 pcall(getgenv().PilatHubLoadStep, 1)
 
+-- ==== 01b_chilli_ui : Chilli UI toolkit embedded in Pilat (used by the Egg Predictor window) ====
+-- Same widget library Chilli Hub ships (window, tabs, sections, dropdown, toggle, rich canvas).
+-- Fully local: no HttpGet, no loadstring, nothing to run besides this file.
+local function createChilliLibrary()
+        local items = {}
+
+        do
+                local gameRef = game
+
+                local function getService(serviceName)
+                        return gameRef:GetService(serviceName)
+                end
+
+                local Players, TweenService = getService("Players"), getService("TweenService")
+                local UserInputService = getService("UserInputService")
+                local RunService = getService("RunService")
+                local HttpService = getService("HttpService")
+                local GuiService = getService("GuiService")
+                local localPlayer, scrollingFrame = Players.LocalPlayer, Enum
+                local color3FromRGB = Color3.fromRGB
+                local uDim2New = UDim2.new
+                local uDim2FromScale = UDim2.fromScale
+                local uDim2FromOffset = UDim2.fromOffset
+                local vector2New = Vector2.new
+                local uDimNew = UDim.new
+                local color3FromRGBResult = color3FromRGB(255, 255, 255)
+                local color3FromRGBResult2 = color3FromRGB(0, 0, 0)
+                local color3FromRGBResult3, textValue = color3FromRGB(58, 255,
+                        55), "rbxasset://fonts/families/GothamSSm.json"
+                local font = Font.new(textValue, scrollingFrame.FontWeight.ExtraBold, scrollingFrame.FontStyle.Normal)
+                local font2 = Font.new(textValue, scrollingFrame.FontWeight.ExtraBold, scrollingFrame.FontStyle.Italic)
+                local font3 = Font.fromEnum(scrollingFrame.Font.FredokaOne)
+
+                local function scanTable(...)
+                        local iMap, items2 = {}, {...}
+
+                        for index3, item in ipairs(items2) do
+                                iMap[index3] = ColorSequenceKeypoint.new(item[1], item[2])
+                        end
+
+                        return ColorSequence.new(iMap)
+                end
+
+                local scanTableResult = scanTable({0, color3FromRGBResult}, {0.486159176, color3FromRGBResult}, {0.519031167,
+                        color3FromRGB(221, 221, 221)}, {1, color3FromRGB(236, 236, 236)})
+                local scanTableResult2 = scanTable({0, color3FromRGB(0, 36, 84)}, {1, color3FromRGB(0, 31, 54)})
+                local scanTableResult3 = scanTable({0, color3FromRGBResult3}, {1, color3FromRGB(20, 109, 0)})
+                local scanTableResult4 = scanTable({0, color3FromRGB(255, 193, 194)}, {0.0570934266, color3FromRGB(255, 132,
+                        123)}, {1, color3FromRGB(239, 28, 28)})
+                local scanTableResult5 = scanTable({0, color3FromRGB(255, 193, 194)}, {0.0155709349, color3FromRGB(255, 132,
+                        123)}, {1, color3FromRGB(239, 28, 28)})
+                local touchEnabled = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+                        and not UserInputService.MouseEnabled
+                local left = scrollingFrame.TextXAlignment.Left
+                local center = scrollingFrame.HorizontalAlignment.Center
+                local right = scrollingFrame.TextXAlignment.Right
+                local quart = scrollingFrame.EasingStyle.Quart
+                local quint, connections = scrollingFrame.EasingStyle.Quint, {}
+
+                local function trackConnection(event, input)
+                        local connection = event:Connect(input)
+                        connections[#connections + 1] = connection
+                        return connection
+                end
+
+                local textValues = {TextLabel = 1, TextButton = 1, TextBox = 1}
+
+                local function createInstance(className, instance2)
+                        local instance = Instance.new(className)
+
+                        if textValues[className] then
+                                instance.BackgroundTransparency = 1
+                                instance.Text = ""
+                        end
+
+                        if className == "TextButton" then
+                                instance.AutoButtonColor = false
+                        elseif className == "ImageButton" then
+                                instance.AutoButtonColor = false
+                        end
+
+                        if className == "TextBox" then
+                                instance.ClearTextOnFocus = false
+                        end
+
+                        if instance:IsA("GuiObject") then
+                                instance.BorderSizePixel = 0
+                        end
+
+                        if instance2 then
+                                for key, value in next, instance2, nil do
+                                        if type(key) ~= "number" then
+                                                if key ~= "Parent" then
+                                                        instance[key] = value
+                                                end
+                                        end
+                                end
+
+                                for _, item in ipairs(instance2) do
+                                        item.Parent = instance
+                                end
+
+                                instance.Parent = instance2.Parent
+                        end
+
+                        return instance
+                end
+
+                local function tryCall(firstValue, input, input2, input3)
+                        local UIStroke = createInstance("UIStroke", {Thickness = firstValue, Color = input or color3FromRGBResult2,
+                                ApplyStrokeMode = (input2 and scrollingFrame.ApplyStrokeMode.Contextual)
+                                or scrollingFrame.ApplyStrokeMode.Border, LineJoinMode = scrollingFrame.LineJoinMode.Round, Transparency = input3 or 0})
+
+                        pcall(function()
+                                UIStroke.BorderOffset = uDimNew(0, 0)
+                                UIStroke.BorderStrokePosition = scrollingFrame.BorderStrokePosition.Outer
+                                UIStroke.StrokeSizingMode = scrollingFrame.StrokeSizingMode.ScaledSize
+                        end)
+
+                        return UIStroke
+                end
+
+                local function getUIGradient(firstValue, input)
+                        return createInstance("UIGradient", {Color = firstValue, Rotation = 90, Name = input or "UIGradient"})
+                end
+
+                local function getUIAspectRatioConstraint(input, input2)
+                        return createInstance("UIAspectRatioConstraint", {AspectRatio = input or 1,
+                                DominantAxis = (input2 and scrollingFrame.DominantAxis.Height) or scrollingFrame.DominantAxis.Width})
+                end
+
+                local function doStep(parent)
+                        parent.FontFace = font
+                        parent.TextColor3 = color3FromRGBResult
+                        parent.TextScaled = true
+                        parent.LineHeight = 1
+                        tryCall(0.08, color3FromRGBResult2, true).Parent = parent
+                        return parent
+                end
+
+                local function checkState(parent, fontFace)
+                        if fontFace then
+                                parent.FontFace = fontFace
+                        end
+
+                        parent.TextColor3 = color3FromRGBResult
+                        parent.TextScaled = true
+                        parent.LineHeight = 1
+                        getUIGradient(scanTableResult, "TextStyleGradient").Parent = parent
+                        fontFace = tryCall(0.065, color3FromRGBResult, true)
+                        getUIGradient(scanTableResult2, "StrokeStyleGradient").Parent = fontFace
+                        fontFace.Parent = parent
+                        return parent
+                end
+
+                local function checkState2(input, input2)
+                        local TextLabel = createInstance("TextLabel", input)
+                        if input2 then
+                                return checkState(TextLabel, ((input2 == true) and font) or input2)
+                        end
+                        return doStep(TextLabel)
+                end
+
+                local function doStep2(data)
+                        data.TextTransparency = 0.32
+                        local uiStroke = data:FindFirstChildOfClass("UIStroke")
+                        uiStroke.Thickness = 0.06
+                        uiStroke.Transparency = 0.2
+                        return data
+                end
+
+                local function animate(input, input2, input3, input4, input5)
+                        local tween = TweenService:Create(input, TweenInfo.new(input3 or 0.15,
+                                input4 or scrollingFrame.EasingStyle.Quad, input5 or scrollingFrame.EasingDirection.Out), input2)
+                        tween:Play()
+                        return tween
+                end
+
+                local function doStep3(data)
+                        local userInputType = data.UserInputType
+                        return (userInputType == scrollingFrame.UserInputType.MouseButton1)
+                                or (userInputType == scrollingFrame.UserInputType.Touch)
+                end
+
+                items.errs = {}
+
+                local function tryCall2(callback, ...)
+                        if callback then
+                                local callResult, text = pcall(callback, ...)
+
+                                if not (callResult) then
+                                        warn("[Chilli] " .. tostring(text))
+
+                                        if #items.errs < 50 then
+                                                items.errs[#items.errs + 1] = tostring(text)
+                                        end
+                                end
+                        end
+                end
+
+                local function animate2(firstValue, input, input2)
+                        local uiScale, tempValue, tempValue2 = firstValue:FindFirstChildOfClass("UIScale")
+                                or createInstance("UIScale", {Parent = firstValue, Name = "InteractionScale"}), false
+
+                        local function playTween(input3, input4)
+                                if tempValue2 then
+                                        tempValue2:Cancel()
+                                end
+
+                                tempValue2 = animate(uiScale, {Scale = input3}, input4)
+                        end
+
+                        trackConnection(firstValue.MouseEnter, function()
+                                tempValue = true
+                                playTween(input, 0.1)
+                        end)
+
+                        trackConnection(firstValue.MouseLeave, function()
+                                tempValue = false
+                                playTween(1, 0.1)
+                        end)
+
+                        trackConnection(firstValue.MouseButton1Down, function()
+                                playTween(input2, 0.055)
+                        end)
+
+                        trackConnection(firstValue.MouseButton1Up, function()
+                                playTween((tempValue and input) or 1, 0.08)
+                        end)
+
+                        return uiScale
+                end
+
+                local setmetatableFn, weakCache = setmetatable, {__mode = "k"}
+                local setmetatableFnResult = setmetatableFn({}, weakCache)
+
+                local function doStep4(instance, input)
+                        local absolutePosition, absoluteSize = instance.AbsolutePosition, instance.AbsoluteSize
+                        return ((((instance.Parent and instance.Visible) and (input.X >= absolutePosition.X)) and (input.X <= (absolutePosition.X + absoluteSize.X))) and (input.Y >= absolutePosition.Y))
+                                and (input.Y <= (absolutePosition.Y + absoluteSize.Y))
+                end
+
+                trackConnection(UserInputService.InputChanged, function(input)
+                        local entry = setmetatableFnResult[input]
+
+                        if entry then
+                                entry.p = vector2New(input.Position.X, input.Position.Y)
+
+                                if (entry.p - entry.s).Magnitude > 10 then
+                                        entry.x = true
+                                end
+                        end
+                end)
+
+                local function hit(firstValue, input2)
+                        firstValue.Active = true
+
+                        trackConnection(firstValue.InputBegan, function(input)
+                                if input.UserInputType == scrollingFrame.UserInputType.Touch then
+                                        if input.UserInputState == scrollingFrame.UserInputState.Begin then
+                                                local vector2NewResult = vector2New(input.Position.X, input.Position.Y)
+                                                setmetatableFnResult[input] = {b = firstValue, s = vector2NewResult, p = vector2NewResult}
+                                        end
+                                end
+                        end)
+
+                        return trackConnection(firstValue.Activated, function(inputObject)
+                                if inputObject then
+                                        if inputObject.UserInputType == scrollingFrame.UserInputType.Touch then
+                                                local lookupValue = setmetatableFnResult[inputObject]
+
+                                                if lookupValue then
+                                                        if lookupValue.b ~= firstValue then
+                                                                return
+                                                        elseif lookupValue.x then
+                                                                return
+                                                        elseif not (doStep4(firstValue, lookupValue.p)) then
+                                                                return
+                                                        end
+                                                else
+                                                        return
+                                                end
+                                        end
+                                end
+
+                                tryCall2(input2)
+                        end)
+                end
+
+                local items3 = {}
+
+                trackConnection(RunService.Heartbeat, function()
+                        if #items3 > 0 then
+                                local items3Ref = items3
+                                items3 = {}
+
+                                for _, item in ipairs(items3Ref) do
+                                        tryCall2(item)
+                                end
+                        end
+                end)
+
+                items.q = function(input)
+                        local items3Ref = items3
+                        items3Ref[#items3Ref + 1] = input
+                end
+
+                local function chev(firstValue, input, firstValue2, input2, input3, input4, input5)
+                        local Frame, items2 = createInstance("Frame", {Parent = firstValue, Name = "Caret",
+                                AnchorPoint = vector2New(0.5,
+                                0.5), Position = firstValue2, Size = input2, BackgroundTransparency = 1, ZIndex = input3
+                                or 1, getUIAspectRatioConstraint(1, not input5)}), {{0.335355, 45}, {0.664645, -45}}
+
+                        for _, item in ipairs(items2) do
+                                createInstance("Frame", {Parent = Frame, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
+                                        Position = uDim2FromScale(item[1], 0.535355), Rotation = item[2], Size = uDim2FromScale(0.6657,
+                                        input4 or 0.2), BackgroundColor3 = input, ZIndex = (input3 or 1) + 1})
+                        end
+
+                        return Frame
+                end
+
+                local function doStep5(instance)
+                        local TextButton = createInstance("TextButton", {Parent = instance.Parent,
+                                Name = (instance.Name or instance.Text) or "Button", AnchorPoint = instance.AnchorPoint or vector2New(0.5,
+                                0.5), Position = instance.Position
+                                or uDim2FromScale(0.5,
+                                0.5), Size = instance.Size, LayoutOrder = instance.LayoutOrder or 0, ZIndex = instance.ZIndex or 99})
+                        local Frame = createInstance("Frame", {Parent = TextButton, Name = "Main", AnchorPoint = vector2New(0.5,
+                                0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, (instance.full and 1)
+                                or 0.92), BackgroundColor3 = color3FromRGB(175, 0, 0), tryCall((instance.full and 0.07) or 0.06)})
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = "ColorFrame", AnchorPoint = vector2New(0.5,
+                                0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTableResult4, "RedGradient")})
+                        local Frame3, checkState2Result = createInstance("Frame", {Parent = Frame2, Name = "Transparent",
+                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.965,
+                                0.88), BackgroundColor3 = color3FromRGBResult, ZIndex = 2, getUIGradient(scanTableResult5, "RedGradient")}), checkState2({Parent = Frame2, Name = "Label", AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = instance.LSize
+                                or uDim2FromScale(0.94,
+                                0.72), Text = instance.Text or "", TextWrapped = instance.wrap == true, ZIndex = 6}, true)
+                        animate2(TextButton, instance.h or 1.035, instance.p or 0.96)
+                        return TextButton, Frame, checkState2Result, Frame2, Frame3
+                end
+
+                local function doStep6(firstValue, input, data, input2, input3, input4)
+                        local Frame = createInstance("Frame", {Parent = firstValue, Name = "Switch", AnchorPoint = vector2New(input,
+                                0.5), Position = uDim2FromScale(data, 0.5), Size = uDim2FromScale(input2, input3), BackgroundColor3 = color3FromRGBResult, ZIndex = input4
+                                or 3, tryCall(0.06)})
+                        local UIGradient = createInstance("UIGradient", {Parent = Frame, Name = "OFF",
+                                Color = ColorSequence.new(color3FromRGBResult2), Rotation = 90, Transparency = NumberSequence.new(0.6)})
+                        local uiGradient = getUIGradient(scanTableResult3, "ON")
+                        uiGradient.Parent = Frame
+                        input2, input3, firstValue, data = {Parent = Frame, Name = "Hold", AnchorPoint = vector2New(0.5, 0.5),
+                                Size = uDim2FromScale(0.72, 0.72), BackgroundColor3 = color3FromRGB(89, 89,
+                                89), ZIndex = (input4
+                                or 3) + 2}, tryCall(0.09), getUIAspectRatioConstraint(1), {Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult}
+                        data.ZIndex = (input4 or 3) + 3
+
+                        do
+                                local packedValues = table.pack(input3, firstValue, createInstance("Frame", data))
+                                table.move(packedValues, 1, packedValues.n, 1, input2)
+                        end
+
+                        local Frame2 = createInstance("Frame", input2)
+
+                        return Frame, function(enabled, input5)
+                                UIGradient.Enabled = not enabled
+                                uiGradient.Enabled = enabled
+                                local uDim2FromScaleResult = uDim2FromScale((enabled and 0.72) or 0.28, 0.5)
+
+                                if input5 == false then
+                                        Frame2.Position = uDim2FromScaleResult
+                                else
+                                        animate(Frame2, {Position = uDim2FromScaleResult}, 0.12)
+                                end
+                        end
+                end
+
+                items.N = createInstance
+                items.L = checkState2
+                items.st = tryCall
+                items.gr = getUIGradient
+                items.tw = animate
+                items.hit = hit
+                items.chev = chev
+                items.rb = doStep5
+                items.cn = trackConnection
+                items.fb = animate2
+                items.ACC = scanTableResult3
+                items.RED1 = scanTableResult4
+                items.SHN = scanTableResult
+                items.SHS = scanTableResult2
+                items.FN = font
+                items.FR = font3
+
+                local function readCachedFile(input)
+                        local callResult, result = pcall(readfile, input)
+                        return (callResult and result) or nil
+                end
+
+                local function saveFile(input, input2)
+                        pcall(writefile, input, input2)
+                end
+
+                local function ensureFolder(input)
+                        if isfolder then
+                                if not (isfolder(input)) then
+                                        pcall(makefolder, input)
+                                end
+                        end
+                end
+
+                local function dec(input)
+                        if not (input) then
+                                return
+                        end
+                        local callResult, result = pcall(HttpService.JSONDecode, HttpService, input)
+                        return (callResult and result) or nil
+                end
+
+                local function enc(input)
+                        local callResult, result = pcall(HttpService.JSONEncode, HttpService, input)
+                        return (callResult and result) or nil
+                end
+
+                items.dec = dec
+                items.enc = enc
+                items.rd = readCachedFile
+                items.wr = saveFile
+                local amount, amount2, amount3 = 1000, 3, 12
+
+                local function roundSigFigs(amount4)
+                        if amount4 <= 0 then
+                                return 0
+                        end
+                        local factor = 10 ^ (math.floor(math.log10(amount4)) - 2)
+                        return math.floor((amount4 / factor) + 0.5) * factor
+                end
+
+                local function clampValue(threshold)
+                        threshold = math.clamp(tonumber(threshold) or 0, 0, amount)
+                        return ((threshold <= 0) and 0)
+                                or roundSigFigs(10 ^ (amount2 + (((amount3 - amount2) * threshold) / amount)))
+                end
+
+                local function roundSigFigs2(threshold)
+                        threshold = tonumber(threshold) or 0
+                        if threshold <= 0 then
+                                return 0
+                        end
+                        return math.clamp(math.floor(((((math.log10(threshold) - amount2) / (amount3 - amount2)) * amount) * 100) + 0.5) / 100,
+                                0, amount)
+                end
+
+                local function doStep7(threshold)
+                        local stringFormat, isRecent = string.format, ((threshold >= 100) and "%.0f")
+                                or ((threshold >= 10) and "%.1f")
+                        local stringFormatResult = stringFormat(isRecent or "%.2f", threshold)
+                        return if stringFormatResult:find(".", 1, true) then stringFormatResult:gsub("0+$", ""):gsub("%.$",
+                                "") else stringFormatResult
+                end
+
+                local function formatRate(input)
+                        local numVal = clampValue(input)
+
+                        if numVal <= 0 then
+                                return "Off"
+                        elseif numVal < 1000000 then
+                                return doStep7(numVal / 1000) .. " K/s"
+                        elseif numVal < 1000000000 then
+                                return doStep7(numVal / 1000000) .. " M/s"
+                        end
+
+                        return doStep7(numVal / 1000000000) .. " B/s"
+                end
+
+                local function formatCompact(input)
+                        local numVal = clampValue(input)
+
+                        if numVal <= 0 then
+                                return "0"
+                        elseif numVal < 1000000 then
+                                return doStep7(numVal / 1000) .. "k"
+                        end
+
+                        return (string.format("%.3f", numVal / 1000000):gsub("0+$", ""):gsub("%.$", ""))
+                end
+
+                local unitMultipliers = {k = 1000, m = 1000000, b = 1000000000, t = 1000000000000}
+
+                local function doStep8(input)
+                        input = tostring(input or ""):gsub("[%s,/]", ""):lower():gsub("s$", "")
+
+                        if input == "" then
+                                return 0
+                        elseif input == "off" then
+                                return 0
+                        end
+
+                        local match, tempValue = input:match("^([%d%.]+)([kmbt]?)$")
+                        match = tonumber(match)
+                        return (match and roundSigFigs2(match * (unitMultipliers[tempValue] or 1000000))) or nil
+                end
+
+                items.s2v = clampValue
+                items.v2s = roundSigFigs2
+
+                local function colorizeText(color, input)
+                        local computed, computed2, computed3, text = math.floor((color.R * 255) + 0.5), math.floor((color.G * 255) + 0.5), math.floor((color.B * 255) + 0.5), tostring(input):gsub("&",
+                                "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")
+                        return ("<font color=\"rgb(%d,%d,%d)\">%s</font>"):format(computed, computed2, computed3, text)
+                end
+
+                local index, index2, widgetSpecs = {}, {}, {}
+                index.__index = index
+                index2.__index = index2
+                widgetSpecs.__index = widgetSpecs
+                local amount5, amount6, list = 1, 1, {}
+
+                local function doStep9(callback)
+                        list[#list + 1] = callback
+                        callback()
+                end
+
+                local tempValue3
+
+                local function closeDropdown()
+                        if tempValue3 then
+                                if tempValue3.closeDD then
+                                        tempValue3.closeDD()
+                                end
+                        end
+                end
+
+                items.Window = function(data)
+                        local registry = setmetatable({Tabs = {}, Opts = {}, ByPath = {}, St = {}, open = false, cols = {},
+                                rest = uDim2FromScale(0.5, 0.475)}, index)
+                        items.W = registry
+                        tempValue3 = registry
+                        local hui = (gethui and gethui()) or getService("CoreGui")
+                        registry.par = hui
+
+                        for _, child in ipairs(hui:GetChildren()) do
+                                if child:IsA("ScreenGui") then
+                                        if child:GetAttribute("ChilliRB") then
+                                                child:Destroy()
+                                        elseif (child:GetAttribute("ChilliLibraryOwned") or (child.Name == "Settings"))
+                                                or (child.Name == "ChilliQuickBar") then
+                                                if child:GetAttribute("ChilliScriptOwner") ~= "Joiner" then
+                                                        child:Destroy()
+                                                end
+                                        end
+                                end
+                        end
+
+                        registry.dirP = "ChilliLibrary/Games/" .. tostring(data.Game or gameRef.GameId)
+                        ensureFolder("ChilliLibrary")
+                        ensureFolder("ChilliLibrary/Games")
+                        ensureFolder(registry.dirP)
+                        ensureFolder(registry.dirP .. "/configs")
+                        local currentCamera = workspace.CurrentCamera
+                        local viewportSize = (currentCamera and currentCamera.ViewportSize) or vector2New(1280, 720)
+                        viewportSize = if viewportSize.X < 1 then vector2New(1280,
+                                720) else if viewportSize.Y < 1 then vector2New(1280, 720) else viewportSize
+                        local guiInset = vector2New()
+                        local vector2NewResult = vector2New()
+
+                        pcall(function()
+                                guiInset, vector2NewResult = GuiService:GetGuiInset()
+                        end)
+
+                        local computed, computed2 = math.max((viewportSize.X - guiInset.X) - vector2NewResult.X,
+                                1), math.max((viewportSize.Y - guiInset.Y) - vector2NewResult.Y, 1)
+                        local factor, factor2 = 0.45 * computed, 0.55 * computed2
+
+                        if (factor / factor2) > 1.34 then
+                                factor = factor2 * 1.34
+                        else
+                                factor2 = factor / 1.34
+                        end
+
+                        if touchEnabled then
+                                currentCamera = math.min(1.3, (computed * 0.98) / math.max(factor, 1),
+                                        (computed2 * 0.98) / math.max(factor2, 1))
+                                factor, factor2 = factor * currentCamera, factor2 * currentCamera
+                        else
+                        end
+
+                        registry.base = uDim2FromScale(factor / computed, factor2 / computed2)
+                        registry.size = registry.base
+                        local ScreenGui = createInstance("ScreenGui", {Name = HttpService:GenerateGUID(false):gsub("-", ""):sub(1,
+                                12), ResetOnSpawn = false, IgnoreGuiInset = true, ZIndexBehavior = scrollingFrame.ZIndexBehavior.Sibling, DisplayOrder = 6, Enabled = false})
+                        ScreenGui:SetAttribute("ChilliRB", true)
+                        registry.gui = ScreenGui
+                        local Frame = createInstance("Frame", {Parent = ScreenGui, Name = "Frame", AnchorPoint = vector2New(0.5,
+                                0.5), Position = uDim2New(0.5, 0, 1.55, 0), Size = registry.size, BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.4, tryCall(0.008)})
+                        registry.main = Frame
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = "Top", AnchorPoint = vector2New(0.5, 0),
+                                Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.125), BackgroundColor3 = color3FromRGB(111,
+                                0, 2), tryCall(0.06, color3FromRGB(58, 0, 0))})
+                        computed = createInstance("Frame", {Parent = Frame2, Name = "Color", AnchorPoint = vector2New(0.5, 0),
+                                Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1,
+                                0.88), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(253, 86, 89)}, {1,
+                                color3FromRGB(255, 11, 15)}))})
+                        createInstance("Frame", {Parent = computed, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
+                                Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.988,
+                                0.87), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.9})
+                        local checkState2Result = checkState2({Parent = computed, Name = "Label", AnchorPoint = vector2New(0.5,
+                                0.5), Text = data.Title or "Chilli Hub", TextWrapped = true, TextXAlignment = left, ZIndex = 6}, font2)
+                        local TextButton = createInstance("TextButton", {Parent = Frame2, Name = "Close",
+                                AnchorPoint = vector2New(0.5, 0.5), LayoutOrder = 1, ZIndex = 99, getUIAspectRatioConstraint(1)})
+                        computed2 = createInstance("Frame", {Parent = createInstance("Frame", {Parent = TextButton, Name = "Main",
+                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1,
+                                1), BackgroundColor3 = color3FromRGB(126, 0, 0), tryCall(0.09, color3FromRGB(76, 0,
+                                0))}), Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(255, 130, 130)}, {1, color3FromRGB(239, 28, 28)}))})
+                        createInstance("Frame", {Parent = computed2, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
+                                Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.96,
+                                0.88), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.9})
+                        checkState2({Parent = computed2, Name = "Label", AnchorPoint = vector2New(0.5, 0.5),
+                                Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1.14,
+                                0.98), Text = "X", TextWrapped = true, ZIndex = 6}, font3)
+
+                        do
+                                local isEnabled, tempValue
+
+                                local function getUDim2()
+                                        local factor3 = 0.06637302041053772 / amount5
+                                        return uDim2New(factor3, 0, 0.6588137149810791, 0)
+                                end
+
+                                local function playTween(input2, input3)
+                                        local uDim = getUDim2()
+
+                                        if tempValue then
+                                                tempValue:Cancel()
+                                        end
+
+                                        tempValue = animate(TextButton, {Size = uDim2New(uDim.X.Scale * input2, 0, uDim.Y.Scale * input2, 0)},
+                                                input3)
+                                end
+
+                                trackConnection(TextButton.MouseEnter, function()
+                                        isEnabled = true
+                                        playTween(1.04, 0.12)
+                                end)
+
+                                trackConnection(TextButton.MouseLeave, function()
+                                        isEnabled = false
+                                        playTween(1, 0.12)
+                                end)
+
+                                trackConnection(TextButton.MouseButton1Down, function()
+                                        playTween(0.96, 0.06)
+                                end)
+
+                                trackConnection(TextButton.MouseButton1Up, function()
+                                        playTween((isEnabled and 1.04) or 1, 0.09)
+                                end)
+                        end
+
+                        hit(TextButton, function()
+                                registry:Show(false)
+                        end)
+
+                        computed2 = {{"SideButtons", 1, -1}, {"SideButtonsRight", 0, 1}}
+
+                        for index3, item in ipairs(computed2) do
+                                computed = createInstance("Frame", {Parent = Frame, Name = item[1], AnchorPoint = vector2New(item[2], 0.5),
+                                        BackgroundTransparency = 1, ZIndex = 99})
+                                registry.cols[index3] = {f = computed, e = item[3], ly = createInstance("UIListLayout", {Parent = computed,
+                                        Name = "TabLayout", HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder}), pd = createInstance("UIPadding", {Parent = computed, Name = "TabPadding"})}
+                        end
+
+                        local TextButton2, Frames, items2 = createInstance("TextButton", {Parent = Frame, Name = "ResizeGrip",
+                                AnchorPoint = vector2New(1,
+                                1), Selectable = false, ZIndex = 120, getUIAspectRatioConstraint(1)}), {}, {{0.5, 0.9}, {0.68, 0.54}, {0.84, 0.22}}
+
+                        for _, item in ipairs(items2) do
+                                Frames[#Frames + 1] = createInstance("Frame", {Parent = TextButton2, Name = "GripBar",
+                                        AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(item[1],
+                                        item[1]), Size = uDim2FromScale(item[2], 0.13), Rotation = -45, BackgroundColor3 = color3FromRGBResult, BackgroundTransparency = 0.35, ZIndex = 121})
+                        end
+
+                        local tempValue2, input, tempValue4, absoluteSize
+
+                        local function animate3(input2)
+                                for _, Frame3 in ipairs(Frames) do
+                                        animate(Frame3, {BackgroundTransparency = (input2 and 0.05) or 0.35}, 0.1)
+                                end
+                        end
+
+                        trackConnection(TextButton2.MouseEnter, function()
+                                animate3(true)
+                        end)
+
+                        trackConnection(TextButton2.MouseLeave, function()
+                                if not (tempValue2) then
+                                        animate3(false)
+                                end
+                        end)
+
+                        trackConnection(TextButton2.InputBegan, function(input2)
+                                if not (tempValue2) then
+                                        if doStep3(input2) then
+                                                if input2.UserInputState == scrollingFrame.UserInputState.Begin then
+                                                        local input3, vector2NewResult2, absoluteSize2 = ((input2.UserInputType == scrollingFrame.UserInputType.Touch) and input2)
+                                                                or nil, vector2New(input2.Position.X, input2.Position.Y), Frame.AbsoluteSize
+                                                        tempValue2, input, tempValue4, absoluteSize = true, input3, vector2NewResult2, absoluteSize2
+                                                        animate3(true)
+                                                end
+                                        end
+                                end
+                        end)
+
+                        trackConnection(UserInputService.InputChanged, function(input2)
+                                local input3 = tempValue2
+                                        and ((input and (input2 == input)) or (if input then not input else input2.UserInputType == scrollingFrame.UserInputType.MouseMovement))
+
+                                if input3 then
+                                        local vector2NewResult2 = vector2New(input2.Position.X, input2.Position.Y) - tempValue4
+                                        registry:Resize(absoluteSize.X + (vector2NewResult2.X * 2), absoluteSize.Y + (vector2NewResult2.Y * 2))
+                                end
+                        end)
+
+                        trackConnection(UserInputService.InputEnded, function(input2)
+                                local tempValue = tempValue2
+                                        and ((input2.UserInputType == scrollingFrame.UserInputType.MouseButton1) or (input2 == input))
+
+                                if tempValue then
+                                        tempValue2, input = false, nil
+                                        animate3(false)
+                                end
+                        end)
+
+                        do
+                                local isEnabled, input2, tempValue, input3
+
+                                trackConnection(Frame2.InputBegan, function(input4)
+                                        if isEnabled then
+                                                return
+                                        elseif doStep3(input4) then
+                                                if input4.UserInputState ~= scrollingFrame.UserInputState.Begin then
+                                                        return
+                                                elseif registry.open then
+                                                        if registry.anim then
+                                                                return
+                                                        end
+                                                else
+                                                        return
+                                                end
+                                        else
+                                                return
+                                        end
+
+                                        local vector2NewResult2 = vector2New(input4.Position.X, input4.Position.Y)
+
+                                        if doStep4(Frame2, vector2NewResult2) then
+                                                if doStep4(TextButton, vector2NewResult2) then
+                                                        return
+                                                end
+                                        else
+                                                return
+                                        end
+
+                                        local absoluteSize2, input5 = ScreenGui.AbsoluteSize, ((input4.UserInputType == scrollingFrame.UserInputType.Touch) and input4) or nil
+                                        input4 = vector2New(Frame.Position.X.Scale + (Frame.Position.X.Offset / absoluteSize2.X),
+                                                Frame.Position.Y.Scale + (Frame.Position.Y.Offset / absoluteSize2.Y))
+                                        isEnabled, input2, tempValue, input3 = true, input5, vector2NewResult2, input4
+                                end)
+
+                                trackConnection(UserInputService.InputChanged, function(input4)
+                                        if isEnabled then
+                                                if not (input2 and (input4 == input2)) then
+                                                        if input2 then
+                                                                return
+                                                        elseif input4.UserInputType ~= scrollingFrame.UserInputType.MouseMovement then
+                                                                return
+                                                        end
+                                                end
+                                        else
+                                                return
+                                        end
+
+                                        local absoluteSize2, vector2NewResult2 = ScreenGui.AbsoluteSize, vector2New(input4.Position.X,
+                                                input4.Position.Y) - tempValue
+                                        local tempValue5, tempValue6 = Frame.AbsoluteSize.X / absoluteSize2.X, Frame.AbsoluteSize.Y / absoluteSize2.Y
+                                        local tempValue7, factor3, tempValue8, factor4 = tempValue5 * 0.5, 0.998 - (tempValue5 * 0.5), tempValue6 * 0.5, 0.98 + (tempValue6 * 0.5)
+                                        Frame.Position = uDim2FromScale(math.clamp(input3.X + (vector2NewResult2.X / absoluteSize2.X),
+                                                math.min(tempValue7, factor3), math.max(tempValue7,
+                                                factor3)), math.clamp(input3.Y + (vector2NewResult2.Y / absoluteSize2.Y), math.min(tempValue8, factor4), math.max(tempValue8, factor4)))
+                                        registry.rest = Frame.Position
+                                end)
+
+                                trackConnection(UserInputService.InputEnded, function(input4)
+                                        if isEnabled then
+                                                if input4.UserInputType == scrollingFrame.UserInputType.MouseButton1 then
+                                                        isEnabled = false
+                                                elseif input4 == input2 then
+                                                        isEnabled = false
+                                                end
+                                        end
+                                end)
+
+                                registry.dragStop = function()
+                                        isEnabled = false
+                                end
+                        end
+
+                        local Frame3 = createInstance("Frame", {Parent = Frame, Name = "SearchBar", AnchorPoint = vector2New(0.5,
+                                0), Position = uDim2FromScale(0.5, 1.022), Size = uDim2FromScale(1, 0.0749), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.4, ZIndex = 6, tryCall(0.05)})
+                        checkState2({Parent = Frame3, Name = "Caption", AnchorPoint = vector2New(0, 0.5),
+                                Position = uDim2FromScale(0.02, 0.5), Size = uDim2FromScale(0.13,
+                                0.5), Text = "Search", TextXAlignment = left, ZIndex = 7})
+                        local Frame4 = createInstance("Frame", {Parent = Frame3, Name = "Field", AnchorPoint = vector2New(1, 0.5),
+                                Position = uDim2FromScale(0.982, 0.5), Size = uDim2FromScale(0.82,
+                                0.6), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 7, tryCall(0.1)})
+                        local Frame5 = createInstance("Frame", {Parent = Frame4, Name = "Underline", AnchorPoint = vector2New(0.5,
+                                1), Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(0, 0.11), BackgroundColor3 = color3FromRGBResult, ZIndex = 9})
+                        local TextBox = createInstance("TextBox", {Parent = Frame4, Name = "Input", AnchorPoint = vector2New(0,
+                                0.5), Position = uDim2FromScale(0.025, 0.5), Size = uDim2FromScale(0.9, 0.62), PlaceholderText = "Filter features...", PlaceholderColor3 = color3FromRGB(198, 198, 198), TextXAlignment = left, ZIndex = 8})
+                        doStep(TextBox)
+                        local TextButton3, items4 = createInstance("TextButton", {Parent = Frame4, Name = "Clear",
+                                AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.985, 0.5), Size = uDim2FromScale(0.075,
+                                0.74), Visible = false, ZIndex = 9, getUIAspectRatioConstraint(1, true)}), {45, -45}
+
+                        for _, item in ipairs(items4) do
+                                createInstance("Frame", {Parent = TextButton3, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
+                                        Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.82,
+                                        0.2), Rotation = item, BackgroundColor3 = color3FromRGB(255, 72, 72), ZIndex = 10})
+                        end
+
+                        animate2(TextButton3, 1.12, 0.9)
+
+                        hit(TextButton3, function()
+                                if TextBox:IsFocused() then
+                                        TextBox:ReleaseFocus()
+                                end
+
+                                TextBox.Text = ""
+                        end)
+
+                        trackConnection(TextBox.Focused, function()
+                                animate(Frame4, {BackgroundTransparency = 0.42}, 0.16)
+                                animate(Frame5, {Size = uDim2FromScale(1, 0.11)}, 0.2, quint)
+                        end)
+
+                        trackConnection(TextBox.FocusLost, function()
+                                animate(Frame4, {BackgroundTransparency = 0.6}, 0.16)
+                                animate(Frame5, {Size = uDim2FromScale(0, 0.11)}, 0.2, quint)
+                        end)
+
+                        trackConnection(TextBox:GetPropertyChangedSignal("Text"), function()
+                                TextButton3.Visible = TextBox.Text ~= ""
+
+                                if not (registry.sbQuiet) then
+                                        if registry.Cur then
+                                                registry.Cur.q = TextBox.Text
+                                                registry:Search(TextBox.Text)
+                                        end
+                                end
+                        end)
+
+                        registry.sbox = TextBox
+                        local tempValue9
+
+                        local function handleEvent()
+                                local factor3, factor4 = 0.0749 / amount6, 0.022 / amount6
+                                Frame3.Size = uDim2FromScale(1, factor3)
+                                local tempValue = Frame.AbsoluteSize.Y
+                                local isRecent = ((Frame.AbsolutePosition.Y + tempValue) + ((factor3 + factor4) * tempValue)) <= ScreenGui.AbsoluteSize.Y
+                                if isRecent == tempValue9 then
+                                        return
+                                end
+                                tempValue9 = isRecent
+
+                                if isRecent then
+                                        Frame3.AnchorPoint, Frame3.Position = vector2New(0.5, 0), uDim2FromScale(0.5, 1 + factor4)
+                                else
+                                        Frame3.AnchorPoint, Frame3.Position = vector2New(0.5, 1), uDim2FromScale(0.5, -factor4)
+                                end
+                        end
+
+                        trackConnection(Frame:GetPropertyChangedSignal("AbsolutePosition"), handleEvent)
+                        trackConnection(Frame:GetPropertyChangedSignal("AbsoluteSize"), handleEvent)
+
+                        doStep9(function()
+                                Frame2.Size = uDim2New(1, 0, 0.125 / amount6, 0)
+                                checkState2Result.Position, checkState2Result.Size = uDim2New(0.5687711238861084 / amount5, 0, 0.5,
+                                        0), uDim2New(0.8620089292526245 / amount5, 0, 0.7499999403953552, 0)
+                                TextButton.Position, TextButton.Size = uDim2New(1 - (0.04500001668930054 / amount5), 0, 0.4339999854564667,
+                                        0), uDim2New(0.06637302041053772 / amount5, 0, 0.6588137149810791, 0)
+                                TextButton2.Position, TextButton2.Size = uDim2FromScale(1 - (0.002 / amount5),
+                                        1 - (0.005 / amount6)), uDim2FromScale(0.05 / amount5, 0.05 / amount6)
+                                local ipairsFn, cols = ipairs, registry.cols
+
+                                for _, col in ipairsFn(cols) do
+                                        col.f.Position = uDim2New(((col.e < 0) and (-0.025 / amount5)) or (1 + (0.025 / amount5)), 0, 0.558, 0)
+                                        col.f.Size = uDim2New(0.2612044513 / amount5, 0, 1, 0)
+                                        col.pd.PaddingTop = uDimNew(0.067 / amount6, 0)
+                                end
+
+                                tempValue9 = nil
+                                handleEvent()
+                                registry:Reflow()
+                        end)
+
+                        ScreenGui.Parent = hui
+                        registry.key = data.Key or scrollingFrame.KeyCode.LeftControl
+                        registry:Mgr()
+                        return registry
+                end
+
+                index.Resize = function(input, amount4, amount7)
+                        local absoluteSize = input.gui.AbsoluteSize
+
+                        if absoluteSize.X <= 0 then
+                                return
+                        elseif absoluteSize.Y <= 0 then
+                                return
+                        end
+
+                        input.size = uDim2FromScale(math.clamp(amount4 / absoluteSize.X, 0.2, 0.98),
+                                math.clamp(amount7 / absoluteSize.Y, 0.22, 0.98))
+                        input.main.Size = input.size
+                        absoluteSize, amount7 = math.max(1, input.size.X.Scale / input.base.X.Scale), math.max(1,
+                                input.size.Y.Scale / input.base.Y.Scale)
+
+                        if math.abs(absoluteSize - amount5) < 0.0001 then
+                                if math.abs(amount7 - amount6) < 0.0001 then
+                                        return
+                                end
+                        end
+
+                        amount5, amount6 = absoluteSize, amount7
+
+                        for _, item in ipairs(list) do
+                                tryCall2(item)
+                        end
+                end
+
+                index.Scale = function(input, input2)
+                        local absoluteSize = input.gui.AbsoluteSize
+                        input:Resize((input.base.X.Scale * absoluteSize.X) * input2,
+                                (input.base.Y.Scale * absoluteSize.Y) * input2)
+                end
+
+                index.Show = function(input, open)
+                        open = if open == nil then not input.open else open
+                        if input.open == open then
+                                return
+                        end
+                        input.open = open
+                        local main, rest, tempValue = input.main, input.rest, input.wt ~= nil
+
+                        if input.wt then
+                                input.wt:Cancel()
+                        end
+
+                        input.anim = true
+
+                        if open then
+                                if not (tempValue) then
+                                        main.Position = uDim2New(rest.X.Scale, rest.X.Offset, rest.Y.Scale + 0.245, rest.Y.Offset)
+                                end
+
+                                main.Size = input.size
+                                input.wt = animate(main, {Position = rest}, 0.34, quart)
+
+                                if not (input.Cur) then
+                                        if input.Tabs[1] then
+                                                input:Select(input.Tabs[1])
+                                        end
+                                end
+                        else
+                                closeDropdown()
+
+                                if input.dragStop then
+                                        input.dragStop()
+                                end
+
+                                main.Size = input.size
+                                input.wt = animate(main, {Position = uDim2New(rest.X.Scale, rest.X.Offset, 1.55, 0)}, 0.26, quart,
+                                        scrollingFrame.EasingDirection.In)
+                        end
+
+                        local fieldValue = input.wt
+
+                        local function checkState3(playbackState)
+                                if input.wt == fieldValue then
+                                        input.wt = nil
+
+                                        if playbackState == scrollingFrame.PlaybackState.Completed then
+                                                input.anim = false
+                                        end
+                                end
+                        end
+
+                        fieldValue.Completed:Connect(checkState3)
+
+                        if input.onShow then
+                                tryCall2(input.onShow, open)
+                        end
+                end
+
+                index.Reflow = function(data)
+                        local ipairsFn, cols = ipairs, data.cols
+
+                        for index3, col in ipairsFn(cols) do
+                                local tabs = {}
+
+                                for _, tab in ipairs(data.Tabs) do
+                                        if tab.ci == index3 then
+                                                tabs[#tabs + 1] = tab
+                                        end
+                                end
+
+                                index3 = #tabs
+
+                                if index3 > 0 then
+                                        local factor = 0.1769230769230769
+                                        local computed = math.min(0.13, (0.895 * amount6) / (index3 + (math.max(index3 - 1,
+                                                0) * factor))) / amount6
+                                        col.ly.Padding = uDimNew(computed * factor, 0)
+
+                                        for index4, tab in ipairs(tabs) do
+                                                tab.btn.LayoutOrder, tab.btn.Size = index4, uDim2New(1, 0, computed, 0)
+                                        end
+                                end
+                        end
+                end
+
+                index.Tab = function(input, text, input2, input3)
+                        local inputRef = input
+                        local obj = setmetatable({W = inputRef, Name = text, Disp = input3 or text, Sections = {}, q = "",
+                                ci = ((input2 == "Right") and 2) or 1}, index2)
+                        obj.btn, obj.base = doStep5({Parent = inputRef.cols[obj.ci].f, Name = input3 or text, Size = uDim2New(1, 0,
+                                0.13, 0), LayoutOrder = #inputRef.Tabs + 1, Text = input3 or text})
+                        local ScrollingFrame = createInstance("ScrollingFrame", {Parent = inputRef.main, Name = text .. "Page",
+                                Active = true, AnchorPoint = vector2New(0.5,
+                                0.5), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 5, CanvasSize = uDim2FromOffset(0, 0), ScrollBarImageColor3 = color3FromRGBResult, ScrollingDirection = scrollingFrame.ScrollingDirection.Y, VerticalScrollBarInset = scrollingFrame.ScrollBarInset.None, Visible = false})
+                        obj.page = ScrollingFrame
+                        obj.ly = createInstance("UIListLayout", {Parent = ScrollingFrame, Name = "ContentLayout",
+                                HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder, Padding = uDimNew(0, 2)})
+                        createInstance("UIPadding", {Parent = ScrollingFrame, Name = "ContentPadding",
+                                PaddingLeft = uDimNew(0.014000000432133675, 0), PaddingRight = uDimNew(0.014000000432133675, 0)})
+                        local amount4 = -1
+
+                        obj.canvas = function()
+                                local computed = math.ceil(obj.ly.AbsoluteContentSize.Y)
+                                local currentCount = ((computed > 0) and math.ceil(computed + math.max(8,
+                                        (ScrollingFrame.AbsoluteSize.Y * 0.06) / amount6))) or 0
+
+                                if math.abs(currentCount - amount4) >= 1 then
+                                        amount4 = currentCount
+                                        ScrollingFrame.CanvasSize = uDim2FromOffset(0, currentCount)
+                                end
+
+                                computed = math.max(0, currentCount - ScrollingFrame.AbsoluteSize.Y)
+
+                                if ScrollingFrame.CanvasPosition.Y > computed then
+                                        ScrollingFrame.CanvasPosition = vector2New(ScrollingFrame.CanvasPosition.X, computed)
+                                end
+                        end
+
+                        trackConnection(obj.ly:GetPropertyChangedSignal("AbsoluteContentSize"), obj.canvas)
+
+                        trackConnection(ScrollingFrame:GetPropertyChangedSignal("AbsoluteSize"), function()
+                                ScrollingFrame.ScrollBarThickness = math.max(2,
+                                        math.floor(((ScrollingFrame.AbsoluteSize.X * 0.006) / amount5) + 0.5))
+                                obj.canvas()
+                        end)
+
+                        doStep9(function()
+                                local factor, factor2 = 0.1454 / amount6, 1 - (0.01500005 / amount6)
+                                ScrollingFrame.Position, ScrollingFrame.Size = uDim2New(0.5000000596046448, 0, (factor + factor2) / 2,
+                                        0), uDim2New(0.9900000095367432, 0, factor2 - factor, 0)
+                        end)
+
+                        hit(obj.btn, function()
+                                inputRef:Select(obj)
+                        end)
+
+                        inputRef.Tabs[#inputRef.Tabs + 1] = obj
+                        inputRef:Reflow()
+
+                        if not (inputRef.Cur) then
+                                inputRef:Select(obj)
+                        end
+
+                        return obj
+                end
+
+                index.Select = function(data, cur)
+                        if type(cur) == "string" then
+                                local ipairsFn, tabs = ipairs, data.Tabs
+
+                                for _, tab in ipairsFn(tabs) do
+                                        if tab.Name == cur then
+                                                cur = tab
+                                        else
+                                        end
+                                end
+                        else
+                        end
+
+                        if type(cur) ~= "table" then
+                                return
+                        end
+                        closeDropdown()
+
+                        for _, tab in ipairs(data.Tabs) do
+                                tab.page.Visible = tab == cur
+                                local base, state = tab.base, {}
+                                state.BackgroundColor3 = ((tab == cur) and color3FromRGB(255, 54, 54)) or color3FromRGB(175, 0, 0)
+                                animate(base, state, 0.14)
+                        end
+
+                        data.Cur = cur
+
+                        if data.sbox then
+                                data.sbQuiet = true
+                                data.sbox.Text = cur.q or ""
+                                data.sbQuiet = false
+                        end
+
+                        task.defer(function()
+                                for _, section in ipairs(cur.Sections) do
+                                        section:Fit()
+                                end
+
+                                cur.canvas()
+                        end)
+
+                        if cur.onOpen then
+                                tryCall2(cur.onOpen)
+                        end
+                end
+
+                local factor5, factor6, factor7, factor8, factor9, factor10, factor11 = 0.97, 0.22, 0.09999999633202186, 0.67569, 0.3388905, 0.5388904999999999, 0.6192006943127453
+
+                index2.Section = function(items2, text, firstValue, input)
+                        local fieldValue, items2Ref = items2.W, items2
+                        local obj = setmetatable({W = fieldValue, t = items2, Name = text, Disp = input or text,
+                                open = firstValue ~= false, rows = {}, n = 0}, widgetSpecs)
+                        obj.f = createInstance("Frame", {Parent = items2.page, Name = text .. "Section", BackgroundTransparency = 1,
+                                Size = uDim2New(1, 0, 0,
+                                0), AutomaticSize = scrollingFrame.AutomaticSize.Y, LayoutOrder = #items2.Sections + 1, ZIndex = 3, createInstance("UIListLayout", {Name = "SectionLayout",
+                                HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder, Padding = uDimNew(0,
+                                2)})})
+                        local checkState2Result = checkState2({Parent = obj.f, Name = input or text, AnchorPoint = vector2New(0.5,
+                                0.5), LayoutOrder = 1, Size = uDim2New(0.97, 0, 0, 36), Text = input
+                                or text, TextWrapped = true, ZIndex = 4}, true)
+                        local Frame = createInstance("Frame", {Parent = checkState2Result, Name = "ArrowClip",
+                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.4, 0.5), Size = uDim2FromOffset(1,
+                                1), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 6})
+                        local Frame2, ipairsFn = createInstance("Frame", {Parent = Frame, Name = "Arrow",
+                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromOffset(1,
+                                1), BackgroundTransparency = 1, ZIndex = 6}), ipairs
+                        input = {{factor6 + (factor7 * 2), factor8 + (factor7 * 2), scanTableResult2}, {factor6, factor8,
+                                scanTableResult}}
+
+                        for index3, item in ipairsFn(input) do
+                                firstValue, text = ipairs, {{factor9, 45}, {1 - factor9, -45}}
+
+                                for _, item2 in firstValue(text) do
+                                        createInstance("Frame", {Parent = Frame2, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
+                                                Position = uDim2FromScale(item2[1], factor10), Rotation = item2[2], Size = uDim2FromScale(item[2],
+                                                item[1]), BackgroundColor3 = color3FromRGBResult, ZIndex = 5 + index3, getUIGradient(item[3])})
+                                end
+                        end
+
+                        local function clampValue2()
+                                local tempValue, tempValue2 = checkState2Result.AbsoluteSize.X, checkState2Result.AbsoluteSize.Y
+
+                                if tempValue <= 0 then
+                                        return
+                                elseif tempValue2 <= 0 then
+                                        return
+                                end
+
+                                local tempValue4, tempValue5 = tempValue2 * 0.65, tempValue2 * 0.15
+                                tempValue2 = tempValue4 * factor11
+                                Frame.Size = uDim2FromOffset(tempValue4 * 1.35, tempValue4 * 1.35)
+                                Frame.Position = uDim2New(0, math.max((((tempValue - math.min(checkState2Result.TextBounds.X,
+                                        tempValue)) / 2) - tempValue5) - tempValue2, tempValue2), 0.5, 0)
+                                Frame2.Size = uDim2FromOffset(tempValue4, tempValue4)
+                        end
+
+                        local function handleEvent()
+                                local page, tempValue, tempValue2 = items2Ref.page, Frame.AbsolutePosition.Y, Frame.AbsolutePosition.Y + Frame.AbsoluteSize.Y
+                                Frame.Visible = (tempValue >= page.AbsolutePosition.Y)
+                                        and (tempValue2 <= (page.AbsolutePosition.Y + page.AbsoluteSize.Y))
+                        end
+
+                        trackConnection(checkState2Result:GetPropertyChangedSignal("TextBounds"), clampValue2)
+                        trackConnection(checkState2Result:GetPropertyChangedSignal("AbsoluteSize"), clampValue2)
+                        trackConnection(checkState2Result:GetPropertyChangedSignal("AbsolutePosition"), handleEvent)
+                        trackConnection(items2Ref.page:GetPropertyChangedSignal("CanvasPosition"), handleEvent)
+
+                        hit(createInstance("TextButton", {Parent = checkState2Result, Name = "SectionButton",
+                                Size = uDim2FromScale(1, 1), ZIndex = 8}), function()
+                                obj:Expand(not obj.open)
+                        end)
+
+                        obj.hd = checkState2Result
+                        obj.ar = Frame2
+                        obj.g = createInstance("Frame", {Parent = obj.f, Name = "CollapsibleContent", BackgroundTransparency = 1,
+                                ClipsDescendants = true, LayoutOrder = 2, Size = uDim2New(1, 0, 0, 0), ZIndex = 3})
+                        obj.b = createInstance("Frame", {Parent = obj.g, Name = "Content", BackgroundTransparency = 1,
+                                Size = uDim2New(1, 0, 0,
+                                0), AutomaticSize = scrollingFrame.AutomaticSize.Y, ZIndex = 3, createInstance("UIListLayout", {Name = "OptionLayout",
+                                HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder})})
+
+                        trackConnection(obj.b:GetPropertyChangedSignal("AbsoluteSize"), function()
+                                if not (obj.tw) then
+                                        obj.g.Size = uDim2New(1, 0, 0, (obj.open and obj.b.AbsoluteSize.Y) or 0)
+                                end
+
+                                if math.abs(obj.b.AbsoluteSize.X - (obj.lw or 0)) > 0.5 then
+                                        obj.lw = obj.b.AbsoluteSize.X
+                                        obj:Fit()
+                                end
+                        end)
+
+                        doStep9(function()
+                                obj:Fit()
+                        end)
+
+                        items2.Sections[#items2.Sections + 1] = obj
+                        obj:Expand(obj.open, false)
+
+                        task.defer(function()
+                                obj:Fit()
+                                clampValue2()
+                                handleEvent()
+                        end)
+
+                        return obj
+                end
+
+                widgetSpecs.Fit = function(input)
+                        local tempValue = input.f.AbsoluteSize.X
+                        tempValue = if tempValue <= 0 then input.t.page.AbsoluteSize.X else tempValue
+
+                        if tempValue > 0 then
+                                input.hd.Size = uDim2New(0.97, 0, 0, math.max(1, math.floor((((tempValue / amount5) * 0.97) / 16) + 0.5)))
+                        end
+
+                        for _, row in ipairs(input.rows) do
+                                if row.fit then
+                                        row.fit()
+                                end
+                        end
+                end
+
+                widgetSpecs.Expand = function(input, open, input2)
+                        closeDropdown()
+                        input.open = open
+
+                        if input.tw then
+                                input.tw:Cancel()
+                                input.tw = nil
+                        end
+
+                        local fieldValue = input.g
+                        local currentCount = (open and input.b.AbsoluteSize.Y) or 0
+                        fieldValue.ClipsDescendants = true
+
+                        if open then
+                                fieldValue.Visible = true
+                        end
+
+                        if input2 == false then
+                                fieldValue.Size, fieldValue.Visible, fieldValue.ClipsDescendants, input.ar.Rotation = uDim2New(1, 0, 0,
+                                        currentCount), open, not open, (open and 0) or -90
+                                return
+                        end
+                        local fieldValue2, state = input.ar, {}
+                        state.Rotation = (open and 0) or -90
+                        animate(fieldValue2, state, 0.24)
+                        local animateResult = animate(fieldValue, {Size = uDim2New(1, 0, 0, currentCount)}, 0.28, quint)
+                        input.tw = animateResult
+
+                        local function checkState3()
+                                if input.tw == animateResult then
+                                        input.tw = nil
+                                        fieldValue.Visible, fieldValue.ClipsDescendants = input.open, not input.open
+                                        fieldValue.Size = uDim2New(1, 0, 0, (input.open and input.b.AbsoluteSize.Y) or 0)
+                                end
+                        end
+
+                        animateResult.Completed:Connect(checkState3)
+                end
+
+                widgetSpecs.Collapse = function(input, input2)
+                        input:Expand(not input2)
+                end
+
+                local function doStep10(input, input2)
+                        input.nt = doStep2(checkState2({Parent = input.m, Name = "Note", AnchorPoint = vector2New(0, 0.5),
+                                Position = uDim2FromScale(0.025, 0.755), Size = uDim2FromScale(input2,
+                                0.3), TextXAlignment = left, Visible = false, ZIndex = 5}))
+                        return input.nt
+                end
+
+                local function doStep11(input, input2, input3)
+                        input.lb.Position, input.lb.Size = uDim2FromScale(0.025, (input3 and 0.34) or 0.5), uDim2FromScale(input2,
+                                (input3 and 0.432) or 0.64)
+                        input.ratio = (input3 and 7.5) or 10
+                end
+
+                widgetSpecs.Row = function(firstValue, text, input, input2, ratio)
+                        firstValue.n = firstValue.n + 1
+                        local state = {sec = firstValue, name = text, sub = input}
+                        state.ratio = ratio or 10
+                        state.hw = (input and 0.9) or 1
+                        local Frame = createInstance("Frame", {Parent = firstValue.b, Name = text .. "CollapsibleContent",
+                                BackgroundTransparency = 1, ClipsDescendants = true, LayoutOrder = firstValue.n, Size = uDim2New(state.hw,
+                                0, 0, 1), ZIndex = 3})
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = text, AnchorPoint = vector2New(0.5, 0),
+                                Position = uDim2FromScale(0.5, 0), Size = uDim2New(factor5, 0, 0,
+                                1), BackgroundTransparency = 1, ZIndex = 3})
+                        input = nil
+
+                        if input2 then
+                                state.head = createInstance("Frame", {Parent = Frame2, Name = "Head", AnchorPoint = vector2New(0.5, 0),
+                                        Position = uDim2FromScale(0.5, 0), Size = uDim2New(1, 0, 0, 1), BackgroundTransparency = 1, ZIndex = 3})
+                                input = state.head
+                        else
+                                input = Frame2
+                        end
+
+                        if not (ratio) then
+                                state.m = createInstance("Frame", {Parent = input, Name = "Main", AnchorPoint = vector2New(0.5, 0.5),
+                                        Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1,
+                                        0.85), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.5, ZIndex = 3, tryCall(0.05)})
+                                state.lb = checkState2({Parent = state.m, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                        Position = uDim2FromScale(0.025, 0.5), Size = uDim2FromScale(0.65,
+                                        0.64), Text = text, TextWrapped = true, TextXAlignment = left, ZIndex = 5})
+                        end
+
+                        state.h = Frame
+                        state.r = Frame2
+
+                        state.fit = function()
+                                local tempValue = firstValue.b.AbsoluteSize.X
+                                tempValue = if tempValue <= 0 then firstValue.t.page.AbsoluteSize.X else tempValue
+                                if tempValue <= 0 then
+                                        return
+                                end
+
+                                if state.dd then
+                                        return state.dd()
+                                end
+
+                                if not (state.ratio) then
+                                        return
+                                end
+                                Frame2.Size = uDim2New(factor5, 0, 0, math.max(1,
+                                        math.floor(((((tempValue * factor5) / amount5) / state.ratio) * (state.lines or 1)) + 0.5)))
+                        end
+
+                        trackConnection(Frame2:GetPropertyChangedSignal("AbsoluteSize"), function()
+                                if state.shown ~= false then
+                                        if not (state.ht) then
+                                                Frame.Size = uDim2New(state.hw, 0, 0, Frame2.AbsoluteSize.Y)
+                                        end
+                                end
+                        end)
+
+                        state.apply = function(input3)
+                                local hide = state.hide
+                                local size, size2 = not hide
+
+                                if hide then
+                                        size2 = size
+                                else
+                                        local when = state.when
+                                        local isNegated = not when
+
+                                        if when then
+                                                local tempValue, wf2 = state.wf and state.wf(state.when.Value)
+
+                                                if tempValue then
+                                                        wf2 = tempValue
+                                                else
+                                                        local wf3 = state.wf
+                                                        wf2 = if wf3 then not wf3 else state.when.Value == true
+                                                end
+
+                                                size2 = wf2 and (state.when.row.shown ~= false)
+                                        else
+                                                size2 = isNegated
+                                        end
+                                end
+
+                                if state.q ~= nil then
+                                        state.qv = size2
+                                        Frame.Visible = state.q and size2
+                                        return
+                                end
+
+                                if state.shown == size2 then
+                                        return
+                                end
+                                state.shown = size2
+
+                                if not (size2) then
+                                        if state.close then
+                                                state.close()
+                                        end
+                                end
+
+                                if state.ht then
+                                        state.ht:Cancel()
+                                        state.ht = nil
+                                end
+
+                                size = uDim2New(state.hw, 0, 0, (size2 and Frame2.AbsoluteSize.Y) or 0)
+
+                                if size2 then
+                                        Frame.Visible = true
+                                end
+
+                                if input3 == false then
+                                        Frame.Size = size
+                                        Frame.Visible = size2
+                                else
+                                        local animateResult = animate(Frame, {Size = size}, 0.28, quint)
+                                        state.ht = animateResult
+
+                                        local function checkState3()
+                                                if state.ht == animateResult then
+                                                        state.ht = nil
+                                                        Frame.Visible = state.shown
+
+                                                        if state.shown then
+                                                                Frame.Size = uDim2New(state.hw, 0, 0, Frame2.AbsoluteSize.Y)
+                                                        end
+                                                end
+                                        end
+
+                                        animateResult.Completed:Connect(checkState3)
+                                end
+
+                                if state.o and state.o.kids then
+                                        for _, kid in ipairs(state.o.kids) do
+                                                kid.apply(input3)
+                                        end
+                                end
+                        end
+
+                        firstValue.rows[#firstValue.rows + 1] = state
+                        task.defer(state.fit)
+                        return state
+                end
+
+                widgetSpecs.Reg = function(section, row, data, type_)
+                        local fieldValue = section.W
+                        data.Name, data.Type, data.row, data.Tab, data.Sec = row.name, type_, row, section.t.Name, section.Name
+                        data.Section = section
+                        data.Path = section.t.Name .. (" > " .. (section.Name .. (" > " .. row.name)))
+                        data.ls = data.ls or {}
+                        row.o = data
+
+                        if not (section.noReg) then
+                                fieldValue.Opts[#fieldValue.Opts + 1] = data
+                                fieldValue.ByPath[data.Path] = data
+                        end
+
+                        local set = data.Set
+
+                        data.Set = function(control, input, input2)
+                                set(control, input, input2)
+
+                                for _, item in ipairs(control.ls) do
+                                        tryCall2(item, control.Value)
+                                end
+
+                                if control.kids then
+                                        for _, kid in ipairs(control.kids) do
+                                                kid.apply()
+                                        end
+                                end
+
+                                if not (control.Skip) then
+                                        if not (fieldValue.busy) then
+                                                fieldValue:Dirty()
+                                        end
+                                end
+
+                                if fieldValue.qRefresh then
+                                        fieldValue.qRefresh(control)
+                                end
+                        end
+
+                        data.Visible = function(_, input)
+                                row.hide = not input
+                                row.apply()
+                        end
+
+                        data.When = function(input, when, input2)
+                                row.when = when
+                                row.wf = input2
+                                when.kids = when.kids or {}
+                                table.insert(when.kids, row)
+
+                                if not (row.sub) then
+                                        row.hw = 0.96
+                                        row.h.Size = uDim2New(0.96, 0, 0, row.h.Size.Y.Offset)
+                                end
+
+                                row.apply(false)
+                                return input
+                        end
+
+                        data.Note = function(_, input)
+                                if row.setNote then
+                                        row.setNote(input)
+                                elseif row.nt then
+                                        row.nt.Text = tostring(input or "")
+                                end
+                        end
+
+                        data.Title = function(data2, text)
+                                row.lb.Text = tostring(text)
+                                data2.Disp = tostring(text)
+                        end
+
+                        if data.Def == nil then
+                                data.Def = ((type(data.Value) == "table") and table.clone(data.Value)) or data.Value
+                        end
+
+                        row.apply(false)
+                        return data
+                end
+
+                widgetSpecs.Toggle = function(input, input2, input3, input4, text, input5)
+                        local tempValue = input:Row(input2, input5)
+                        doStep11(tempValue, (text and 0.62) or 0.72, text ~= nil)
+
+                        if text then
+                                doStep10(tempValue, 0.799)
+                                tempValue.nt.Text, tempValue.nt.Visible = tostring(text), true
+                        end
+
+                        local doStep6Result, tempValue2 = doStep6(tempValue.m, 0.5, 0.915, 0.142, (text and 0.5625) or 0.75, 3)
+                        local control = {}
+                        control.Value = input3 == true
+
+                        control.Set = function(input6, value, input7)
+                                value = value == true
+                                input6 = value ~= control.Value
+                                control.Value = value
+                                tempValue2(value)
+
+                                if input7 then
+                                elseif input6 then
+                                        tryCall2(input4, value)
+                                elseif input7 == false then
+                                        tryCall2(input4, value)
+                                end
+                        end
+
+                        hit(createInstance("TextButton", {Parent = doStep6Result, Name = "Button", AnchorPoint = vector2New(0.5,
+                                0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, 1), ZIndex = 99}), function()
+                                control:Set(not control.Value)
+                        end)
+
+                        tempValue2(control.Value, false)
+                        tempValue.ctl = doStep6Result
+                        input:Reg(tempValue, control, "toggle")
+
+                        if control.Value then
+                                tryCall2(input4, true)
+                        end
+
+                        return control
+                end
+
+                local function scanItems(amount4)
+                        amount4 = tonumber(amount4)
+                        if not (amount4) then
+                                return 0
+                        end
+
+                        for index3 = 0, 6, 1 do
+                                local factor = 10 ^ index3
+                                if math.abs((amount4 * factor) - math.round(amount4 * factor)) < 1e-06 then
+                                        return index3
+                                end
+                        end
+
+                        return 6
+                end
+
+                widgetSpecs.Slider = function(input4, items2, firstValue, firstValue2, input5, input6, input7, firstValue3,
+                        input8, firstValue4)
+                        local tempValue, tempValue2 = input7 == "log"
+
+                        if tempValue then
+                                firstValue3, input7 = 0.01, nil
+                                firstValue, firstValue2, tempValue2 = 0, amount, input7
+                        else
+                                tempValue2 = input7
+                        end
+
+                        local tempValue4 = input4:Row(items2, firstValue4)
+                        local computed = math.max(scanItems(firstValue3), scanItems(firstValue), scanItems(firstValue2),
+                                scanItems(input5))
+                        local isRecent = tempValue or (computed > 0)
+                        local currentCount = (isRecent and math.clamp(math.max(1, computed), 1, 6)) or 0
+
+                        local function roundValue(amount4)
+                                amount4 = tonumber(amount4) or 0
+                                if not (isRecent) then
+                                        return math.round(amount4)
+                                end
+                                local factor = 10 ^ currentCount
+                                return math.round(amount4 * factor) / factor
+                        end
+
+                        firstValue, firstValue2 = roundValue(firstValue), roundValue(firstValue2)
+                        local tempValue5 = (isRecent and math.max(10 ^ (-currentCount),
+                                roundValue(math.abs(tonumber(firstValue3)
+                                or (10 ^ (-currentCount)))))) or math.max(1, math.round(math.abs(tonumber(firstValue3) or 1)))
+                        firstValue4 = tempValue4.m
+                        tempValue4.nt = doStep10(tempValue4, 0.48)
+                        local TextBox = createInstance("TextBox", {Parent = firstValue4, Name = "Value", AnchorPoint = vector2New(0,
+                                0.5), Position = uDim2FromScale(0.525, 0.5), Size = uDim2FromScale(0.095, 0.56), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 5, createInstance("UIPadding", {Name = "ValuePadding"})})
+                        doStep(TextBox)
+                        tryCall(0.1).Parent = TextBox
+                        local Frame = createInstance("Frame", {Parent = firstValue4, Name = "Slider", Active = true,
+                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.8075, 0.5), Size = uDim2FromScale(0.345,
+                                0.45), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 3, tryCall(0.1)})
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = "Bar", Active = true,
+                                AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(0.5,
+                                1), BackgroundColor3 = color3FromRGBResult, ZIndex = 4, getUIGradient(scanTableResult3, "AccentGradient")})
+                        local Frame3, control = createInstance("Frame", {Parent = Frame, Name = "Hold", Active = true,
+                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.115,
+                                1.2), BackgroundColor3 = color3FromRGB(89, 89, 89), BackgroundTransparency = 1, ZIndex = 5, tryCall(0.09, color3FromRGB(39,
+                                39, 39)), createInstance("Frame", {Name = "Color", AnchorPoint = vector2New(0.5,
+                                0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 1), BackgroundColor3 = color3FromRGBResult, ZIndex = 6})}), {Value = firstValue, Unit = tempValue2, Min = firstValue, Max = firstValue2}
+                        local text2 = tostring(input8 or "")
+
+                        local function roundValue2(input2)
+                                if tempValue then
+                                        return formatRate(input2)
+                                end
+                                return (isRecent and string.format("%." .. (currentCount .. "f"), input2)) or tostring(math.round(input2))
+                        end
+
+                        local function clampValue3(text)
+                                local nextIndex, tempValue6 = #tostring(text):gsub("<.->", ""), tempValue2 ~= nil
+                                text = math.clamp(((tempValue6 and 0.125) or 0.095) + (math.max(0,
+                                        nextIndex - ((tempValue6
+                                        and 7) or 5)) * 0.0095), (tempValue6 and 0.125) or 0.095, (tempValue6 and 0.195) or 0.175)
+                                local factor, visible = 0.62 - text, text2 ~= ""
+                                nextIndex = (visible and 0.75) or 1
+                                TextBox.Position, TextBox.Size, Frame.Size = uDim2FromScale(factor, 0.5), uDim2FromScale(text,
+                                        0.56 * nextIndex), uDim2FromScale(0.345, 0.45 * nextIndex)
+                                doStep11(tempValue4, math.min((tempValue6 and 0.43) or 0.45, math.max(0.28, factor - 0.045)), visible)
+                                local fieldValue, nt2, nt3, text2Ref, uDim2FromScaleResult = tempValue4.nt, tempValue4.nt, tempValue4.nt, text2, uDim2FromScale(math.max(0.2,
+                                        factor - 0.045), 0.3)
+                                fieldValue.Text = text2Ref
+                                nt2.Visible = visible
+                                nt3.Size = uDim2FromScaleResult
+                        end
+
+                        local function clampValue4()
+                                local currentCount2 = ((control.Max > control.Min) and ((control.Value - control.Min) / (control.Max - control.Min))) or 0
+                                currentCount2 = math.clamp(currentCount2, 0.0575, 0.9425)
+                                Frame2.Size, Frame3.Position = uDim2FromScale(currentCount2, 1), uDim2FromScale(currentCount2, 0.5)
+                                if TextBox:IsFocused() then
+                                        return
+                                end
+                                local text = colorizeText(color3FromRGBResult,
+                                        roundValue2(control.Value)) .. ((tempValue2 and colorizeText(color3FromRGBResult3, tempValue2)) or "")
+                                TextBox.RichText = true
+                                TextBox.Text = text
+                                clampValue3(text)
+                        end
+
+                        tempValue4.setNote = function(input2)
+                                text2 = tostring(input2 or "")
+                                clampValue3(TextBox.Text)
+                                tempValue4.fit()
+                        end
+
+                        control.Set = function(input2, value, input3)
+                                value = math.clamp(tonumber(value) or control.Value, control.Min, control.Max)
+                                value = if value > control.Min then if value < control.Max then math.clamp(roundValue(control.Min + (math.floor(((value - control.Min) / tempValue5) + 0.5) * tempValue5)),
+                                        control.Min, control.Max) else value else value
+                                input2 = value ~= control.Value
+                                control.Value = value
+                                clampValue4()
+
+                                if input3 then
+                                elseif input2 then
+                                        tryCall2(input6, (tempValue and clampValue(value)) or value)
+                                end
+                        end
+
+                        control.Range = function(_, input2, input3)
+                                control.Min, control.Max = roundValue(input2), roundValue(input3)
+                                control:Set(control.Value, true)
+                        end
+
+                        control.Real = function(unused)
+                                return (tempValue and clampValue(control.Value)) or control.Value
+                        end
+
+                        control.Places = function(unused)
+                                return isRecent, currentCount
+                        end
+
+                        local tempValue7, input
+
+                        local function clampValue5(amount4)
+                                control:Set(control.Min + ((control.Max - control.Min) * math.clamp((amount4 - Frame.AbsolutePosition.X) / math.max(Frame.AbsoluteSize.X,
+                                        1), 0, 1)))
+                        end
+
+                        local function checkState3(input2)
+                                if tempValue7 then
+                                        return
+                                elseif input2.UserInputState ~= scrollingFrame.UserInputState.Begin then
+                                        return
+                                elseif not (doStep3(input2)) then
+                                        return
+                                end
+
+                                local input3
+                                input3, tempValue7 = ((input2.UserInputType == scrollingFrame.UserInputType.Touch) and input2)
+                                        or nil, true
+                                input = input3
+                                clampValue5(input2.Position.X)
+                        end
+
+                        items2 = {Frame, Frame2, Frame3}
+
+                        for _, item in ipairs(items2) do
+                                trackConnection(item.InputBegan, checkState3)
+                        end
+
+                        trackConnection(UserInputService.InputChanged, function(input2)
+                                local input3 = tempValue7
+                                        and ((input and (input2 == input)) or (if input then not input else input2.UserInputType == scrollingFrame.UserInputType.MouseMovement))
+
+                                if input3 then
+                                        clampValue5(input2.Position.X)
+                                end
+                        end)
+
+                        trackConnection(UserInputService.InputEnded, function(input2)
+                                if input2.UserInputType == scrollingFrame.UserInputType.MouseButton1 then
+                                        tempValue7, input = false, nil
+                                elseif input2 == input then
+                                        tempValue7, input = false, nil
+                                end
+                        end)
+
+                        trackConnection(TextBox.Focused, function()
+                                animate(TextBox, {BackgroundTransparency = 0.42}, 0.16)
+                                TextBox.RichText, TextBox.Text = false, (tempValue and formatCompact(control.Value))
+                                        or roundValue2(control.Value)
+                                clampValue3(TextBox.Text)
+
+                                task.defer(function()
+                                        if TextBox:IsFocused() then
+                                                TextBox.SelectionStart, TextBox.CursorPosition = 1, #TextBox.Text + 1
+                                        end
+                                end)
+                        end)
+
+                        trackConnection(TextBox:GetPropertyChangedSignal("Text"), function()
+                                if TextBox:IsFocused() then
+                                        clampValue3(TextBox.Text)
+                                end
+                        end)
+
+                        trackConnection(TextBox.FocusLost, function()
+                                animate(TextBox, {BackgroundTransparency = 0.6}, 0.16)
+                                local tempValue6 = (tempValue and doStep8(TextBox.Text)) or tonumber((TextBox.Text:gsub(",",
+                                        "."):gsub("[^%d%.%-]", "")))
+
+                                if tempValue6 then
+                                        control:Set(tempValue6)
+                                end
+
+                                clampValue4()
+                        end)
+
+                        control.Value = math.clamp(tonumber(input5) or firstValue, firstValue, firstValue2)
+                        clampValue4()
+                        tempValue4.ctl = TextBox
+                        tempValue4.vb = TextBox
+                        tempValue4.tr = Frame
+                        input4:Reg(tempValue4, control, "slider")
+                        return control
+                end
+
+                widgetSpecs.Dropdown = function(input, firstValue, input2, text2, input3, input4, input5, value, input6)
+                        local fieldValue = input.W
+                        local tempValue = input:Row(firstValue, value, true)
+                        local TextButton = createInstance("TextButton", {Parent = tempValue.m, Name = "Dropdown",
+                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.845, 0.5), Size = uDim2FromScale(0.28,
+                                0.62), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 6, tryCall(0.1)})
+                        animate2(TextButton, 1.025, 0.975)
+                        doStep10(tempValue, 0.66)
+                        local text = tostring(input5 or "")
+
+                        local function doStep12()
+                                local visible = text ~= ""
+                                tempValue.nt.Text, tempValue.nt.Visible = text, visible
+                                doStep11(tempValue, 0.65, visible)
+                                TextButton.Size = uDim2FromScale(0.28, (visible and 0.465) or 0.62)
+                        end
+
+                        doStep12()
+                        local checkState2Result = checkState2({Parent = TextButton, Name = "Value", AnchorPoint = vector2New(0.5,
+                                0.5), Position = uDim2FromScale(0.405, 0.5), Size = uDim2FromScale(0.7, 0.58), TextWrapped = true, ZIndex = 7})
+                        createInstance("Frame", {Parent = TextButton, Name = "Divider", AnchorPoint = vector2New(0.5, 0.5),
+                                Position = uDim2FromScale(0.8, 0.5), Size = uDim2FromScale(0.014,
+                                0.66), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.3, ZIndex = 7})
+                        local chevResult = chev(TextButton, color3FromRGBResult3, uDim2FromScale(0.888, 0.5), uDim2FromScale(0.16,
+                                0.56), 7)
+                        local Frame, control, tempValue2, cache, textValue2, Frame2, tempValue4, tempValue5, tempValue6, tempValue7, tempValue8 = createInstance("Frame",
+                                {Parent = tempValue.r, Name = "Menu", AnchorPoint = vector2New(0.5, 0), Position = uDim2New(0.5, 0, 0, 0),
+                                Size = uDim2New(1, 0, 0,
+                                0), BackgroundTransparency = 1, ClipsDescendants = true, Visible = false, ZIndex = 6}), {Multi = input4, Options = input2, Empty = "None"}, false, {}, ""
+                        local amount4, amount7, amount8, amount9 = 0, 0, 0, 0
+
+                        local function scanTable2()
+                                local options, iMap = ((type(control.Options) == "function") and control.Options()) or control.Options, {}
+
+                                for index3, item in ipairs(((type(options) == "table") and options) or {}) do
+                                        iMap[index3] = ((type(item) == "table") and tostring(item.v or item[1])) or tostring(item)
+                                end
+
+                                return iMap
+                        end
+
+                        local function checkState3(input7)
+                                if input4 then
+                                        return table.find(control.Value, input7) ~= nil
+                                end
+                                return control.Value == input7
+                        end
+
+                        local function getArg6()
+                                return (input4 and #control.Value) or (((control.Value ~= nil) and 1) or 0)
+                        end
+
+                        local function scanTable3(threshold)
+                                if input4 then
+                                        local length = #control.Value
+                                        checkState2Result.Text = (((length == 0) and control.Empty) or ((length == 1) and tostring(control.Value[1])))
+                                                or (length .. " selected")
+                                else
+                                        checkState2Result.Text = tostring(control.Value or "")
+                                end
+
+                                local cacheRef = cache
+
+                                for _, value2 in next, cacheRef, nil do
+                                        value2.paint(threshold)
+                                end
+
+                                if tempValue6 then
+                                        threshold = getArg6()
+                                        tempValue7.Text = ((input4 and (threshold > 0)) and (input6[2] .. (" (" .. (threshold .. ")"))))
+                                                or input6[2]
+                                        cacheRef = ((threshold > 0) and 0) or 0.45
+                                        tempValue7.TextTransparency = cacheRef
+                                        tempValue7:FindFirstChildOfClass("UIStroke").Transparency = cacheRef
+
+                                        for _, item in ipairs(tempValue8) do
+                                                item.BackgroundTransparency = cacheRef
+                                        end
+                                end
+                        end
+
+                        local function scanItems2()
+                                local items2, ipairsFn, packedArgs = {}, ipairs, table.pack(scanTable2())
+
+                                for index3, item in ipairsFn(table.unpack(packedArgs, 1, packedArgs.n)) do
+                                        index3 = cache[item]
+
+                                        if index3 then
+                                                index3.b.Visible = (textValue2 == "") or (item:lower():find(textValue2, 1, true) ~= nil)
+
+                                                if index3.b.Visible then
+                                                        items2[#items2 + 1] = index3
+                                                end
+                                        end
+                                end
+
+                                if control.empty then
+                                        control.empty.Visible = #items2 == 0
+                                end
+
+                                return items2
+                        end
+
+                        local function doStep13(input7)
+                                local amount4Ref = amount4
+                                local uDim2NewResult, size, tempValue2Ref, visible = uDim2New(1, 0, 0,
+                                        amount4Ref + ((tempValue2 and (amount8 + amount7)) or 0)), amount9 * 2, tempValue2
+
+                                if tempValue2Ref then
+                                        amount4Ref = amount7
+                                        visible = amount4Ref + (amount9 * 2)
+                                else
+                                        visible = tempValue2Ref
+                                end
+
+                                amount4Ref = uDim2New(1, size, 0, visible or 0)
+
+                                if tempValue.rt then
+                                        tempValue.rt:Cancel()
+                                        tempValue.mt:Cancel()
+                                end
+
+                                if tempValue2 then
+                                        Frame.Visible = true
+                                end
+
+                                if input7 then
+                                        tempValue.rt, tempValue.mt = animate(tempValue.r, {Size = uDim2New(factor5, 0, 0,
+                                                uDim2NewResult.Y.Offset)}, 0.26, quint), animate(Frame, {Size = amount4Ref}, 0.26, quint)
+
+                                        if not (tempValue2) then
+                                                tempValue.mt.Completed:Connect(function(playbackState)
+                                                        if playbackState == scrollingFrame.PlaybackState.Completed then
+                                                                if not (tempValue2) then
+                                                                        Frame.Visible = false
+                                                                end
+                                                        end
+                                                end)
+                                        end
+                                else
+                                        tempValue2Ref, size, visible = tempValue.r, uDim2New(factor5, 0, 0, uDim2NewResult.Y.Offset), tempValue2
+                                        tempValue2Ref.Size = size
+                                        Frame.Size = amount4Ref
+                                        Frame.Visible = visible
+                                end
+                        end
+
+                        local function checkState4(input7)
+                                local tempValue9 = tempValue.r.AbsoluteSize.X
+                                if tempValue9 <= 0 then
+                                        return
+                                end
+                                local tempValue10 = tempValue9 / amount5
+                                local tempValue11 = tempValue10 / 10
+                                amount4 = ((text ~= "") and (tempValue10 / 7.5)) or tempValue11
+                                tempValue10 = tempValue11 * 0.62
+                                local tempValue12, tempValue13 = tempValue10 * 0.12, tempValue11 * 0.15
+                                amount9, amount8 = tempValue12, tempValue13
+                                tempValue.head.Size = uDim2New(1, 0, 0, amount4)
+                                tempValue11 = amount4
+                                Frame.Position = uDim2New(0.5, 0, 0, ((tempValue11 - (amount4 * 0.075)) + amount8) - amount9)
+
+                                if tempValue2 then
+                                elseif input7 then
+                                else
+                                        return doStep13(false)
+                                end
+
+                                tempValue11 = cache
+
+                                for _, value2 in next, tempValue11, nil do
+                                        value2.aw = tempValue10 * 0.17
+                                end
+
+                                tempValue12, tempValue13 = 0, 0
+
+                                if tempValue5 then
+                                        tempValue12 = (tempValue10 * 0.8) + amount8
+                                        tempValue5.Position, tempValue5.Size = uDim2FromOffset(amount9, amount9), uDim2FromOffset(tempValue9,
+                                                tempValue10 * 0.8)
+                                else
+                                end
+
+                                if Frame2 then
+                                        tempValue13 = tempValue10 + amount8
+                                        local Frame3, Frame4, uDim2FromOffsetResult, uDim2FromOffsetResult2 = Frame2, Frame2, uDim2FromOffset(amount9,
+                                                amount9 + tempValue12), uDim2FromOffset(tempValue9, tempValue10)
+                                        Frame3.Position = uDim2FromOffsetResult
+                                        Frame4.Size = uDim2FromOffsetResult2
+                                else
+                                end
+
+                                local tempValue14, scanItems2Result = (amount9 + tempValue12) + tempValue13, scanItems2()
+
+                                if #scanItems2Result == 0 then
+                                        if control.empty then
+                                                control.empty.Position, control.empty.Size = uDim2FromOffset(amount9,
+                                                        tempValue14), uDim2FromOffset(tempValue9, tempValue10)
+                                        end
+
+                                        amount7 = (tempValue12 + tempValue13) + tempValue10
+                                else
+                                        tempValue11 = math.clamp(math.min(4,
+                                                math.floor((tempValue9 + amount8) / ((tempValue10 * 2.2) + amount8))), 1, #scanItems2Result)
+                                        local computed, tempValue15 = math.ceil(#scanItems2Result / tempValue11), (tempValue9 - ((tempValue11 - 1) * amount8)) / tempValue11
+                                        amount7 = ((tempValue12 + tempValue13) + (computed * tempValue10)) + (math.max(computed - 1,
+                                                0) * amount8)
+
+                                        for index3, item in ipairs(scanItems2Result) do
+                                                local tempValue16, tempValue17 = (index3 - 1) // tempValue11, (index3 - 1) % tempValue11
+                                                local computed2, fieldValue2, fieldValue3, amount9Ref = math.min(tempValue11,
+                                                        #scanItems2Result - (tempValue16 * tempValue11)), item.b, item.b, amount9
+                                                item, computed = uDim2FromOffset((amount9Ref + ((tempValue9 - ((computed2 * tempValue15) + ((computed2 - 1) * amount8))) / 2)) + (tempValue17 * (tempValue15 + amount8)),
+                                                        tempValue14 + (tempValue16 * (tempValue10 + amount8))), uDim2FromOffset(tempValue15, tempValue10)
+                                                fieldValue2.Position = item
+                                                fieldValue3.Size = computed
+                                        end
+                                end
+
+                                if tempValue6 then
+                                        tempValue11 = amount9
+                                        tempValue6.Position, tempValue6.Size = uDim2FromOffset(tempValue11 + (tempValue9 / 2),
+                                                ((amount9 + amount7) + amount8) + (tempValue10 / 2)), uDim2FromOffset(math.min(tempValue9,
+                                                math.max(tempValue10 * 3.6, tempValue9 * 0.42)), tempValue10)
+                                        tempValue14 = amount7
+                                        amount7 = tempValue14 + (amount8 + tempValue10)
+                                end
+
+                                scanTable3(false)
+                                doStep13(input7)
+                        end
+
+                        tempValue.dd = function()
+                                checkState4(false)
+                        end
+
+                        local amount10 = 0
+
+                        trackConnection(tempValue.r:GetPropertyChangedSignal("AbsoluteSize"), function()
+                                local tempValue9 = tempValue.r.AbsoluteSize.X
+
+                                if math.abs(tempValue9 - amount10) >= 0.5 then
+                                        amount10 = tempValue9
+                                        checkState4(false)
+                                end
+                        end)
+
+                        local function destroyInstances()
+                                local cacheRef = cache
+
+                                for _, value2 in next, cacheRef, nil do
+                                        value2.b:Destroy()
+                                end
+
+                                cache = {}
+                                cacheRef = scanTable2()
+
+                                if #cacheRef >= 5 then
+                                        if not (Frame2) then
+                                                Frame2 = createInstance("Frame", {Parent = Frame, Name = "Search",
+                                                        BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 7, tryCall(0.07)})
+                                                tempValue4 = doStep(createInstance("TextBox", {Parent = Frame2, Name = "Input",
+                                                        AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.94,
+                                                        0.56), PlaceholderText = "Search...", PlaceholderColor3 = color3FromRGB(198, 198, 198), ZIndex = 9}))
+
+                                                trackConnection(tempValue4:GetPropertyChangedSignal("Text"), function()
+                                                        textValue2 = (tempValue4.Text:match("^%s*(.-)%s*$") or ""):lower()
+                                                        checkState4(true)
+                                                end)
+                                        end
+                                end
+
+                                if not (control.empty) then
+                                        control.empty = checkState2({Parent = Frame, Name = "Empty", Text = "No match", TextTransparency = 0.4,
+                                                Visible = false, ZIndex = 9})
+                                end
+
+                                for index3, item in ipairs(cacheRef) do
+                                        local TextButton2 = createInstance("TextButton", {Parent = Frame, Name = "Option" .. index3,
+                                                LayoutOrder = index3, BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.45, ZIndex = 7, tryCall(0.07)})
+                                        local state, tempValue9, Frame3, Frame4 = {b = TextButton2, aw = 0}, false
+
+                                        if input4 then
+                                                Frame4 = createInstance("Frame", {Parent = createInstance("Frame", {Parent = TextButton2, Name = "Tick",
+                                                        AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0.055, 0.5), Size = uDim2FromScale(0.16,
+                                                        0.44), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.3, ZIndex = 8, tryCall(0.12), getUIAspectRatioConstraint(1, true)}), Name = "Fill", AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0, 0), BackgroundColor3 = color3FromRGBResult, ZIndex = 9, getUIGradient(scanTableResult3, "AccentGradient")})
+                                        else
+                                                Frame3 = createInstance("Frame", {Parent = TextButton2, Name = "Accent", AnchorPoint = vector2New(0,
+                                                        0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(0, 1), BackgroundColor3 = color3FromRGBResult, ZIndex = 8, getUIGradient(scanTableResult3, "AccentGradient")})
+                                        end
+
+                                        local checkState2Result2 = checkState2({Parent = TextButton2, Name = "Label",
+                                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale((input4 and 0.56) or 0.5,
+                                                0.5), Size = uDim2FromScale((input4 and 0.62)
+                                                or 0.78, 0.56), Text = item, TextWrapped = true, ZIndex = 9})
+
+                                        state.paint = function(input7)
+                                                local checkState3Result, state2 = checkState3(item), {}
+                                                local tempValue10 = (checkState3Result and 0.2) or ((tempValue9 and 0.3) or 0.45)
+                                                state2.BackgroundTransparency = tempValue10
+
+                                                if input7 then
+                                                        animate(TextButton2, state2, 0.12)
+
+                                                        if Frame3 then
+                                                                animate(Frame3, {Size = uDim2New(0, (checkState3Result and state.aw) or 0, 1, 0)}, 0.12)
+                                                        end
+
+                                                        if Frame4 then
+                                                                animate(Frame4, {Size = uDim2FromScale((checkState3Result and 0.85) or 0,
+                                                                        (checkState3Result and 0.85) or 0)}, 0.12)
+                                                        end
+                                                else
+                                                        TextButton2.BackgroundTransparency = state2.BackgroundTransparency
+
+                                                        if Frame3 then
+                                                                Frame3.Size = uDim2New(0, (checkState3Result and state.aw) or 0, 1, 0)
+                                                        end
+
+                                                        if Frame4 then
+                                                                Frame4.Size = uDim2FromScale((checkState3Result and 0.85) or 0, (checkState3Result and 0.85) or 0)
+                                                        end
+                                                end
+
+                                                checkState2Result2.TextTransparency = (checkState3Result and 0) or 0.15
+                                        end
+
+                                        trackConnection(TextButton2.MouseEnter, function()
+                                                tempValue9 = true
+                                                state.paint(true)
+                                        end)
+
+                                        trackConnection(TextButton2.MouseLeave, function()
+                                                tempValue9 = false
+                                                state.paint(true)
+                                        end)
+
+                                        hit(TextButton2, function()
+                                                if input4 then
+                                                        local copy = table.clone(control.Value)
+                                                        local pos = table.find(copy, item)
+
+                                                        if pos then
+                                                                table.remove(copy, pos)
+                                                        else
+                                                                copy[#copy + 1] = item
+                                                        end
+
+                                                        if input6 then
+                                                                control.Value = copy
+                                                                scanTable3(true)
+                                                        else
+                                                                control:Set(copy)
+                                                        end
+                                                elseif input6 then
+                                                        control.Value = item
+                                                        scanTable3(true)
+                                                else
+                                                        control:Set(item)
+                                                        fieldValue.closeDD()
+                                                end
+                                        end)
+
+                                        cache[item] = state
+                                end
+                        end
+
+                        if input6 then
+                                tempValue5 = checkState2({Parent = Frame, Name = "Hint", Text = input6[1], TextWrapped = true,
+                                        TextTransparency = 0.28, ZIndex = 9})
+                                input2, firstValue, value = nil
+                                tempValue6, input2, tempValue7, firstValue, value = doStep5({Parent = Frame, Name = "Apply",
+                                        AnchorPoint = vector2New(0.5, 0.5), Size = uDim2FromOffset(0,
+                                        0), ZIndex = 9, full = true, Text = input6[2], LSize = uDim2FromScale(0.88, 0.56), wrap = true, h = 1.03})
+                                tempValue8 = {firstValue, value}
+
+                                hit(tempValue6, function()
+                                        if getArg6() == 0 then
+                                                if input4 then
+                                                        return
+                                                end
+                                        end
+
+                                        fieldValue.closeDD()
+                                        tryCall2(input3, control.Value)
+                                end)
+                        else
+                        end
+
+                        local function animate3(input7)
+                                if tempValue2 == input7 then
+                                        return
+                                end
+
+                                if input7 then
+                                        if fieldValue.closeDD then
+                                                fieldValue.closeDD()
+                                        end
+
+                                        destroyInstances()
+                                        textValue2 = ""
+
+                                        if tempValue4 then
+                                                tempValue4.Text = ""
+                                        end
+
+                                        function fieldValue.closeDD()
+                                                animate3(false)
+                                        end
+                                else
+                                        if tempValue4 then
+                                                tempValue4:ReleaseFocus()
+                                        end
+
+                                        fieldValue.closeDD = nil
+                                end
+
+                                tempValue2 = input7
+                                animate(chevResult, {Rotation = (input7 and 180) or 0}, 0.22)
+                                animate(TextButton, {BackgroundTransparency = (input7 and 0.42) or 0.6}, 0.16)
+                                checkState4(true)
+                        end
+
+                        tempValue.close = function()
+                                animate3(false)
+                        end
+
+                        hit(TextButton, function()
+                                animate3(not tempValue2)
+                        end)
+
+                        control.Set = function(input7, text3, input8)
+                                input7 = control.Value
+
+                                if input4 then
+                                        local items2, cache2 = {}, {}
+
+                                        for _, item in ipairs(scanTable2()) do
+                                                cache2[item] = true
+                                        end
+
+                                        for key, value2 in next, (((type(text3) == "table") and text3) or ((text3 ~= nil) and {text3}))
+                                                or {}, nil do
+                                                local tempValue9 = (((type(key) == "string") and (value2 == true)) and key) or tostring(value2)
+
+                                                if cache2[tempValue9] or (type(control.Options) == "function") then
+                                                        if not (table.find(items2, tempValue9)) then
+                                                                items2[#items2 + 1] = tempValue9
+                                                        end
+                                                end
+                                        end
+
+                                        control.Value = items2
+                                else
+                                        local scanTable2Result, tempValue9 = scanTable2(), ((text3 ~= nil) and tostring(text3)) or nil
+                                        control.Value = ((((tempValue9 and (table.find(scanTable2Result,
+                                                tempValue9)
+                                                or (type(control.Options) == "function"))) and tempValue9) or control.Value) or control.Def) or scanTable2Result[1]
+                                end
+
+                                scanTable3(false)
+
+                                if (if input8 then not input8 else not input6)
+                                        and ((input4 and (enc(input7) ~= enc(control.Value))) or (if input4 then not input4 else input7 ~= control.Value)) then
+                                        tryCall2(input3, control.Value)
+                                end
+                        end
+
+                        control.Refresh = function(_, options, input7)
+                                control.Options = options
+
+                                if tempValue2 then
+                                        destroyInstances()
+                                        checkState4(false)
+                                end
+
+                                if not (input7) then
+                                        control:Set(control.Value, true)
+                                end
+                        end
+
+                        tempValue.setNote = function(input7)
+                                text = tostring(input7 or "")
+                                doStep12()
+                                checkState4(false)
+                        end
+
+                        if input4 then
+                                value = {}
+
+                                for _, item in ipairs(((type(text2) == "table") and text2) or {}) do
+                                        value[#value + 1] = tostring(item)
+                                end
+
+                                control.Value = value
+                        else
+                                control.Value = ((text2 ~= nil) and tostring(text2)) or scanTable2()[1]
+                        end
+
+                        scanTable3(false)
+                        tempValue.ctl = TextButton
+                        input:Reg(tempValue, control, (input4 and "multidropdown") or "dropdown")
+                        return control
+                end
+
+                widgetSpecs.Input = function(input, input2, input3, input4, input5, input6)
+                        local tempValue = input:Row(input2, input6)
+                        local Frame = createInstance("Frame", {Parent = tempValue.m, Name = "Field", AnchorPoint = vector2New(0.5,
+                                0.5), Position = uDim2FromScale(0.845, 0.5), Size = uDim2FromScale(0.28, 0.62), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 4, tryCall(0.1)})
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = "Underline", AnchorPoint = vector2New(0.5,
+                                1), Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(0, 0.11), BackgroundColor3 = color3FromRGBResult, ZIndex = 6})
+                        local doStepResult = doStep(createInstance("TextBox", {Parent = Frame, Name = "Input",
+                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.9,
+                                0.56), PlaceholderText = input3
+                                or "Type...", PlaceholderColor3 = color3FromRGB(198, 198, 198), ZIndex = 5}))
+                        doStep10(tempValue, 0.66)
+
+                        tempValue.setNote = function(input7)
+                                local visible = tostring(input7 or "") ~= ""
+                                tempValue.nt.Text, tempValue.nt.Visible = tostring(input7 or ""), visible
+                                doStep11(tempValue, 0.65, visible)
+                                Frame.Size = uDim2FromScale(0.28, (visible and 0.465) or 0.62)
+                                tempValue.fit()
+                        end
+
+                        tempValue.setNote(input5)
+                        local control = {Value = ""}
+
+                        control.Set = function(input7, value, input8)
+                                value = tostring(value or ""):match("^%s*(.-)%s*$")
+                                input7 = value ~= control.Value
+                                control.Value = value
+                                doStepResult.Text = value
+
+                                if input8 then
+                                elseif input7 then
+                                        tryCall2(input4, value)
+                                end
+                        end
+
+                        trackConnection(doStepResult.Focused, function()
+                                animate(Frame, {BackgroundTransparency = 0.42}, 0.16)
+                                animate(Frame2, {Size = uDim2FromScale(1, 0.11)}, 0.2, quint)
+                        end)
+
+                        trackConnection(doStepResult.FocusLost, function()
+                                animate(Frame, {BackgroundTransparency = 0.6}, 0.16)
+                                animate(Frame2, {Size = uDim2FromScale(0, 0.11)}, 0.2, quint)
+                                control:Set(doStepResult.Text)
+                        end)
+
+                        tempValue.ctl = Frame
+                        tempValue.fd = Frame
+                        input:Reg(tempValue, control, "input")
+                        return control
+                end
+
+                widgetSpecs.Button = function(input, input2, input3, input4, text2, input5, input6)
+                        local tempValue, tempValue2 = input:Row(input2, input6), input3 or "Click"
+                        local tempValue4 = input5 or "Clicked!"
+                        local doStep5Result, tempValue5, tempValue6 = doStep5({Parent = tempValue.m, Name = "Action",
+                                Position = uDim2FromScale(0.8846889218690012, 0.5), Size = uDim2FromScale(0.20062215626239777,
+                                (text2 and 0.51) or 0.68), ZIndex = 6, Text = tempValue2, LSize = uDim2FromScale(0.9, 0.62), wrap = true})
+
+                        if text2 then
+                                doStep11(tempValue, 0.62, true)
+                                doStep10(tempValue, 0.7393778)
+                                tempValue.nt.Text, tempValue.nt.Visible = tostring(text2), true
+                        end
+
+                        local state, tempValue7 = {Skip = true, btn = doStep5Result}, false
+
+                        state.Set = function(unused)
+                        end
+
+                        state.Press = function(unused)
+                                local uiScale = doStep5Result:FindFirstChildOfClass("UIScale")
+                                animate(uiScale, {Scale = 0.96}, 0.055)
+
+                                task.delay(0.07, function()
+                                        if uiScale.Parent then
+                                                animate(uiScale, {Scale = 1}, 0.09)
+                                        end
+                                end)
+
+                                if not (tempValue7) then
+                                        if tempValue4 ~= "" then
+                                                tempValue7 = true
+                                                tempValue6.Text = tempValue4
+
+                                                task.delay(0.9, function()
+                                                        tempValue6.Text = tempValue2
+                                                        tempValue7 = false
+                                                end)
+                                        end
+                                end
+
+                                tryCall2(input4)
+                        end
+
+                        state.Text = function(_, text)
+                                tempValue2 = text
+                                tempValue6.Text = text
+                        end
+
+                        hit(doStep5Result, function()
+                                state:Press()
+                        end)
+
+                        tempValue.ctl = doStep5Result
+                        input:Reg(tempValue, state, "button")
+                        return state
+                end
+
+                widgetSpecs.Text = function(input, input2, value, input3)
+                        local tempValue = input:Row(input2, input3)
+                        tempValue.lb.Size = uDim2FromScale(0.94, 0.64)
+                        doStep10(tempValue, 0.94)
+
+                        tempValue.setNote = function(input4)
+                                local visible = tostring(input4 or "") ~= ""
+                                tempValue.nt.Text, tempValue.nt.Visible = tostring(input4 or ""), visible
+                                doStep11(tempValue, 0.94, visible)
+                                tempValue.fit()
+                        end
+
+                        local control = {}
+                        control.Value = value or input2
+                        control.Skip = true
+
+                        control.Set = function(lines, value2)
+                                value2 = tostring(value2 or "")
+
+                                if value2 == control.Value then
+                                        if tempValue.lb.Text == value2 then
+                                                return
+                                        end
+                                end
+
+                                control.Value, tempValue.lb.Text = value2, value2
+                                lines = select(2, value2:gsub("\n", "")) + 1
+
+                                if lines ~= (tempValue.lines or 1) then
+                                        tempValue.lines = lines
+                                        tempValue.lb.Size = uDim2FromScale(0.94, ((lines > 1) and 0.9) or 0.64)
+                                        tempValue.fit()
+                                end
+                        end
+
+                        control:Set(control.Value)
+                        input:Reg(tempValue, control, "text")
+                        return control
+                end
+
+                widgetSpecs.Label = function(input, input2, input3, input4)
+                        return input:Text(input2, input3 or input2, input4)
+                end
+
+                widgetSpecs.Stats = function(input, input2, items2, input3)
+                        local tempValue, iEntryMap, iMap = input:Text(input2, "", input3), {}, {}
+
+                        for index3, item in ipairs(items2) do
+                                iMap[index3] = ((type(item) == "table") and item[1]) or item
+                                iEntryMap[iMap[index3]] = "--"
+                        end
+
+                        local state = {Skip = true}
+
+                        local function scanTable2()
+                                local parts = {}
+
+                                for _, item in ipairs(iMap) do
+                                        parts[#parts + 1] = item .. (": " .. tostring(iEntryMap[item]))
+                                end
+
+                                tempValue:Set(table.concat(parts, "\n"))
+                        end
+
+                        state.Set = function(_, keyName, input4)
+                                if iEntryMap[keyName] ~= input4 then
+                                        iEntryMap[keyName] = input4
+                                        scanTable2()
+                                end
+                        end
+
+                        state.Icon = function(unused)
+                        end
+
+                        scanTable2()
+                        return state
+                end
+
+                widgetSpecs.Canvas = function(items2, firstValue, input)
+                        items2.n = items2.n + 1
+                        local Frame = createInstance("Frame", {Parent = items2.b, Name = firstValue, Size = uDim2New(factor5, 0, 0,
+                                40), BackgroundTransparency = 1, LayoutOrder = items2.n, ZIndex = 3})
+                        local state = {f = Frame, aspect = input}
+
+                        state.Fit = function(_, input2)
+                                state.h = input2
+                                Frame.Size = uDim2New(factor5, 0, 0, input2)
+                        end
+
+                        if input then
+                                trackConnection(Frame:GetPropertyChangedSignal("AbsoluteSize"), function()
+                                        local tempValue = Frame.AbsoluteSize.X
+
+                                        if math.abs(tempValue - (state.w or 0)) > 0.5 then
+                                                state.w = tempValue
+                                                Frame.Size = uDim2New(factor5, 0, 0, tempValue / state.aspect)
+
+                                                if state.onResize then
+                                                        tryCall2(state.onResize, tempValue, tempValue / state.aspect)
+                                                end
+                                        end
+                                end)
+                        end
+
+                        items2.rows[#items2.rows + 1] = {r = Frame, h = Frame, name = firstValue, canvas = true}
+                        return state
+                end
+
+                local widgetSpecs2 = {Toggle = {3, 5}, Slider = {5, 9}, Dropdown = {4, 7}, Input = {3, 5}, Button = {3, 6},
+                        Text = {nil, 3}}
+
+                for value in next, widgetSpecs2, nil do
+                        local widgetSpec = widgetSpecs[value]
+
+                        widgetSpecs[value] = function(input, ...)
+                                local widgetSpecResult = widgetSpec(input, ...)
+                                widgetSpecResult.mk, widgetSpecResult.args = value, table.pack(...)
+                                return widgetSpecResult
+                        end
+                end
+
+                widgetSpecs.Label = function(input, input2, input3, input4)
+                        local tempValue = input:Text(input2, input3 or input2, input4)
+                        tempValue.Type = "label"
+                        return tempValue
+                end
+
+                weakCache, setmetatableFn = setmetatable, {__mode = "k"}
+                local weakCacheResult = weakCache({}, setmetatableFn)
+
+                local function checkState5(data, input)
+                        if not (data) then
+                                return
+                        end
+                        local entry = weakCacheResult[data]
+
+                        if entry then
+                                if data.Text ~= entry.p then
+                                        weakCacheResult[data] = nil
+                                        entry = nil
+                                else
+                                end
+                        else
+                        end
+
+                        if entry then
+                        else
+                                if input == "" then
+                                        return
+                                elseif data.RichText then
+                                        return
+                                end
+
+                                entry = {t = data.Text}
+                                weakCacheResult[data] = entry
+                        end
+
+                        local pos, tempValue
+
+                        if input ~= "" then
+                                pos, tempValue = entry.t:lower():find(input, 1, true)
+                        else
+                        end
+
+                        if not (pos) then
+                                data.RichText, data.Text = false, entry.t
+                                weakCacheResult[data] = nil
+                                return
+                        end
+
+                        local function isValue(text)
+                                return (text:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+                        end
+
+                        data.RichText = true
+                        data.Text = isValue(entry.t:sub(1,
+                                pos - 1)) .. ("<font color=\"rgb(58,255,55)\">" .. (isValue(entry.t:sub(pos,
+                                tempValue)) .. ("</font>" .. isValue(entry.t:sub(tempValue + 1)))))
+                        entry.p = data.Text
+                end
+
+                local function doStep14(data)
+                        local text = tostring(data.Disp or data.Name)
+
+                        if text:lower():sub(-4) == " tab" then
+                                return text
+                        elseif text:lower() == "tab" then
+                                return text
+                        end
+
+                        return text .. " Tab"
+                end
+
+                index.Search = function(data, visible)
+                        local cur = data.Cur
+                        if not (cur) then
+                                return
+                        end
+                        local tempValue = (tostring(visible or ""):match("^%s*(.-)%s*$") or ""):lower()
+
+                        for index3, section in ipairs(cur.Sections) do
+                                if not (section.res) then
+                                        index3 = (tempValue == "") or (section.Disp:lower():find(tempValue, 1, true) ~= nil)
+                                        visible = if section.extra then (section.extra(tempValue) == true) or index3 else index3
+                                        checkState5(section.hd, tempValue)
+
+                                        for index4, row in ipairs(section.rows) do
+                                                index4 = row.o
+
+                                                if index4 or row.canvas then
+                                                        local tempValue2, tempValue4 = (tempValue == "") or index3
+
+                                                        if tempValue2 then
+                                                                tempValue4 = tempValue2
+                                                        else
+                                                                local tostringFn, disp = tostring, index4 and (index4.Disp or index4.Name)
+                                                                tempValue4 = tostringFn(disp or row.name):lower():find(tempValue, 1, true) ~= nil
+                                                        end
+
+                                                        if row.apply then
+                                                                if tempValue == "" then
+                                                                        if row.q ~= nil then
+                                                                                row.q = nil
+                                                                                row.shown = nil
+                                                                                row.apply(false)
+                                                                        end
+                                                                else
+                                                                        if row.q == nil then
+                                                                                row.qv = row.shown ~= false
+                                                                        end
+
+                                                                        row.q = tempValue4
+                                                                        row.h.Visible = tempValue4 and row.qv
+                                                                end
+                                                        else
+                                                                row.h.Visible = tempValue4
+                                                        end
+
+                                                        if row.lb then
+                                                                checkState5(row.lb, tempValue)
+                                                        end
+
+                                                        visible = if tempValue4 then true else visible
+                                                else
+                                                end
+                                        end
+
+                                        if tempValue == "" then
+                                                section.f.Visible = true
+
+                                                if section.pre ~= nil then
+                                                        section:Expand(section.pre, false)
+                                                        section.pre = nil
+                                                end
+                                        else
+                                                if section.pre == nil then
+                                                        section.pre = section.open
+                                                end
+
+                                                section.f.Visible = visible
+
+                                                if visible then
+                                                        if not (section.open) then
+                                                                section:Expand(true, false)
+                                                        end
+                                                end
+                                        end
+                                end
+                        end
+
+                        data:Cross(cur, tempValue)
+                        task.defer(cur.canvas)
+                end
+
+                index.Cross = function(data, input, data2)
+                        local res = input.res
+
+                        if data2 == "" then
+                                if res then
+                                        res.f.Visible = false
+                                end
+
+                                return
+                        end
+
+                        local list2, amount4 = {}, 0
+
+                        for index3, tab in ipairs(data.Tabs) do
+                                if tab ~= input then
+                                        if tab.btn.Visible then
+                                                index3 = amount4
+
+                                                for index4, section in ipairs(tab.Sections) do
+                                                        if section.res then
+                                                        else
+                                                                local os_, tempValue = {}, section.Disp:lower():find(data2, 1, true) ~= nil
+
+                                                                for _, row in ipairs(section.rows) do
+                                                                        index4 = row.o
+
+                                                                        if index4 then
+                                                                                if index4.mk then
+                                                                                        if index3 < 30 then
+                                                                                                if tempValue then
+                                                                                                        os_[#os_ + 1] = index4
+                                                                                                        index3 += 1
+                                                                                                else
+                                                                                                        if tostring(index4.Disp or index4.Name):lower():find(data2, 1, true) then
+                                                                                                                os_[#os_ + 1] = index4
+                                                                                                                index3 += 1
+                                                                                                        else
+                                                                                                        end
+                                                                                                end
+                                                                                        else
+                                                                                        end
+                                                                                else
+                                                                                end
+                                                                        else
+                                                                        end
+                                                                end
+
+                                                                if #os_ > 0 then
+                                                                        list2[#list2 + 1] = {t = tab, s = section, l = os_}
+                                                                end
+                                                        end
+                                                end
+
+                                                amount4 = index3
+                                        else
+                                        end
+                                else
+                                end
+                        end
+
+                        if amount4 == 0 then
+                                if res then
+                                        res.f.Visible = false
+                                end
+
+                                return
+                        end
+
+                        if res then
+                        else
+                                res = input:Section("__ChilliSearchResults", true, "Other Tabs")
+                                res.res = true
+                                res.noReg = true
+                                res.hdr = {}
+                                res.mir = {}
+                                res.f.LayoutOrder = 1000000
+                                input.res = res
+                        end
+
+                        local arg2Map, pathMap, layoutOrder = {}, {}, 0
+
+                        for index3, item in ipairs(list2) do
+                                input = item.t.Name .. ("\000" .. item.s.Name)
+                                local headerEntry = res.hdr[input]
+
+                                if not headerEntry then
+                                        index3 = res:Row("ResultGroup", nil, nil, 22)
+                                        local fieldValue = index3.r
+                                        fieldValue.BackgroundColor3 = color3FromRGBResult2
+                                        fieldValue.BackgroundTransparency = 0.58
+                                        local tryCallResult = tryCall(0.045, color3FromRGBResult3, false, 0.62)
+                                        tryCallResult.Parent = fieldValue
+                                        data2 = checkState2({Parent = fieldValue, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                                Position = uDim2FromScale(0.025, 0.5), Size = uDim2FromScale(0.73,
+                                                0.8), TextTruncate = scrollingFrame.TextTruncate.AtEnd, TextXAlignment = left, ZIndex = 5})
+                                        data2.TextColor3 = color3FromRGBResult3
+                                        createInstance("Frame", {Parent = fieldValue, Name = "Line", AnchorPoint = vector2New(1, 0.5),
+                                                Position = uDim2FromScale(0.79, 0.5), Size = uDim2FromScale(0.055,
+                                                0.08), BackgroundColor3 = color3FromRGBResult, BackgroundTransparency = 0.75, ZIndex = 4})
+                                        checkState2({Parent = fieldValue, Name = "OpenHint", AnchorPoint = vector2New(1, 0.5),
+                                                Position = uDim2FromScale(0.975, 0.5), Size = uDim2FromScale(0.16,
+                                                0.72), Text = "OPEN  >", TextXAlignment = right, ZIndex = 5}).TextColor3 = color3FromRGBResult3
+                                        local TextButton = createInstance("TextButton", {Parent = fieldValue, Name = "OpenTab",
+                                                Size = uDim2FromScale(1, 1), ZIndex = 6})
+
+                                        trackConnection(TextButton.MouseEnter, function()
+                                                animate(fieldValue, {BackgroundTransparency = 0.38}, 0.12)
+                                                animate(tryCallResult, {Transparency = 0.22}, 0.12)
+                                        end)
+
+                                        trackConnection(TextButton.MouseLeave, function()
+                                                animate(fieldValue, {BackgroundTransparency = 0.58}, 0.12)
+                                                animate(tryCallResult, {Transparency = 0.62}, 0.12)
+                                        end)
+
+                                        headerEntry = {x = index3, lb = data2}
+
+                                        hit(TextButton, function()
+                                                if headerEntry.go then
+                                                        data:Goto(headerEntry.go)
+                                                end
+                                        end)
+
+                                        res.hdr[input] = headerEntry
+                                else
+                                end
+
+                                layoutOrder += 1
+                                headerEntry.x.h.LayoutOrder, headerEntry.x.h.Visible, headerEntry.go = layoutOrder, true, item.l[1]
+                                headerEntry.lb.Text = "GO TO  " .. (doStep14(item.t) .. ("  >  " .. item.s.Disp))
+                                arg2Map[input] = true
+                                local ipairsFn, fieldValue2 = ipairs, item.l
+
+                                for index4, item2 in ipairsFn(fieldValue2) do
+                                        local tempValue = res.mir[item2.Path]
+
+                                        if not tempValue then
+                                                local packedArgs, widgetSpec, tempValue2 = table.pack(table.unpack(item2.args, 1,
+                                                        item2.args.n)), widgetSpecs2[item2.mk], false
+
+                                                if widgetSpec[1] then
+                                                        packedArgs[widgetSpec[1]] = ((item2.Type == "button") and (function()
+                                                                item2:Press()
+                                                        end)) or nil
+                                                end
+
+                                                packedArgs[widgetSpec[2]] = nil
+                                                packedArgs[1] = item2.Disp or item2.Name
+                                                item, index4 = pcall(res[item2.mk], res, table.unpack(packedArgs, 1, math.max(packedArgs.n,
+                                                        widgetSpec[2])))
+
+                                                if item and index4 then
+                                                        tempValue = index4
+                                                        tempValue.mirrorOf = item2
+                                                        tempValue.Skip = true
+
+                                                        if (item2.Type ~= "button") and (item2.Type ~= "text") then
+                                                                tempValue.ls[#tempValue.ls + 1] = function(value)
+                                                                        if not (tempValue2) then
+                                                                                item2:Set(((type(value) == "table") and table.clone(value)) or value)
+                                                                        end
+                                                                end
+
+                                                                item2.ls[#item2.ls + 1] = function(value)
+                                                                        if tempValue.row.h.Parent then
+                                                                                tempValue2 = true
+                                                                                tempValue:Set(((type(value) == "table") and table.clone(value)) or value, true)
+                                                                                tempValue2 = false
+                                                                        end
+                                                                end
+
+                                                                tempValue2 = true
+                                                                tempValue:Set(((type(item2.Value) == "table") and table.clone(item2.Value)) or item2.Value, true)
+                                                                tempValue2 = false
+                                                        else
+                                                                if item2.Type == "text" then
+                                                                        item2.ls[#item2.ls + 1] = function(input2)
+                                                                                tempValue:Set(input2)
+                                                                        end
+                                                                end
+                                                        end
+
+                                                        res.mir[item2.Path] = tempValue
+                                                else
+                                                end
+                                        else
+                                        end
+
+                                        if tempValue then
+                                                layoutOrder += 1
+                                                tempValue.row.h.LayoutOrder = layoutOrder
+                                                tempValue.row.h.Visible = true
+                                                pathMap[item2.Path] = true
+                                        else
+                                        end
+                                end
+                        end
+
+                        for key, value in next, res.hdr, nil do
+                                if not (arg2Map[key]) then
+                                        value.x.h.Visible = false
+                                end
+                        end
+
+                        for key, value in next, res.mir, nil do
+                                if not (pathMap[key]) then
+                                        value.row.h.Visible = false
+                                end
+                        end
+
+                        res.f.Visible = true
+
+                        if not (res.open) then
+                                res:Expand(true, false)
+                        end
+
+                        if data.qChips then
+                                data.qChips()
+                        end
+                end
+
+                index.Goto = function(data, data2)
+                        local section = data2.Section
+                        local tempValue = data2.Section.t
+                        data.nav = (data.nav or 0) + 1
+                        local nav = data.nav
+                        data:Select(tempValue)
+
+                        if not (section.open) then
+                                section:Expand(true)
+                        end
+
+                        task.spawn(function()
+                                if section.tw then
+                                        pcall(function()
+                                                section.tw.Completed:Wait()
+                                        end)
+                                else
+                                        RunService.Heartbeat:Wait()
+                                end
+
+                                RunService.Heartbeat:Wait()
+
+                                if nav ~= data.nav then
+                                        return
+                                elseif data.Cur ~= tempValue then
+                                        return
+                                end
+
+                                tempValue.canvas()
+                                RunService.Heartbeat:Wait()
+                                local page, tempValue2 = tempValue.page, data2.row.h
+                                tempValue2 = if tempValue2.Visible then tempValue2 else section.hd
+                                local canvasPosition = page.CanvasPosition
+                                local computed = math.clamp(((tempValue2.AbsolutePosition.Y - page.AbsolutePosition.Y) + canvasPosition.Y) - (page.AbsoluteSize.Y * 0.28),
+                                        0, math.max(0, page.AbsoluteCanvasSize.Y - page.AbsoluteSize.Y))
+                                local animateResult = animate(page, {CanvasPosition = vector2New(canvasPosition.X, computed)}, 0.46,
+                                        quint)
+
+                                pcall(function()
+                                        animateResult.Completed:Wait()
+                                end)
+
+                                if nav ~= data.nav then
+                                        return
+                                elseif tempValue2.Parent then
+                                        if not (tempValue2.Visible) then
+                                                return
+                                        end
+                                else
+                                        return
+                                end
+
+                                canvasPosition = tempValue2:FindFirstChild("ChilliSearchNavigationHighlight")
+
+                                if canvasPosition then
+                                        canvasPosition:Destroy()
+                                end
+
+                                local tryCallResult = tryCall(0.065, color3FromRGBResult3, false, 1)
+                                tryCallResult.Name = "ChilliSearchNavigationHighlight"
+                                tryCallResult.Parent = tempValue2
+                                animate(tryCallResult, {Transparency = 0.04}, 0.16)
+
+                                task.delay(0.5, function()
+                                        if tryCallResult.Parent then
+                                                local animateResult2, destroyAll = animate(tryCallResult, {Transparency = 1}, 0.28), function()
+                                                        tryCallResult:Destroy()
+                                                end
+
+                                                animateResult2.Completed:Connect(destroyAll)
+                                        end
+                                end)
+                        end)
+                end
+
+                local tempValue18, Frame = true
+                local list2, count = {}, 0
+
+                items.Notify = function(input, input2, input3)
+                        items.q(function()
+                                items.notify(input, input2, input3)
+                        end)
+                end
+
+                local function cleanup(input, input2)
+                        if input.d then
+                                return
+                        end
+                        input.d = true
+                        local pos = table.find(list2, input)
+
+                        if pos then
+                                table.remove(list2, pos)
+                        end
+
+                        if input.t then
+                                pcall(task.cancel, input.t)
+                        end
+
+                        if input2 then
+                                input.slot:Destroy()
+                                return
+                        end
+                        animate(input.card, {Position = uDim2FromScale(2.1, 0.5)}, 0.22, quint, scrollingFrame.EasingDirection.In)
+
+                        task.delay(0.08, function()
+                                if input.slot.Parent then
+                                        animate(input.slot, {Size = uDim2FromScale(1, 0)}, 0.22, quint, scrollingFrame.EasingDirection.In)
+                                end
+                        end)
+
+                        task.delay(0.32, function()
+                                input.slot:Destroy()
+                        end)
+                end
+
+                items.notify = function(input, input2, threshold)
+                        local fieldValue = items.W
+
+                        if tempValue18 then
+                                if fieldValue then
+                                        if fieldValue.gui then
+                                                if not (fieldValue.gui.Parent) then
+                                                        return
+                                                end
+                                        else
+                                                return
+                                        end
+                                else
+                                        return
+                                end
+                        else
+                                return
+                        end
+
+                        if not (Frame and Frame.Parent) then
+                                Frame = createInstance("Frame", {Parent = fieldValue.gui, Name = "ChilliNotifyHolder",
+                                        AnchorPoint = vector2New(1, 1), Position = uDim2FromScale(0.988, 0.975), Size = uDim2FromScale(0.163,
+                                        0.74), BackgroundTransparency = 1, ZIndex = 100, createInstance("UIListLayout", {Name = "Layout",
+                                        HorizontalAlignment = scrollingFrame.HorizontalAlignment.Right, VerticalAlignment = scrollingFrame.VerticalAlignment.Bottom, SortOrder = scrollingFrame.SortOrder.LayoutOrder, Padding = uDimNew(0.015, 0)})})
+                        end
+
+                        while #list2 >= 6 do
+                                cleanup(list2[1], true)
+                        end
+
+                        count += 1
+                        threshold = math.max(0, tonumber(threshold) or 3)
+                        fieldValue = createInstance("Frame", {Parent = Frame, Name = "NotificationSlot", LayoutOrder = count,
+                                Size = uDim2FromScale(1, 0), BackgroundTransparency = 1, ZIndex = 100})
+                        local Frame2 = createInstance("Frame", {Parent = fieldValue, Name = "ChilliNotify",
+                                AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(2.1, 0.5), Size = uDim2FromScale(1,
+                                1), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.35, ClipsDescendants = true, ZIndex = 101, tryCall(0.045), createInstance("Frame", {Name = "Accent",
+                                Size = uDim2FromScale(0.026,
+                                1), BackgroundColor3 = color3FromRGBResult, ZIndex = 102, getUIGradient(scanTableResult4, "RedGradient")})})
+                        checkState2({Parent = Frame2, Name = "Title", Position = uDim2FromScale(0.07, 0.14),
+                                Size = uDim2FromScale(0.88,
+                                0.28), Text = tostring(input or "Notification"), TextXAlignment = left, ZIndex = 103}, true)
+                        checkState2({Parent = Frame2, Name = "Body", Position = uDim2FromScale(0.07, 0.48),
+                                Size = uDim2FromScale(0.86,
+                                0.3), Text = tostring(input2
+                                or ""), TextWrapped = true, TextXAlignment = left, TextYAlignment = scrollingFrame.TextYAlignment.Top, TextTransparency = 0.28, ZIndex = 103})
+                        local Frame3, state = createInstance("Frame", {Parent = createInstance("Frame", {Parent = Frame2,
+                                Name = "Track", AnchorPoint = vector2New(0.5, 1), Position = uDim2FromScale(0.5,
+                                1), Size = uDim2FromScale(1, 0.055), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.45, Visible = threshold > 0, ZIndex = 102}), Name = "Fill", AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(1, 1), BackgroundColor3 = color3FromRGB(239, 28, 28), ZIndex = 103}), {slot = fieldValue, card = Frame2}
+                        list2[#list2 + 1] = state
+                        animate(fieldValue, {Size = uDim2FromScale(1, 0.115)}, 0.3, quint)
+                        animate(Frame2, {Position = uDim2FromScale(1, 0.5)}, 0.3, quint)
+
+                        if threshold > 0 then
+                                animate(Frame3, {Size = uDim2FromScale(0, 1)}, threshold, scrollingFrame.EasingStyle.Linear)
+
+                                state.t = task.delay(threshold, function()
+                                        state.t = nil
+                                        cleanup(state)
+                                end)
+                        end
+
+                        return Frame2
+                end
+
+                items.NotifyOn = function(input)
+                        tempValue18 = input ~= false
+
+                        if not (tempValue18) then
+                                for index3 = #list2, 1, -1 do
+                                        cleanup(list2[index3], true)
+                                end
+                        end
+                end
+
+                index.State = function(data, firstValue, firstValue2)
+                        local tempValue = data.St[firstValue]
+                        if tempValue then
+                                return tempValue
+                        end
+                        local control, dataRef = {Name = firstValue, Value = firstValue2, Def = firstValue2, ls = {}}, data
+
+                        control.Set = function(_, value)
+                                control.Value = value
+                                dataRef:Dirty()
+
+                                for _, item in ipairs(control.ls) do
+                                        tryCall2(item, value)
+                                end
+                        end
+
+                        control.Get = function(unused)
+                                return control.Value
+                        end
+
+                        data.St[firstValue] = control
+                        return control
+                end
+
+                local textValue3 = "Default"
+
+                local function isValue2(input, text)
+                        return input.dirP .. ("/configs/" .. (text .. ".json"))
+                end
+
+                index.Collect = function(data)
+                        local tabMap, kMap = {}, {}
+
+                        for index3, opt in ipairs(data.Opts) do
+                                index3 = opt.NoSave
+                                local isNegated, tempValue = not index3
+
+                                if index3 then
+                                        tempValue = isNegated
+                                else
+                                        local tempValue2 = (opt.Type == "text") or (opt.Type == "label")
+
+                                        if tempValue2 then
+                                                tempValue = tempValue2
+                                        else
+                                                local skip = opt.Skip
+                                                tempValue = if skip then not skip else opt.Type ~= "button"
+                                        end
+                                end
+
+                                if tempValue then
+                                        tabMap[opt.Tab] = tabMap[opt.Tab] or {}
+                                        tabMap[opt.Tab][opt.Sec] = tabMap[opt.Tab][opt.Sec] or {}
+                                        tabMap[opt.Tab][opt.Sec][opt.Name] = {Type = opt.Type, Value = opt.Value, Unit = opt.Unit}
+                                end
+                        end
+
+                        for key, value in next, data.St, nil do
+                                if value.save ~= false then
+                                        kMap[key] = {Value = value.Value}
+                                end
+                        end
+
+                        return {Version = 2, Profile = data.Active, SavedAt = os.time(), States = kMap, Values = tabMap}
+                end
+
+                index.Save = function(data, input, input2)
+                        if data.ready then
+                        elseif input2 then
+                        else
+                                return false
+                        end
+
+                        input = input or data.Active
+                        local encResult = enc(input2 or data:Collect())
+                        if not (encResult) then
+                                return false, "encode failed"
+                        end
+                        saveFile(isValue2(data, input), encResult)
+                        saveFile(isValue2(data, input) .. ".bak", encResult)
+                        return true
+                end
+
+                index.Dirty = function(data)
+                        if data.AutoSave then
+                                if data.busy then
+                                        return
+                                elseif not (data.ready) then
+                                        return
+                                end
+                        else
+                                return
+                        end
+
+                        data.saveN = (data.saveN or 0) + 1
+                        local saveN = data.saveN
+
+                        task.delay(0.35, function()
+                                if data.saveN == saveN then
+                                        if data.AutoSave then
+                                                data:Save()
+                                        end
+                                end
+                        end)
+                end
+
+                local function scanTable4(input, keyName, keyName2)
+                        for key, value in next, input, nil do
+                                key = (type(value) == "table") and value[keyName]
+
+                                if type(key) == "table" then
+                                        if key[keyName2] ~= nil then
+                                                return key[keyName2]
+                                        end
+                                end
+                        end
+                end
+
+                index.Apply = function(data, value2)
+                        if type(value2) ~= "table" then
+                                return false
+                        end
+                        data.busy = true
+                        local values = ((type(value2.Values) == "table") and value2.Values) or {}
+
+                        if data.pre then
+                                tryCall2(data.pre, values)
+                        end
+
+                        for index3, opt in ipairs(data.Opts) do
+                                if not (opt.Skip) then
+                                        if opt.Type ~= "button" then
+                                                if opt.Type ~= "text" then
+                                                        index3 = ((values[opt.Tab] and values[opt.Tab][opt.Sec]) and values[opt.Tab][opt.Sec][opt.Name])
+                                                                or scanTable4(values, opt.Sec, opt.Name)
+                                                        local value = if type(index3) == "table" then index3.Value else nil
+                                                        value = if value == nil then ((type(opt.Def) == "table") and table.clone(opt.Def))
+                                                                or opt.Def else value
+
+                                                        if value ~= nil then
+                                                                pcall(opt.Set, opt, value)
+                                                        end
+                                                end
+                                        end
+                                end
+                        end
+
+                        for key, value in next, ((type(value2.States) == "table") and value2.States) or {}, nil do
+                                values = data.St[key]
+
+                                if (values and (type(value) == "table")) and (value.Value ~= nil) then
+                                        values.Value = value.Value
+
+                                        for _, item in ipairs(values.ls) do
+                                                tryCall2(item, value.Value)
+                                        end
+                                elseif type(value) == "table" then
+                                        data:State(key, value.Value)
+                                end
+                        end
+
+                        data.busy = false
+
+                        if data.onLoad then
+                                tryCall2(data.onLoad)
+                        end
+
+                        return true
+                end
+
+                index.Find = function(input, text)
+                        for _, item in ipairs(input:List()) do
+                                if item:lower() == tostring(text):lower() then
+                                        return item
+                                end
+                        end
+                end
+
+                index.Load = function(data, text)
+                        local tempValue = data:Find(text)
+                        if not (tempValue) then
+                                return false, "Config does not exist: " .. tostring(text)
+                        end
+
+                        local function isValues(value)
+                                return (type(value) == "table") and ((type(value.Values) == "table") or (type(value.States) == "table"))
+                        end
+
+                        text = dec(readCachedFile(isValue2(data, tempValue)))
+
+                        if isValues(text) then
+                        else
+                                text = dec(readCachedFile(isValue2(data, tempValue) .. ".bak"))
+
+                                if isValues(text) then
+                                        saveFile(isValue2(data, tempValue), enc(text) or "")
+                                end
+                        end
+
+                        if not (isValues(text)) then
+                                return false, "Config file is empty or invalid."
+                        end
+                        data.Active = tempValue
+                        data:Apply(text)
+
+                        if data.AutoSave then
+                                if data.ready then
+                                        data:Save()
+                                end
+                        end
+
+                        if data.cfgNotes then
+                                data.cfgNotes()
+                        end
+
+                        return true
+                end
+
+                index.List = function(text)
+                        local cache, list3, callResult, result = {[textValue3:lower()] = textValue3}, {}, pcall(listfiles,
+                                text.dirP .. "/configs")
+
+                        for _, item in ipairs((callResult and result) or {}) do
+                                text = tostring(item):gsub("\\", "/"):match("([^/]+)%.json$")
+
+                                if text then
+                                        if text ~= "" then
+                                                cache[text:lower()] = text
+                                        end
+                                end
+                        end
+
+                        for key, value in next, cache, nil do
+                                if key ~= textValue3:lower() then
+                                        list3[#list3 + 1] = value
+                                end
+                        end
+
+                        table.sort(list3, function(text2, text3)
+                                return text2:lower() < text3:lower()
+                        end)
+
+                        table.insert(list3, 1, textValue3)
+                        return list3
+                end
+
+                index.Mgr = function(data, input)
+                        local tempValue = data.dirP .. "/config_state.json"
+                        if input then
+                                saveFile(tempValue, enc({Version = 2, AutoLoad = data.AutoLoad, AutoSave = data.AutoSave,
+                                        StartupConfig = data.Startup}) or "{}")
+                                return
+                        end
+                        local cachedFile, cachedFile2 = readCachedFile("ChilliLibrary/config_state.json"), readCachedFile(tempValue)
+
+                        if (if cachedFile2 then not cachedFile2 else cachedFile) and (cachedFile ~= "") then
+                                local callResult, result = pcall(listfiles, "ChilliLibrary/configs")
+
+                                for index3, item in ipairs((callResult and result) or {}) do
+                                        index3 = tostring(item):gsub("\\", "/"):match("([^/]+)$")
+                                        input = (index3 and (index3:sub(-5) == ".json")) and readCachedFile(item)
+
+                                        if input then
+                                                saveFile(data.dirP .. ("/configs/" .. index3), input)
+                                        end
+                                end
+
+                                saveFile(tempValue, cachedFile)
+                        end
+
+                        cachedFile = dec(readCachedFile(tempValue)) or {}
+                        data.AutoLoad, data.AutoSave, data.Startup = cachedFile.AutoLoad ~= false, cachedFile.AutoSave ~= false, tostring(cachedFile.StartupConfig
+                                or textValue3)
+                        data.Active = data.Startup
+                end
+
+                index.Fire = function(_, control)
+                        if control.Type == "toggle" then
+                                control:Set(not control.Value)
+                        elseif control.Type == "button" then
+                                control:Press()
+                        end
+                end
+
+                index.Default = function(data)
+                        data.busy = true
+
+                        for _, opt in ipairs(data.Opts) do
+                                if not (opt.Skip) then
+                                        if opt.Def ~= nil then
+                                                if opt.Tab ~= "Config" then
+                                                        pcall(opt.Set, opt, ((type(opt.Def) == "table") and table.clone(opt.Def)) or opt.Def)
+                                                end
+                                        end
+                                end
+                        end
+
+                        for _, value in next, data.St, nil do
+                                if value.Def ~= nil then
+                                        if value.reset ~= false then
+                                                value:Set(((type(value.Def) == "table") and table.clone(value.Def)) or value.Def)
+                                        end
+                                end
+                        end
+
+                        data.busy = false
+                        data:Dirty()
+                end
+
+                index.Float = function(data)
+                        local dataRef = data
+                        local ScreenGui = createInstance("ScreenGui", {Name = HttpService:GenerateGUID(false):gsub("-", ""):sub(1,
+                                12), DisplayOrder = 59, IgnoreGuiInset = true, ResetOnSpawn = false, ZIndexBehavior = scrollingFrame.ZIndexBehavior.Sibling})
+                        ScreenGui:SetAttribute("ChilliRB", true)
+                        dataRef.fgui = ScreenGui
+                        local Frame2 = createInstance("Frame", {Parent = ScreenGui, AnchorPoint = vector2New(0, 0.5),
+                                Position = uDim2New(0, 16, 0.3, 0), Size = uDim2FromOffset(56, 56), BackgroundTransparency = 1})
+                        local UIScale = createInstance("UIScale", {Parent = Frame2})
+                        data = createInstance("ImageButton", {Parent = Frame2, AnchorPoint = vector2New(0.5, 0.5),
+                                Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1,
+                                1), BackgroundTransparency = 1, Image = "rbxassetid://128961717706452", ScaleType = scrollingFrame.ScaleType.Fit, createInstance("UICorner", {CornerRadius = uDimNew(0.28, 0)})})
+                        local UIScale2 = createInstance("UIScale", {Parent = data})
+                        local tweenInfo = TweenInfo.new(0.08, scrollingFrame.EasingStyle.Quad, scrollingFrame.EasingDirection.Out)
+                        local tweenInfo2 = TweenInfo.new(0.14, scrollingFrame.EasingStyle.Back, scrollingFrame.EasingDirection.Out)
+
+                        local function clampValue2()
+                                local currentCamera = workspace.CurrentCamera
+                                local viewportSize = (currentCamera and currentCamera.ViewportSize) or vector2New(1280, 720)
+                                viewportSize = if viewportSize.X < 1 then vector2New(1280, 720) else viewportSize
+                                UIScale.Scale = math.clamp((viewportSize.X * 0.035) / 56, 0.7, 1.4)
+                        end
+
+                        clampValue2()
+
+                        if workspace.CurrentCamera then
+                                trackConnection(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"), clampValue2)
+                        end
+
+                        local input, tempValue, position, tempValue2, isEnabled
+
+                        local function checkState3(data2, input2)
+                                if input == "mouse" then
+                                        return data2.UserInputType == ((input2
+                                                and scrollingFrame.UserInputType.MouseMovement) or scrollingFrame.UserInputType.MouseButton1)
+                                end
+                                input2 = input
+                                return data2 == input2
+                        end
+
+                        trackConnection(data.InputBegan, function(input2)
+                                if doStep3(input2) then
+                                        if input2.UserInputState ~= scrollingFrame.UserInputState.Begin then
+                                                return
+                                        elseif input then
+                                                return
+                                        end
+                                else
+                                        return
+                                end
+
+                                local input3, vector2NewResult, position2 = ((input2.UserInputType == scrollingFrame.UserInputType.Touch) and input2)
+                                        or "mouse", vector2New(input2.Position.X, input2.Position.Y), Frame2.Position
+                                input, tempValue, position, tempValue2, isEnabled = input3, vector2NewResult, position2, false, false
+                                TweenService:Create(UIScale2, tweenInfo, {Scale = 0.9}):Play()
+                        end)
+
+                        trackConnection(UserInputService.InputChanged, function(input2)
+                                if input then
+                                        if not (checkState3(input2, true)) then
+                                                return
+                                        end
+                                else
+                                        return
+                                end
+
+                                local vector2NewResult = vector2New(input2.Position.X, input2.Position.Y) - tempValue
+
+                                if not (tempValue2) then
+                                        if vector2NewResult.Magnitude < 8 then
+                                                return
+                                        end
+                                        tempValue2, isEnabled = true, true
+                                        TweenService:Create(UIScale2, tweenInfo2, {Scale = 1}):Play()
+                                end
+
+                                local absoluteSize, absoluteSize2 = ScreenGui.AbsoluteSize, Frame2.AbsoluteSize
+                                local tempValue4, tempValue5 = (position.X.Offset + (position.X.Scale * absoluteSize.X)) + vector2NewResult.X, (position.Y.Offset + (position.Y.Scale * absoluteSize.Y)) + vector2NewResult.Y
+                                Frame2.Position = uDim2FromOffset(math.clamp(tempValue4, 0, math.max(0, absoluteSize.X - absoluteSize2.X)),
+                                        math.clamp(tempValue5, absoluteSize2.Y * 0.5, math.max(absoluteSize2.Y * 0.5,
+                                        absoluteSize.Y - (absoluteSize2.Y * 0.5))))
+                        end)
+
+                        trackConnection(UserInputService.InputEnded, function(input2)
+                                if input then
+                                        if checkState3(input2, false) then
+                                                input, tempValue2 = nil, false
+                                                TweenService:Create(UIScale2, tweenInfo2, {Scale = 1}):Play()
+                                        end
+                                end
+                        end)
+
+                        trackConnection(data.Activated, function()
+                                if isEnabled then
+                                        isEnabled = false
+                                        return
+                                end
+                                dataRef:Show(not dataRef.open)
+                        end)
+
+                        ScreenGui.Parent = dataRef.par
+                end
+
+                local labelMap, nameList = {Zero = "0", One = "1", Two = "2", Three = "3", Four = "4", Five = "5", Six = "6",
+                        Seven = "7", Eight = "8", Nine = "9", LeftControl = "LCtrl", RightControl = "RCtrl", LeftShift = "LShift", RightShift = "RShift", LeftAlt = "LAlt", RightAlt = "RAlt", Return = "Enter", Space = "Space", Backspace = "Back"}, {"Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"}
+
+                for index3, item in ipairs(nameList) do
+                        labelMap["Keypad" .. item] = "Num" .. (index3 - 1)
+                end
+
+                local function getEntry(text)
+                        return (text and (labelMap[text] or tostring(text))) or nil
+                end
+
+                local enabledFlags, enabledFlags2 = {toggle = true, button = true, slider = true,
+                        input = true}, {toggle = true, button = true}
+
+                local function getEnabledFlag(data)
+                        return (enabledFlags[data.Type] and (data.Quick ~= false)) and not data.mirrorOf
+                end
+
+                local function isValue3(value)
+                        return ((type(value) == "table") and table.clone(value)) or {}
+                end
+
+                index.Quick = function(setTab)
+                        local setTab2 = setTab
+                        local quickDefaults = setTab2.QuickDefaults or {}
+                        local tempValue = setTab2:State("Quick Pinned Features", isValue3(quickDefaults.pins))
+                        local tempValue2 = setTab2:State("Quick Pin Groups", isValue3(quickDefaults.groups))
+                        local tempValue4 = setTab2:State("Quick Keybinds", isValue3(quickDefaults.keys))
+                        local tempValue5 = setTab2:State("Quick Panel Position", {})
+                        local tempValue6 = setTab2:State("Quick Panel Collapsed", {})
+                        local tempValue7 = setTab2:State("Quick Open Key", "LeftControl")
+                        setTab2:State("Quick LeftCenter Hidden", quickDefaults.hud == true)
+
+                        local function isValue()
+                                return ((type(tempValue4.Value) == "table") and tempValue4.Value) or {}
+                        end
+
+                        local function isValue4()
+                                return ((type(tempValue.Value) == "table") and tempValue.Value) or {}
+                        end
+
+                        local function clampValue2(keyName)
+                                return math.clamp(math.floor(tonumber((type(tempValue2.Value) == "table") and tempValue2.Value[keyName]) or 1), 1, 5)
+                        end
+
+                        local function tableValue(input)
+                                return table.find(isValue4(), input) ~= nil
+                        end
+
+                        local ScreenGui = createInstance("ScreenGui", {Name = HttpService:GenerateGUID(false):gsub("-", ""):sub(1,
+                                12), ResetOnSpawn = false, IgnoreGuiInset = true, ZIndexBehavior = scrollingFrame.ZIndexBehavior.Sibling, DisplayOrder = 5, Enabled = false})
+                        ScreenGui:SetAttribute("ChilliRB", true)
+                        ScreenGui.Parent = setTab2.par
+                        setTab2.qgui = ScreenGui
+                        local tempValue8, iMap = ((touchEnabled and 150) or 120) / 100, {true, true, true, true, true}
+
+                        local function clampValue4(input)
+                                local clamp, max, tempValue9 = math.clamp, math.max, (0.078 * tempValue8) * 0.97
+                                return clamp(input, 0, max(0, 0.998 - tempValue9))
+                        end
+
+                        local function doStep12(threshold)
+                                local tempValue9, factor = ((touchEnabled and {0.023, 0.023, 0.42}) or {0.023, 0.303,
+                                        0.7})[threshold], 0.078 * tempValue8
+
+                                if threshold == 2 then
+                                        if touchEnabled then
+                                                return (((1 - (factor * 0.97)) + (factor * 0.03)) - (factor * 0.1)) - (factor * 0.97), tempValue9
+                                        end
+                                end
+
+                                if threshold <= 3 then
+                                        return 1, tempValue9
+                                end
+
+                                if threshold == 4 then
+                                        return 0.11, 0.5
+                                end
+
+                                if touchEnabled then
+                                        return ((0.11 + (factor * 0.97)) + (factor * 0.1)) - (factor * 0.03), 0.5
+                                end
+                                return 0.11, 0.74
+                        end
+
+                        local function clampValue3(text)
+                                local doStep12Result, tempValue9 = doStep12(text)
+                                local tempValue10 = (type(tempValue5.Value) == "table") and tempValue5.Value[tostring(text)]
+
+                                if type(tempValue10) == "table" then
+                                        doStep12Result, tempValue9 = tonumber(tempValue10.X or tempValue10[1])
+                                                or doStep12Result, tonumber(tempValue10.Y or tempValue10[2]) or tempValue9
+                                else
+                                end
+
+                                return clampValue4(doStep12Result), math.clamp(tempValue9, 0, 0.98)
+                        end
+
+                        local pathMap, iMap2 = {}, {}
+
+                        for index3 = 1, 5, 1 do
+                                local Frame2 = createInstance("Frame", {Parent = ScreenGui, Name = "QuickBar" .. index3,
+                                        BackgroundTransparency = 1, Size = uDim2FromScale(0.078, 0.032), Visible = false, ZIndex = 2})
+                                local TextButton = createInstance("TextButton", {Parent = Frame2, Name = "Handle", Active = true,
+                                        AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(0.94,
+                                        1), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.35, ZIndex = 3, tryCall(0.06), createInstance("Frame", {Name = "HeaderAccent",
+                                        AnchorPoint = vector2New(0.5, 1), Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(1,
+                                        0.07), BackgroundColor3 = color3FromRGBResult, BackgroundTransparency = 0.08, ZIndex = 4})})
+                                checkState2({Parent = TextButton, Name = "Title", AnchorPoint = vector2New(0, 0.5),
+                                        Position = uDim2FromScale(0.07, 0.5), Size = uDim2FromScale(0.62,
+                                        0.55), Text = "Quick Bar " .. index3, TextXAlignment = left, ZIndex = 4}, true)
+                                local Frame3 = createInstance("Frame", {Parent = Frame2, Name = "Body", AnchorPoint = vector2New(0.5, 0),
+                                        Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(1.32,
+                                        0), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 2, createInstance("UIPadding", {Name = "BodyPadding",
+                                        PaddingLeft = uDimNew(0.03, 0), PaddingRight = uDimNew(0.03, 0)})})
+                                local UIListLayout, TextButton2 = createInstance("UIListLayout", {Parent = Frame3, Name = "BodyLayout",
+                                        HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder}), createInstance("TextButton", {Parent = TextButton, Name = "Collapse", Active = true, AnchorPoint = vector2New(1,
+                                        0.5), Position = uDim2FromScale(0.955, 0.5), Size = uDim2FromScale(0.17, 0.6), ZIndex = 4})
+                                local chevResult = chev(TextButton2, color3FromRGBResult, uDim2FromScale(0.5, 0.5), uDim2FromScale(0.85,
+                                        0.85), 4)
+                                local sectionView = {pn = Frame2, hd = TextButton, body = Frame3, bl = UIListLayout, car = chevResult,
+                                        items = {}, cons = {}, frac = 0}
+                                sectionView.col = (type(tempValue6.Value) == "table") and (tempValue6.Value[tostring(index3)] == true)
+
+                                local function toggleCol()
+                                        sectionView.col = not sectionView.col
+                                        local isValue3Result = isValue3(tempValue6.Value)
+                                        isValue3Result[tostring(index3)] = sectionView.col
+                                        tempValue6:Set(isValue3Result)
+
+                                        if sectionView.tw then
+                                                sectionView.tw:Cancel()
+                                        end
+
+                                        sectionView.tw = animate(Frame3, {Size = uDim2FromScale(1.32,
+                                                (sectionView.col and 0) or sectionView.frac)}, 0.26, quint)
+                                        animate(chevResult, {Rotation = (sectionView.col and 180) or 0}, 0.26, quint)
+                                end
+
+                                hit(TextButton2, toggleCol)
+                                local isEnabled, input, tempValue9, tempValue10, isEnabled2
+
+                                trackConnection(TextButton.InputBegan, function(input2)
+                                        if isEnabled then
+                                                return
+                                        elseif input2.UserInputState ~= scrollingFrame.UserInputState.Begin then
+                                                return
+                                        elseif not (doStep3(input2)) then
+                                                return
+                                        end
+
+                                        local vector2NewResult = vector2New(input2.Position.X, input2.Position.Y)
+
+                                        if doStep4(TextButton, vector2NewResult) then
+                                                if doStep4(TextButton2, vector2NewResult) then
+                                                        return
+                                                end
+                                        else
+                                                return
+                                        end
+
+                                        local input3, vector2NewResult2 = ((input2.UserInputType == scrollingFrame.UserInputType.Touch) and input2)
+                                                or nil, vector2New(Frame2.Position.X.Scale, Frame2.Position.Y.Scale)
+                                        isEnabled, input, tempValue9, tempValue10, isEnabled2 = true, input3, vector2NewResult, vector2NewResult2, false
+                                end)
+
+                                trackConnection(UserInputService.InputChanged, function(input2)
+                                        if isEnabled then
+                                                if not (input and (input2 == input)) then
+                                                        if input then
+                                                                return
+                                                        elseif input2.UserInputType ~= scrollingFrame.UserInputType.MouseMovement then
+                                                                return
+                                                        end
+                                                end
+                                        else
+                                                return
+                                        end
+
+                                        local absoluteSize = ScreenGui.AbsoluteSize
+                                        if absoluteSize.X <= 0 then
+                                                return
+                                        end
+                                        local vector2NewResult = vector2New(input2.Position.X, input2.Position.Y) - tempValue9
+
+                                        if not (isEnabled2) then
+                                                if vector2NewResult.Magnitude < 6 then
+                                                        return
+                                                end
+                                        end
+
+                                        isEnabled2 = true
+                                        Frame2.Position = uDim2FromScale(clampValue4(tempValue10.X + (vector2NewResult.X / absoluteSize.X)),
+                                                math.clamp(tempValue10.Y + (vector2NewResult.Y / absoluteSize.Y), 0, 0.98))
+                                end)
+
+                                trackConnection(UserInputService.InputEnded, function(input2)
+                                        if isEnabled then
+                                                if not (input2.UserInputType == scrollingFrame.UserInputType.MouseButton1) then
+                                                        if input2 ~= input then
+                                                                return
+                                                        end
+                                                end
+                                        else
+                                                return
+                                        end
+
+                                        isEnabled = false
+
+                                        if isEnabled2 then
+                                                input2 = isValue3(tempValue5.Value)
+
+                                                for key, value in next, input2, nil do
+                                                        if type(value) ~= "table" then
+                                                                input2[key] = nil
+                                                        end
+                                                end
+
+                                                input2[tostring(index3)] = {X = Frame2.Position.X.Scale, Y = Frame2.Position.Y.Scale}
+                                                tempValue5:Set(input2)
+                                        else
+                                                toggleCol()
+                                        end
+                                end)
+
+                                iMap2[index3] = sectionView
+                        end
+
+                        local function doStep13(items2, firstValue, input, input2)
+                                local instance = createInstance((input2 and "TextButton") or "Frame", {Parent = items2.body,
+                                        Name = "Item" .. firstValue, Active = input2 == true, LayoutOrder = firstValue, Size = uDim2FromScale(0.7121,
+                                        input), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.4, ZIndex = 3, tryCall(0.05)})
+                                items2.items[#items2.items + 1] = instance
+                                return instance
+                        end
+
+                        local function checkState3(firstValue, input)
+                                if input then
+                                        checkState2({Parent = firstValue, Name = "BarKeyChip", AnchorPoint = vector2New(0, 0.5),
+                                                Position = uDim2FromScale(0.025, 0.485), Size = uDim2FromScale(0.153,
+                                                0.612), Text = "[" .. (input .. "]"), TextXAlignment = left, ZIndex = 6}).TextColor3 = color3FromRGB(190, 190, 190)
+                                end
+                        end
+
+                        local interfaceSection, weakCache2 = setmetatable, {__mode = "k"}
+                        local interfaceSectionResult = interfaceSection({}, weakCache2)
+
+                        local function doStep15(items2, keyName, keyName2)
+                                interfaceSectionResult[keyName] = interfaceSectionResult[keyName] or {}
+                                interfaceSectionResult[keyName][keyName2] = true
+
+                                items2.cons[#items2.cons + 1] = {Disconnect = function()
+                                        if interfaceSectionResult[keyName] then
+                                                interfaceSectionResult[keyName][keyName2] = nil
+                                        end
+                                end}
+                        end
+
+                        local function checkState4(items2, control, input4, firstValue, input5)
+                                local type_ = control.Type
+
+                                if type_ == "toggle" then
+                                        local doStep13Result = doStep13(items2, firstValue, input5, true)
+                                        checkState2({Parent = doStep13Result, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                                Position = uDim2FromScale((input4 and 0.19) or 0.03,
+                                                0.5), Size = uDim2FromScale((input4 and 0.52)
+                                                or 0.68, 0.72), Text = control.Disp or control.Name, ZIndex = 4})
+                                        checkState3(doStep13Result, input4)
+                                        local doStep6Result, tempValue9 = doStep6(doStep13Result, 1, 0.955, 0.23, 0.56, 6)
+                                        tempValue9(control.Value == true, false)
+
+                                        doStep15(items2, control, function()
+                                                tempValue9(control.Value == true)
+                                        end)
+
+                                        hit(doStep13Result, function()
+                                                control:Set(not control.Value)
+                                        end)
+
+                                        pathMap[control.Path] = doStep13Result
+                                elseif type_ == "button" then
+                                        local doStep5Result, tempValue9, tempValue10 = doStep5({Parent = items2.body, Name = "Item" .. firstValue,
+                                                LayoutOrder = firstValue, Size = uDim2FromScale(0.7121,
+                                                input5), ZIndex = 3, Text = control.Disp or control.Name})
+                                        tempValue10.Position, tempValue10.Size = uDim2FromScale((input4 and 0.58) or 0.5,
+                                                0.5), uDim2FromScale((input4 and 0.78) or 0.94, 0.68)
+                                        checkState3(doStep5Result, input4)
+                                        items2.items[#items2.items + 1] = doStep5Result
+
+                                        hit(doStep5Result, function()
+                                                control:Press()
+                                        end)
+
+                                        pathMap[control.Path] = doStep5Result
+                                elseif type_ == "slider" then
+                                        local parent = doStep13(items2, firstValue, input5)
+                                        checkState2({Parent = parent, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                                Position = uDim2FromScale(0.035, 0.255), Size = uDim2FromScale(0.67,
+                                                0.34), Text = control.Disp
+                                                or control.Name, TextXAlignment = left, TextYAlignment = scrollingFrame.TextYAlignment.Center, ZIndex = 4})
+                                        local clone = control.row.vb:Clone()
+                                        local clone2 = control.row.tr:Clone()
+                                        clone.AnchorPoint, clone.Position, clone.Size = vector2New(0.5, 0.5), uDim2FromScale(0.84,
+                                                0.255), uDim2FromScale(0.25, 0.34)
+                                        clone.ZIndex = 5
+                                        clone.Parent = parent
+                                        clone2.Position, clone2.Size = uDim2FromScale(0.5, 0.735), uDim2FromScale(0.92, 0.24)
+                                        clone2.ZIndex = 4
+                                        clone2.Parent = parent
+                                        local bar = clone2.Bar
+                                        local hold = clone2.Hold
+
+                                        local function handleEvent()
+                                                hold.Size = uDim2FromOffset(math.max(1, clone2.AbsoluteSize.Y * 1.38), math.max(1,
+                                                        clone2.AbsoluteSize.Y * 1.38))
+                                        end
+
+                                        handleEvent()
+                                        items2.cons[#items2.cons + 1] = trackConnection(clone2:GetPropertyChangedSignal("AbsoluteSize"),
+                                                handleEvent)
+                                        local text, text2 = control:Places()
+
+                                        local function clampValue5()
+                                                local currentCount = ((control.Max > control.Min) and math.clamp((control.Value - control.Min) / (control.Max - control.Min),
+                                                        0, 1)) or 0
+                                                currentCount = math.clamp(currentCount, 0.0575, 0.9425)
+                                                bar.Size, hold.Position = uDim2FromScale(currentCount, 1), uDim2FromScale(currentCount, 0.5)
+
+                                                if not (clone:IsFocused()) then
+                                                        clone.RichText, clone.Text = false, (text and string.format("%." .. (text2 .. "f"),
+                                                                control.Value)) or tostring(math.round(control.Value))
+                                                end
+                                        end
+
+                                        clampValue5()
+                                        doStep15(items2, control, clampValue5)
+
+                                        trackConnection(clone.FocusLost, function()
+                                                local number = tonumber(clone.Text)
+
+                                                if number then
+                                                        control:Set(number)
+                                                end
+
+                                                clampValue5()
+                                        end)
+
+                                        local tempValue9, input
+
+                                        local function clampValue6(amount4)
+                                                control:Set(control.Min + ((control.Max - control.Min) * math.clamp((amount4 - clone2.AbsolutePosition.X) / math.max(clone2.AbsoluteSize.X,
+                                                        1), 0, 1)))
+                                                clampValue5()
+                                        end
+
+                                        parent = {clone2, bar, hold}
+
+                                        for _, item in ipairs(parent) do
+                                                trackConnection(item.InputBegan, function(input2)
+                                                        if not (tempValue9) then
+                                                                if input2.UserInputState == scrollingFrame.UserInputState.Begin then
+                                                                        if doStep3(input2) then
+                                                                                local input3
+                                                                                input3, tempValue9 = ((input2.UserInputType == scrollingFrame.UserInputType.Touch) and input2)
+                                                                                        or nil, true
+                                                                                input = input3
+                                                                                clampValue6(input2.Position.X)
+                                                                        end
+                                                                end
+                                                        end
+                                                end)
+                                        end
+
+                                        items2.cons[#items2.cons + 1] = trackConnection(UserInputService.InputChanged, function(input2)
+                                                local input3 = tempValue9
+                                                        and ((input and (input2 == input)) or (if input then not input else input2.UserInputType == scrollingFrame.UserInputType.MouseMovement))
+
+                                                if input3 then
+                                                        clampValue6(input2.Position.X)
+                                                end
+                                        end)
+
+                                        items2.cons[#items2.cons + 1] = trackConnection(UserInputService.InputEnded, function(input2)
+                                                if input2.UserInputType == scrollingFrame.UserInputType.MouseButton1 then
+                                                        tempValue9, input = false, nil
+                                                elseif input2 == input then
+                                                        tempValue9, input = false, nil
+                                                end
+                                        end)
+                                elseif type_ == "input" then
+                                        local doStep13Result = doStep13(items2, firstValue, input5)
+                                        checkState2({Parent = doStep13Result, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                                Position = uDim2FromScale(0.035, 0.5), Size = uDim2FromScale(0.43,
+                                                0.7), Text = control.Disp or control.Name, TextXAlignment = left, ZIndex = 4})
+                                        local clone = control.row.fd:Clone()
+                                        clone.AnchorPoint, clone.Position, clone.Size = vector2New(0.5, 0.5), uDim2FromScale(0.72,
+                                                0.5), uDim2FromScale(0.48, 0.62)
+                                        clone.ZIndex = 4
+                                        clone.Parent = doStep13Result
+                                        local input = clone.Input
+                                        local underline = clone.Underline
+                                        input.Text = tostring(control.Value or "")
+
+                                        local function animate3(input2)
+                                                animate(clone, {BackgroundTransparency = (input2 and 0.42) or 0.6}, 0.16)
+                                                animate(underline, {Size = uDim2FromScale((input2 and 1) or 0, 0.11)}, 0.2, quint)
+                                        end
+
+                                        trackConnection(input.Focused, function()
+                                                animate3(true)
+                                        end)
+
+                                        trackConnection(input.FocusLost, function()
+                                                animate3(false)
+                                                control:Set(input.Text)
+                                                input.Text = tostring(control.Value or "")
+                                        end)
+
+                                        doStep15(items2, control, function()
+                                                if not (input:IsFocused()) then
+                                                        input.Text = tostring(control.Value or "")
+                                                end
+                                        end)
+                                end
+                        end
+
+                        local function scanTable2()
+                                table.clear(pathMap)
+                                local isValueResult, iMap3 = isValue(), {}
+
+                                for index3 = 1, 5, 1 do
+                                        iMap3[index3] = {}
+                                end
+
+                                for index3, item in ipairs(isValue4()) do
+                                        index3 = setTab2.ByPath[item]
+
+                                        if index3 then
+                                                if getEnabledFlag(index3) then
+                                                        local insert, iEntry, state = table.insert, iMap3[clampValue2(item)], {o = index3}
+                                                        state.k = (UserInputService.KeyboardEnabled and getEntry(isValueResult[item])) or nil
+                                                        insert(iEntry, state)
+                                                end
+                                        end
+                                end
+
+                                for index3, item2 in ipairs(iMap2) do
+                                        for _, con in ipairs(item2.cons) do
+                                                con:Disconnect()
+                                        end
+
+                                        for _, item in ipairs(item2.items) do
+                                                item:Destroy()
+                                        end
+
+                                        table.clear(item2.cons)
+                                        table.clear(item2.items)
+                                        local iEntry, iEntry2 = iMap3[index3], iMap[index3]
+
+                                        if if iEntry2 then #iEntry == 0 else not iEntry2 then
+                                                item2.pn.Visible = false
+                                        else
+                                                local factor, factor2, factor3 = 0.032 * tempValue8, 0.022 * tempValue8, 0.005 * tempValue8
+                                                isValueResult = ((#iEntry - 1) * factor3) + (#iEntry * factor)
+                                                local tempValue9 = (factor2 + factor3) + isValueResult
+                                                item2.frac = isValueResult / tempValue9
+
+                                                if item2.tw then
+                                                        item2.tw:Cancel()
+                                                        item2.tw = nil
+                                                end
+
+                                                item2.pn.Size = uDim2FromScale(0.078 * tempValue8, tempValue9)
+                                                item2.hd.Size = uDim2FromScale(0.94, factor2 / tempValue9)
+                                                item2.body.Position, item2.body.Size = uDim2FromScale(0.5,
+                                                        (factor2 + factor3) / tempValue9), uDim2FromScale(1.32, (item2.col and 0) or item2.frac)
+                                                item2.bl.Padding = uDimNew(factor3 / isValueResult, 0)
+                                                item2.car.Rotation = (item2.col and 180) or 0
+
+                                                for index4, item in ipairs(iEntry) do
+                                                        checkState4(item2, item.o, item.k, index4, factor / isValueResult)
+                                                end
+
+                                                item2.pn.Position = uDim2FromScale(clampValue3(index3))
+                                                item2.pn.Visible = true
+                                        end
+                                end
+                        end
+
+                        setTab2.qRefresh = function(keyName)
+                                local lookupValue = interfaceSectionResult[keyName]
+
+                                if lookupValue then
+                                        for value in next, lookupValue, nil do
+                                                tryCall2(value)
+                                        end
+                                end
+                        end
+
+                        local function animate4(keyName)
+                                local pathEntry = pathMap[keyName]
+                                local uiScale = pathEntry and (pathEntry:FindFirstChildOfClass("UIScale") or createInstance("UIScale",
+                                        {Parent = pathEntry}))
+                                if not uiScale then
+                                        return
+                                end
+                                animate(uiScale, {Scale = 0.94}, 0.055)
+
+                                task.delay(0.07, function()
+                                        if uiScale.Parent then
+                                                animate(uiScale, {Scale = 1}, 0.09)
+                                        end
+                                end)
+                        end
+
+                        weakCache2, setTab = setTab2:Tab("Quick", "Right", "Quick & Keys"), setTab2:Tab("Settings", "Right")
+                        setTab2.setTab = setTab
+                        interfaceSection = setTab:Section("Interface", true)
+
+                        setTab2.sizeOpt = interfaceSection:Slider("UI Size", 60, 160, 100, function(amount4)
+                                setTab2:Scale(amount4 / 100)
+                        end, "%", 1, "Scales the main window; the corner grip does the same by hand")
+
+                        setTab2.sizeOpt.Quick = false
+                        local pinPadSection, section = weakCache2:Section("Pin Pad", true,
+                                "Quick Access"), weakCache2:Section("Pin & Key List", true, "Quick Bar & Keybinds")
+
+                        local function helper()
+                                tempValue:Set(isValue3(quickDefaults.pins))
+                                tempValue2:Set(isValue3(quickDefaults.groups))
+                                tempValue5:Set({})
+                        end
+
+                        setTab = section:Button("Reset Pins", "Reset", helper, "Restore default items, bars and positions",
+                                "Done!")
+                        setTab:Title("Reset Quick Access")
+                        setTab.Quick = false
+
+                        section:Button("Reset Keybinds", "Reset", function()
+                                tempValue4:Set(isValue3(quickDefaults.keys))
+                        end, "Restore the defaults set in code", "Done!").Quick = false
+
+                        local tempValue11 = pinPadSection:Toggle("Enable Keybinds", true, function(keysOn)
+                                setTab2.keysOn = keysOn
+                        end, "Turn off to disable every feature hotkey")
+
+                        helper = pinPadSection:Toggle("Show Pin Pads", true, function(enabled)
+                                ScreenGui.Enabled = enabled
+                        end, "Floating quick bars; drag a header to move one")
+
+                        helper:Title("Show Quick Bars")
+
+                        local tempValue12, tempValue13 = pinPadSection:Dropdown("Visible Quick Bars", {"Quick Bar 1", "Quick Bar 2",
+                                "Quick Bar 3", "Quick Bar 4", "Quick Bar 5"}, {"Quick Bar 1", "Quick Bar 2", "Quick Bar 3", "Quick Bar 4", "Quick Bar 5"}, function(items2)
+                                iMap = {}
+
+                                for index3, item in ipairs(items2) do
+                                        index3 = tonumber(tostring(item):match("(%d+)$"))
+
+                                        if index3 then
+                                                iMap[index3] = true
+                                        end
+                                end
+
+                                scanTable2()
+                        end, true, nil, helper), pinPadSection:Slider("Pad Size", 60, 200, (touchEnabled and 150)
+                                or 120, function(amount4)
+                                tempValue8 = amount4 / 100
+                                scanTable2()
+                        end, "%", 1)
+
+                        tempValue13:Title("Quick Bar Size")
+                        setTab = {tempValue11, helper, tempValue12, tempValue13}
+
+                        for _, item in ipairs(setTab) do
+                                item.Quick = false
+                        end
+
+                        ScreenGui.Enabled = helper.Value
+                        local Notifications = setTab2:State("Notifications", true)
+                        local tempValue14 = setTab2:State("Open On Launch", true)
+
+                        local Notifications2 = interfaceSection:Toggle("Notifications", true, function(input)
+                                Notifications:Set(input)
+                        end, "Show notification cards; turning this off hides every notify")
+
+                        local tempValue15 = interfaceSection:Toggle("Open On Launch", true, function(input)
+                                tempValue14:Set(input)
+                        end, "Open the UI automatically when the script starts")
+
+                        Notifications2.Skip = true
+                        tempValue15.Skip = true
+                        Notifications2.Quick = false
+                        tempValue15.Quick = false
+
+                        Notifications.ls[#Notifications.ls + 1] = function(input)
+                                Notifications2:Set(input ~= false, true)
+                                items.NotifyOn(input ~= false)
+                        end
+
+                        tempValue14.ls[#tempValue14.ls + 1] = function(input)
+                                tempValue15:Set(input ~= false, true)
+                        end
+
+                        local tempValue16
+
+                        tempValue16 = interfaceSection:Button("UI Toggle Key", "Rebind", function()
+                                setTab2.cap = "__OPEN__"
+                                tempValue16:Note("Press any key...")
+                        end, "Current: " .. tostring(getEntry(tempValue7.Value)), "")
+
+                        tempValue16.Quick = false
+
+                        tempValue7.ls[#tempValue7.ls + 1] = function(text)
+                                local tempValue9 = scrollingFrame.KeyCode[tostring(text)]
+
+                                if tempValue9 then
+                                        setTab2.key = tempValue9
+                                end
+
+                                tempValue16:Note("Current: " .. tostring(getEntry(text)))
+                        end
+
+                        if not (UserInputService.KeyboardEnabled) then
+                                tempValue11:Visible(false)
+                                tempValue16:Visible(false)
+                        end
+
+                        local rows, tempValue17 = {}, false
+
+                        local function doStep16(firstValue)
+                                local TextButton = createInstance("TextButton", {Parent = firstValue, Name = "QuickAccessToggle",
+                                        AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.985, 0.5), Size = uDim2FromScale(0.115,
+                                        0.74), ZIndex = 6})
+                                local doStep6Result, tempValue9 = doStep6(TextButton, 0.5, 0.5, 0.95, 0.78, 6)
+                                return TextButton, tempValue9
+                        end
+
+                        local tempValue19
+
+                        local function doStep17(data, input)
+                                local path = data.Path
+                                local enabledFlag, QuickRow = UserInputService.KeyboardEnabled
+                                        and enabledFlags2[data.Type], section:Row("QuickRow", nil)
+                                QuickRow.lb.Text = data.Disp or data.Name
+                                QuickRow.lb.Size = uDim2FromScale((enabledFlag and 0.47) or 0.63, 0.64)
+                                local fieldValue = QuickRow.m
+                                local TextButton = createInstance("TextButton", {Parent = fieldValue, Name = "BarPicker",
+                                        AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.858, 0.5), Size = uDim2FromScale(0.062,
+                                        0.55), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.5, ZIndex = 6, tryCall(0.1)})
+                                doStep(TextButton)
+                                animate2(TextButton, 1.04, 0.96)
+                                local Frame2, items2 = createInstance("Frame", {Parent = TextButton, Name = "Caret",
+                                        AnchorPoint = vector2New(1, 0), Position = uDim2FromScale(0.99, 0.01), Size = uDim2FromScale(0.44,
+                                        0.44), BackgroundTransparency = 1, ZIndex = 8, getUIAspectRatioConstraint(1, true)}), {{0.335355, 45}, {0.664645, -45}}
+
+                                for _, item in ipairs(items2) do
+                                        createInstance("Frame", {Parent = Frame2, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
+                                                Position = uDim2FromScale(item[1], 0.535355), Rotation = item[2], Size = uDim2FromScale(0.6657,
+                                                0.22), BackgroundColor3 = color3FromRGBResult, ZIndex = 9})
+                                end
+
+                                local TextButton2, TextButton3
+
+                                if enabledFlag then
+                                        TextButton2 = createInstance("TextButton", {Parent = fieldValue, Name = "KeyChip",
+                                                AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.775, 0.5), Size = uDim2FromScale(0.125,
+                                                0.5), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.35, ZIndex = 6, tryCall(0.1)})
+                                        doStep(TextButton2)
+                                        animate2(TextButton2, 1.04, 0.96)
+                                        TextButton3 = TextButton2
+                                else
+                                        TextButton3 = TextButton2
+                                end
+
+                                local doStep16Result, tempValue9 = doStep16(fieldValue)
+                                local Frame3, iMap3 = createInstance("Frame", {Parent = QuickRow.r, Name = "BarMenu",
+                                        AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.985, 0.755), Size = uDim2FromScale(0.4,
+                                        0), BackgroundTransparency = 1, Visible = false, ZIndex = 5, createInstance("UIListLayout", {Name = "MenuLayout",
+                                        FillDirection = scrollingFrame.FillDirection.Horizontal, HorizontalAlignment = scrollingFrame.HorizontalAlignment.Right, VerticalAlignment = scrollingFrame.VerticalAlignment.Center, SortOrder = scrollingFrame.SortOrder.LayoutOrder, Padding = uDimNew(0.024, 0)})}), {}
+
+                                for index3 = 1, 5, 1 do
+                                        enabledFlag = createInstance("TextButton", {Parent = Frame3, Name = "Bar" .. index3, LayoutOrder = index3,
+                                                Size = uDim2FromScale(0.176,
+                                                1), Text = tostring(index3), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.4, ZIndex = 6, tryCall(0.09)})
+                                        doStep(enabledFlag)
+                                        animate2(enabledFlag, 1.06, 0.94)
+                                        iMap3[index3] = enabledFlag
+                                end
+
+                                local function scanTable3()
+                                        local tableValueResult = tableValue(path)
+                                        tempValue9(tableValueResult, false)
+                                        TextButton.Text, TextButton.TextTransparency = tostring(clampValue2(path)), (tableValueResult and 0)
+                                                or 0.5
+
+                                        for index3, item in ipairs(iMap3) do
+                                                item.BackgroundTransparency, item.TextTransparency = ((index3 == clampValue2(path)) and 0.15)
+                                                        or 0.4, ((index3 == clampValue2(path)) and 0) or 0.2
+                                        end
+
+                                        if TextButton3 then
+                                                TextButton3.Text = (((setTab2.cap == path) and "?") or getEntry(isValue()[path])) or "-"
+                                        end
+                                end
+
+                                local NumberValue, tempValue10, tempValue20 = createInstance("NumberValue", {Parent = QuickRow.r,
+                                        Name = "BarMenuAlpha"}), false
+
+                                local function handleEvent(input2)
+                                        local ratio = 10 + (-3.8 * input2)
+                                        local amount4 = 10 / ratio
+                                        QuickRow.ratio = ratio
+                                        fieldValue.Size, fieldValue.Position = uDim2FromScale(1, 0.85 / amount4), uDim2FromScale(0.5,
+                                                0.5 / amount4)
+                                        ratio = 0.925 / amount4
+                                        amount4 = math.max(0, 1 - ratio)
+                                        Frame3.Size, Frame3.Position, Frame3.Visible = uDim2FromScale(0.4, amount4 * 0.66), uDim2FromScale(0.985,
+                                                ratio + (amount4 * 0.5)), input2 > 0.01
+                                        Frame2.Rotation = 180 * input2
+                                        QuickRow.fit()
+                                end
+
+                                trackConnection(NumberValue.Changed, handleEvent)
+
+                                local function checkState6(input2)
+                                        if tempValue10 == input2 then
+                                                return
+                                        end
+                                        tempValue10 = input2
+
+                                        if input2 then
+                                                closeDropdown()
+
+                                                if tempValue19 then
+                                                        tempValue19()
+                                                end
+
+                                                function tempValue19()
+                                                        checkState6(false)
+                                                end
+
+                                                setTab2.closeDD = tempValue19
+                                        else
+                                                if setTab2.closeDD == tempValue19 then
+                                                        setTab2.closeDD = nil
+                                                end
+
+                                                tempValue19 = nil
+                                        end
+
+                                        if tempValue20 then
+                                                tempValue20:Cancel()
+                                        end
+
+                                        tempValue20 = animate(NumberValue, {Value = (input2 and 1) or 0}, 0.26, quint)
+                                end
+
+                                for index3, item in ipairs(iMap3) do
+                                        hit(item, function()
+                                                local isValue3Result = isValue3(tempValue2.Value)
+                                                isValue3Result[path] = index3
+                                                tempValue2:Set(isValue3Result)
+                                                checkState6(false)
+                                                scanTable3()
+                                        end)
+                                end
+
+                                hit(TextButton, function()
+                                        checkState6(not tempValue10)
+                                end)
+
+                                hit(doStep16Result, function()
+                                        local isValue3Result = isValue3(tempValue.Value)
+                                        local pos = table.find(isValue3Result, path)
+
+                                        if pos then
+                                                table.remove(isValue3Result, pos)
+                                        else
+                                                isValue3Result[#isValue3Result + 1] = path
+                                        end
+
+                                        tempValue:Set(isValue3Result)
+                                        scanTable3()
+                                end)
+
+                                if TextButton3 then
+                                        hit(TextButton3, function()
+                                                setTab2.cap = path
+
+                                                for _, row in ipairs(rows) do
+                                                        if row.pt then
+                                                                row.pt()
+                                                        end
+                                                end
+                                        end)
+                                end
+
+                                QuickRow.pt, QuickRow.s = scanTable3, ((data.Disp or data.Name) .. (" " .. input)):lower()
+                                scanTable3()
+                                return QuickRow
+                        end
+
+                        local function doStep18(input)
+                                local QuickGroup = section:Row("QuickGroup", nil, nil, 22)
+                                local checkState2Result = checkState2({Parent = QuickGroup.r, Name = "Label", AnchorPoint = vector2New(0,
+                                        0.5), Position = uDim2FromScale(0.025, 0.5), Size = uDim2FromScale(0.6, 0.8), Text = input, TextXAlignment = left, ZIndex = 5})
+                                checkState2Result.TextColor3 = color3FromRGBResult3
+                                createInstance("Frame", {Parent = QuickGroup.r, Name = "Line", AnchorPoint = vector2New(1, 0.5),
+                                        Position = uDim2FromScale(0.985, 0.5), Size = uDim2FromScale(0.34,
+                                        0.08), BackgroundColor3 = color3FromRGBResult, BackgroundTransparency = 0.75, ZIndex = 4})
+                                QuickGroup.lb2 = checkState2Result
+                                QuickGroup.hdr = true
+                                return QuickGroup
+                        end
+
+                        local function onOpen()
+                                if tempValue17 then
+                                        return
+                                end
+                                tempValue17 = true
+                                local tempValue9, row
+
+                                for index3, tab in ipairs(setTab2.Tabs) do
+                                        for index4, section2 in ipairs(tab.Sections) do
+                                                for index5, row2 in ipairs(section2.rows) do
+                                                        index3 = row2.o
+
+                                                        if index3 then
+                                                                if section2.noReg then
+                                                                else
+                                                                        if getEnabledFlag(index3) then
+                                                                                index5, row2 = doStep14(index3.Section.t) .. ("  >  " .. index3.Section.Disp)
+
+                                                                                if index5 ~= tempValue9 then
+                                                                                        row2 = doStep18(index5)
+                                                                                        rows[#rows + 1] = row2
+                                                                                        tempValue9 = index5
+                                                                                else
+                                                                                        row2 = row
+                                                                                end
+
+                                                                                index4 = doStep17(index3, index5)
+                                                                                index4.hx = row2
+                                                                                rows[#rows + 1] = index4
+                                                                                row = row2
+                                                                        else
+                                                                        end
+                                                                end
+                                                        else
+                                                        end
+                                                end
+                                        end
+                                end
+                        end
+
+                        weakCache2.onOpen = onOpen
+
+                        section.extra = function(input)
+                                local hxMap, tempValue9 = {}, false
+
+                                for index3, row in ipairs(rows) do
+                                        if row.hdr then
+                                        else
+                                                index3 = (input == "") or (row.s:find(input, 1, true) ~= nil)
+                                                row.h.Visible = index3
+                                                checkState5(row.lb, input)
+
+                                                if index3 then
+                                                        hxMap[row.hx] = true
+                                                        tempValue9 = true
+                                                else
+                                                end
+                                        end
+                                end
+
+                                for _, row in ipairs(rows) do
+                                        if row.hdr then
+                                                row.h.Visible = (input == "") or (hxMap[row] == true)
+                                                checkState5(row.lb2, input)
+                                        end
+                                end
+
+                                return tempValue9
+                        end
+
+                        local function scanTable5()
+                                for _, row in ipairs(rows) do
+                                        if row.pt then
+                                                row.pt()
+                                        end
+                                end
+                        end
+
+                        local function qChips()
+                                local isValueResult = isValue()
+
+                                for index3, opt in ipairs(setTab2.Opts) do
+                                        local mirrorOf = opt.mirrorOf or opt
+                                        index3 = opt.row
+
+                                        if (((enabledFlags2[mirrorOf.Type] and index3) and index3.m) and (opt.Quick ~= false))
+                                                and (mirrorOf.Quick ~= false) then
+                                                local entry, optionKeyChip = (UserInputService.KeyboardEnabled and getEntry(isValueResult[mirrorOf.Path]))
+                                                        or nil, index3.m:FindFirstChild("OptionKeyChip")
+
+                                                if entry then
+                                                        local tempValue9, visible = ((mirrorOf.Type == "button") and 0.772) or 0.822, index3.nt
+                                                                and index3.nt.Visible
+
+                                                        if not optionKeyChip then
+                                                                optionKeyChip = createInstance("TextButton", {Parent = index3.m, Name = "OptionKeyChip", Active = true,
+                                                                        AnchorPoint = vector2New(1,
+                                                                        0.5), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.35, ZIndex = 7, tryCall(0.1)})
+                                                                doStep(optionKeyChip)
+                                                                animate2(optionKeyChip, 1.06, 0.94)
+
+                                                                hit(optionKeyChip, function()
+                                                                        setTab2.cap = mirrorOf.Path
+                                                                        optionKeyChip.Text = "?"
+                                                                end)
+                                                        else
+                                                        end
+
+                                                        optionKeyChip.Position, optionKeyChip.Size = uDim2FromScale(tempValue9, 0.5), uDim2FromScale(0.082,
+                                                                (visible and 0.315) or 0.42)
+                                                        optionKeyChip.Text = entry
+                                                        visible = (tempValue9 - 0.082) - 0.015
+                                                        index3.lbS = index3.lbS or index3.lb.Size
+                                                        index3.lb.Size = uDim2New(math.min(index3.lbS.X.Scale, math.max(0.12,
+                                                                visible - index3.lb.Position.X.Scale)), 0, index3.lbS.Y.Scale, 0)
+
+                                                        if index3.nt then
+                                                                index3.ntS = index3.ntS or index3.nt.Size
+                                                                index3.nt.Size = uDim2New(math.min(index3.ntS.X.Scale, math.max(0.12,
+                                                                        visible - index3.nt.Position.X.Scale)), 0, index3.ntS.Y.Scale, 0)
+                                                        end
+                                                else
+                                                        if optionKeyChip then
+                                                                optionKeyChip:Destroy()
+                                                        end
+
+                                                        if index3.lbS then
+                                                                index3.lb.Size = index3.lbS
+                                                                index3.lbS = nil
+                                                        end
+
+                                                        if index3.ntS then
+                                                                if index3.nt then
+                                                                        index3.nt.Size = index3.ntS
+                                                                        index3.ntS = nil
+                                                                end
+                                                        end
+                                                end
+                                        end
+                                end
+                        end
+
+                        setTab2.qChips = qChips
+
+                        trackConnection(UserInputService.InputBegan, function(input, gameProcessed)
+                                if input.UserInputType ~= scrollingFrame.UserInputType.Keyboard then
+                                        return
+                                elseif UserInputService:GetFocusedTextBox() then
+                                        return
+                                end
+
+                                if setTab2.cap then
+                                        local cap = setTab2.cap
+                                        setTab2.cap = nil
+
+                                        if cap == "__OPEN__" then
+                                                if input.KeyCode ~= scrollingFrame.KeyCode.Escape then
+                                                        tempValue7:Set(input.KeyCode.Name)
+                                                else
+                                                        tempValue16:Note("Current: " .. tostring(getEntry(tempValue7.Value)))
+                                                end
+                                        else
+                                                local isValue3Result = isValue3(tempValue4.Value)
+                                                isValue3Result[cap] = ((input.KeyCode ~= scrollingFrame.KeyCode.Escape) and input.KeyCode.Name) or nil
+                                                tempValue4:Set(isValue3Result)
+                                                scanTable5()
+                                        end
+
+                                        return
+                                end
+
+                                if gameProcessed then
+                                        return
+                                end
+
+                                if input.KeyCode.Name == tostring(tempValue7.Value) then
+                                        gameProcessed = not setTab2.open
+                                        return setTab2:Show(gameProcessed)
+                                end
+
+                                if not (tempValue11.Value) then
+                                        return
+                                end
+                                local nextFn, isValueResult, tempValue9 = next, isValue()
+
+                                for index3, item in nextFn, isValueResult, tempValue9 do
+                                        if item == input.KeyCode.Name then
+                                                gameProcessed = setTab2.ByPath[index3]
+
+                                                if gameProcessed then
+                                                        if enabledFlags2[gameProcessed.Type] then
+                                                                setTab2:Fire(gameProcessed)
+                                                                animate4(index3)
+                                                        end
+                                                end
+                                        end
+                                end
+                        end)
+
+                        tempValue.ls[#tempValue.ls + 1] = function()
+                                scanTable2()
+                                scanTable5()
+                        end
+
+                        tempValue2.ls[#tempValue2.ls + 1] = function()
+                                scanTable2()
+                                scanTable5()
+                        end
+
+                        tempValue4.ls[#tempValue4.ls + 1] = function()
+                                scanTable2()
+                                qChips()
+                                scanTable5()
+                        end
+
+                        tempValue5.ls[#tempValue5.ls + 1] = function()
+                                for index3, item in ipairs(iMap2) do
+                                        item.pn.Position = uDim2FromScale(clampValue3(index3))
+                                end
+                        end
+
+                        tempValue6.ls[#tempValue6.ls + 1] = function()
+                                for index3, item in ipairs(iMap2) do
+                                        item.col = (type(tempValue6.Value) == "table") and (tempValue6.Value[tostring(index3)] == true)
+                                end
+                        end
+
+                        setTab2.qSync = function()
+                                for index3, item in ipairs(iMap2) do
+                                        item.col = (type(tempValue6.Value) == "table") and (tempValue6.Value[tostring(index3)] == true)
+                                end
+
+                                scanTable2()
+                                qChips()
+                                scanTable5()
+                                tempValue16:Note("Current: " .. tostring(getEntry(tempValue7.Value)))
+                        end
+
+                        return weakCache2
+                end
+
+                index.ConfigTab = function(input)
+                        local inputRef = input
+                        input = inputRef.setTab
+
+                        if input then
+                                local defaultsSection = input:Section("Defaults", true)
+
+                                defaultsSection:Button("Reset to Defaults", "Reset", function()
+                                        inputRef:Default()
+                                end, "Reset every feature to its built-in default", "Done!").Quick = false
+
+                                defaultsSection:Button("Turn Off All Toggles", "Turn Off", function()
+                                        for _, opt in ipairs(inputRef.Opts) do
+                                                if opt.Type == "toggle" then
+                                                        if opt.Value then
+                                                                if opt.Tab ~= "Settings" then
+                                                                        if opt.Tab ~= "Config" then
+                                                                                if opt.Tab ~= "Quick" then
+                                                                                        opt:Set(false)
+                                                                                end
+                                                                        end
+                                                                end
+                                                        end
+                                                end
+                                        end
+                                end, "Switch off every enabled toggle in the feature tabs", "Done!")
+                        end
+
+                        input = inputRef:Tab("Config", "Right")
+                        local configSection, textValue2 = input:Section("Config", true), "This config loads next time; use Load Config to load now"
+                        local tempValue = configSection:Text("Startup Config", "Startup Config: " .. inputRef.Startup)
+                        tempValue.NoSave = true
+
+                        local tempValue2 = configSection:Toggle("Auto Save Config", inputRef.AutoSave, function(autoSave)
+                                if not (inputRef.ready) then
+                                        return
+                                end
+                                inputRef.AutoSave = autoSave
+                                inputRef:Mgr(true)
+
+                                if autoSave then
+                                        inputRef:Save()
+                                end
+                        end, "Auto save: " .. inputRef.Active)
+
+                        local tempValue4 = configSection:Toggle("Auto Load Config", inputRef.AutoLoad, function(autoLoad)
+                                if not (inputRef.ready) then
+                                        return
+                                end
+                                inputRef.AutoLoad = autoLoad
+                                inputRef:Mgr(true)
+
+                                if autoLoad then
+                                        inputRef:Load(inputRef.Startup)
+                                end
+                        end, "Auto load: " .. inputRef.Startup)
+
+                        tempValue2.Skip = true
+                        tempValue4.Skip = true
+                        configSection = input:Section("Profiles", true)
+                        local tempValue5 = configSection:Input("New Config Name", "New config name...")
+                        tempValue5.Skip = true
+                        local items2, tempValue6 = {}
+
+                        local function cfgNotes()
+                                tempValue:Set("Startup Config: " .. inputRef.Startup)
+                                tempValue:Note(((inputRef.Startup:lower() ~= inputRef.Active:lower()) and textValue2) or "")
+                                tempValue2:Note("Auto save: " .. inputRef.Active)
+                                tempValue4:Note("Auto load: " .. inputRef.Startup)
+
+                                if tempValue6 then
+                                        tempValue6:Note("Save: " .. inputRef.Active)
+                                end
+                        end
+
+                        inputRef.cfgNotes = cfgNotes
+
+                        local function scanTable2()
+                                for _, item in ipairs(items2) do
+                                        if item.Refresh then
+                                                item:Refresh(inputRef:List(), true)
+                                        end
+                                end
+
+                                cfgNotes()
+                        end
+
+                        local function scanItems2(input2)
+                                for index3 = 2, #items2, 1 do
+                                        if items2[index3] then
+                                                items2[index3]:Set(input2, true)
+                                        end
+                                end
+                        end
+
+                        local function checkState3(items4)
+                                items4 = tostring(items4 or ""):match("^%s*(.-)%s*$") or ""
+
+                                if items4 == "" then
+                                        return
+                                elseif #items4 > 48 then
+                                        return
+                                elseif items4:find("[<>:\"/\\|%?%*%c]") then
+                                        return
+                                elseif items4:find("[%. ]$") then
+                                        return
+                                end
+
+                                local tempValue7 = items4:upper():gsub("%..*$", "")
+
+                                if tempValue7 == "CON" then
+                                        return
+                                elseif tempValue7 == "PRN" then
+                                        return
+                                elseif tempValue7 == "AUX" then
+                                        return
+                                elseif tempValue7 == "NUL" then
+                                        return
+                                elseif tempValue7 == "CLOCK$" then
+                                        return
+                                elseif tempValue7:match("^COM%d$") then
+                                        return
+                                elseif tempValue7:match("^LPT%d$") then
+                                        return
+                                end
+
+                                return items4
+                        end
+
+                        configSection:Button("Create New Config", "Create New", function()
+                                local text = tostring(tempValue5.Value or "")
+                                local tempValue7
+
+                                if text:match("^%s*$") then
+                                        local count2 = 1
+                                        tempValue7 = "Default " .. count2
+
+                                        while inputRef:Find(tempValue7) do
+                                                count2 += 1
+                                                tempValue7 = "Default " .. count2
+                                        end
+                                else
+                                        tempValue7 = checkState3(text)
+
+                                        if tempValue7 then
+                                                if inputRef:Find(tempValue7) then
+                                                        return
+                                                end
+                                        else
+                                                return
+                                        end
+                                end
+
+                                text = table.pack(inputRef:Collect())
+
+                                if inputRef:Save(tempValue7, table.unpack(text, 1, text.n)) then
+                                        tempValue5:Set("", true)
+                                        scanTable2()
+                                        scanItems2(tempValue7)
+                                end
+                        end, "New config copies current settings", "")
+
+                        local tempValue8, scanTable3, deleteList = inputRef:List(), function(value)
+                                local tempValue7 = false
+
+                                for index3, item in ipairs(((type(value) == "table") and value) or {value}) do
+                                        index3 = inputRef:Find(item)
+
+                                        if index3 then
+                                                if index3:lower() ~= "default" then
+                                                        pcall(delfile, inputRef.dirP .. ("/configs/" .. (index3 .. ".json")))
+                                                        pcall(delfile, inputRef.dirP .. ("/configs/" .. (index3 .. ".json.bak")))
+                                                        tempValue7 = if index3:lower() == inputRef.Active:lower() then true else tempValue7
+
+                                                        if index3:lower() == inputRef.Startup:lower() then
+                                                                inputRef.Startup = "Default"
+                                                        end
+                                                else
+                                                end
+                                        else
+                                        end
+                                end
+
+                                if tempValue7 then
+                                        if not (inputRef:Load("Default")) then
+                                                inputRef.Active = "Default"
+                                                inputRef:Save("Default", inputRef:Collect())
+                                        end
+                                end
+
+                                inputRef:Mgr(true)
+                                scanTable2()
+                                items2[1]:Set({}, true)
+                        end, {"Tick the configs to remove, then press Delete", "Delete"}
+
+                        items2[2] = configSection:Dropdown("Delete Config", tempValue8, {}, scanTable3, true, nil, nil, deleteList)
+
+                        items2[3] = configSection:Dropdown("Set Startup Config", inputRef:List(), inputRef.Startup,
+                                function(input2)
+                                local tempValue7 = inputRef:Find(input2)
+                                if not (tempValue7) then
+                                        return scanTable2()
+                                end
+                                inputRef.Startup = tempValue7
+                                inputRef:Mgr(true)
+                                cfgNotes()
+                        end, false, nil, nil, {"Pick a config to auto load next time, then press Set", "Set Startup"})
+
+                        items2[4] = configSection:Dropdown("Load Config", inputRef:List(), inputRef.Active, function(input2)
+                                inputRef:Load(input2)
+                        end, false, nil, nil, {"Pick a config, then press Load to apply it now", "Load"})
+
+                        tempValue6 = configSection:Button("Save Config", "Save", function()
+                                inputRef:Save()
+                        end, "Save: " .. inputRef.Active, "")
+
+                        scanTable3 = input:Section("Import / Export", true)
+
+                        items2[5] = scanTable3:Dropdown("Export Config", inputRef:List(),
+                                inputRef:Find(inputRef.Active) or "Default", function(profile)
+                                profile = (inputRef:Find(profile) or inputRef:Find(inputRef.Active)) or "Default"
+                                local decResult = dec(readCachedFile(isValue2(inputRef, profile)))
+                                if type(decResult) ~= "table" then
+                                        return items.Notify("Export Failed", "Selected config does not exist.")
+                                end
+                                decResult.Profile = profile
+                                local encResult = enc({Format = "ChilliLibraryConfig", ExportVersion = 1, Name = profile,
+                                        Config = decResult})
+
+                                if encResult and pcall(setclipboard, encResult) then
+                                        items.Notify("Config Exported", profile .. " was copied to the clipboard.")
+                                else
+                                        items.Notify("Export Failed", "Clipboard is not available in this executor.")
+                                end
+                        end, false, nil, nil, {"Pick a config, then press Export to copy its text", "Export"})
+
+                        local tempValue9 = scanTable3:Input("Import Config Text", "Paste exported config JSON...")
+                        tempValue9.Skip = true
+
+                        scanTable3:Button("Import Config", "Import", function()
+                                local match = tostring(tempValue9.Value or ""):match("^%s*(.-)%s*$") or ""
+                                local isRecent = (#match < 1048576) and dec(match)
+                                if ((type(isRecent) ~= "table") or (isRecent.Format ~= "ChilliLibraryConfig"))
+                                        or (type(isRecent.Config) ~= "table") then
+                                        return items.Notify("Import Failed", "Paste exported config JSON first.")
+                                end
+                                match = checkState3(tostring(isRecent.Name or "Imported"):sub(1, 40)) or "Imported"
+                                local match2, count2 = match, 1
+
+                                while inputRef:Find(match2) do
+                                        count2 += 1
+                                        match2 = match .. (" " .. count2)
+                                end
+
+                                isRecent.Config.Profile = match2
+                                inputRef:Save(match2, isRecent.Config)
+                                tempValue9:Set("", true)
+                                scanTable2()
+                                scanItems2(match2)
+                                items.Notify("Config Imported", "Imported: " .. (match2 .. ". Open Load Config to apply, or Set Startup Config for Auto Load."), 5)
+                        end, "Creates a config only; use Load Config or Set Startup after", "").Quick = false
+
+                        scanTable3 = items2
+                        items2 = {scanTable3[2], scanTable3[3], scanTable3[4], scanTable3[5]}
+
+                        for _, item in ipairs(items2) do
+                                item.Skip = true
+                        end
+
+                        cfgNotes()
+                        return input
+                end
+
+                index.Finish = function(input)
+                        local inputRef = input
+                        inputRef.ready = true
+
+                        tryCall2(function()
+                                if not (isfile and isfile(isValue2(inputRef, "Default"))) then
+                                        inputRef:Save("Default", inputRef:Collect())
+                                end
+
+                                local startup = inputRef.Startup
+
+                                if not (inputRef:Find(startup)) then
+                                        inputRef.Startup = "Default"
+                                end
+
+                                inputRef.Active = inputRef.Startup
+                        end)
+
+                        if inputRef.AutoLoad then
+                                tryCall2(function()
+                                        for index3 = 1, 6, 1 do
+                                                index3 = inputRef.Startup
+                                                if inputRef:Load(index3) then
+                                                        break
+                                                end
+                                                task.wait(0.4)
+                                        end
+                                end)
+                        end
+
+                        inputRef.busy = false
+                        tryCall2(inputRef.qSync)
+                        tryCall2(inputRef.cfgNotes)
+
+                        tryCall2(function()
+                                if inputRef.sizeOpt then
+                                        if inputRef.sizeOpt.Value ~= 100 then
+                                                inputRef:Scale(inputRef.sizeOpt.Value / 100)
+                                        end
+                                end
+                        end)
+
+                        tryCall2(function()
+                                inputRef:Select(inputRef.Tabs[1])
+                        end)
+
+                        inputRef.gui.Enabled = true
+
+                        task.spawn(function()
+                                for index3 = 1, 5, 1 do
+                                        RunService.Heartbeat:Wait()
+                                end
+
+                                local openOnLaunch = inputRef.St["Open On Launch"]
+
+                                if openOnLaunch then
+                                        if openOnLaunch.Value ~= false then
+                                                inputRef:Show(true)
+                                        end
+                                else
+                                        inputRef:Show(true)
+                                end
+                        end)
+                end
+
+                index.Destroy = function(input)
+                        for _, connection in ipairs(connections) do
+                                pcall(connection.Disconnect, connection)
+                        end
+
+                        table.clear(connections)
+                        local ipairsFn, entries = ipairs, {input.gui, input.qgui, input.fgui, input.dlg}
+
+                        for _, item in ipairsFn(entries) do
+                                if item then
+                                        pcall(item.Destroy, item)
+                                end
+                        end
+                end
+
+                index.Dialog = function(input, data)
+                        local inputRef = input
+                        input = scanTable({0, color3FromRGB(92, 94, 106)}, {0.057, color3FromRGB(70, 71, 82)}, {1, color3FromRGB(38,
+                                39, 46)})
+
+                        if inputRef.dlg then
+                                inputRef.dlg:Destroy()
+                        end
+
+                        local function getUIStroke(firstValue, input2, input3)
+                                return createInstance("UIStroke", {Parent = firstValue,
+                                        ApplyStrokeMode = (input3 and scrollingFrame.ApplyStrokeMode.Contextual)
+                                        or scrollingFrame.ApplyStrokeMode.Border, Color = color3FromRGBResult2, LineJoinMode = scrollingFrame.LineJoinMode.Round, Thickness = input2})
+                        end
+
+                        local function getUIGradient2(firstValue, firstValue2)
+                                return createInstance("UIGradient", {Parent = firstValue, Color = firstValue2, Rotation = 90})
+                        end
+
+                        local function scanTable2(firstValue, amount4, input2, input3, input4, input5, input6, input7, input8)
+                                local TextLabel = createInstance("TextLabel", {Parent = firstValue, Position = uDim2FromOffset(input2,
+                                        input3), Size = uDim2FromOffset(input4, input5), FontFace = font, TextColor3 = color3FromRGBResult, TextSize = amount4, TextXAlignment = left, Text = input6
+                                        or "", ZIndex = 12})
+
+                                for key, value in next, input8 or {}, nil do
+                                        TextLabel[key] = value
+                                end
+
+                                input8 = getUIStroke(TextLabel, math.max(1, amount4 * ((input7 and 0.065) or 0.08)), true)
+
+                                if input7 then
+                                        getUIGradient2(input8, scanTableResult2)
+                                        getUIGradient2(TextLabel, scanTableResult)
+                                end
+
+                                return TextLabel
+                        end
+
+                        local ScreenGui = createInstance("ScreenGui", {Parent = (gethui and gethui()) or getService("CoreGui"),
+                                DisplayOrder = 2000000000, IgnoreGuiInset = true, ResetOnSpawn = false, ZIndexBehavior = scrollingFrame.ZIndexBehavior.Sibling})
+                        inputRef.dlg = ScreenGui
+                        createInstance("TextButton", {Parent = ScreenGui, BackgroundColor3 = color3FromRGBResult2,
+                                BackgroundTransparency = 0.45, Modal = true, Size = uDim2FromScale(1, 1), ZIndex = 1})
+                        local Frame2 = createInstance("Frame", {Parent = ScreenGui, Active = true, AnchorPoint = vector2New(0.5,
+                                0.5), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.18, Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromOffset(430, 316), ZIndex = 10})
+                        local UIScale = createInstance("UIScale", {Parent = Frame2})
+
+                        local function clampValue2()
+                                local viewportSize = (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize) or vector2New(1280, 720)
+                                viewportSize = if viewportSize.X < 1 then vector2New(1280, 720) else viewportSize
+                                UIScale.Scale = math.clamp(math.min(viewportSize.X / 1280, viewportSize.Y / 720), 0.72, 1.35)
+                        end
+
+                        clampValue2()
+
+                        if workspace.CurrentCamera then
+                                local connection = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(clampValue2)
+
+                                local function handleEvent()
+                                        connection:Disconnect()
+                                end
+
+                                ScreenGui.Destroying:Connect(handleEvent)
+                        end
+
+                        getUIStroke(Frame2, 2)
+                        clampValue2 = createInstance("Frame", {Parent = Frame2, BackgroundColor3 = color3FromRGBResult,
+                                Position = uDim2FromOffset(22, 22), Size = uDim2FromOffset(5, 26), ZIndex = 12})
+                        getUIGradient2(clampValue2, scanTableResult4)
+                        getUIStroke(clampValue2, 1.4)
+                        scanTable2(Frame2, 21, 38, 20, 370, 30, data.Title, true)
+                        createInstance("Frame", {Parent = Frame2, BackgroundColor3 = color3FromRGBResult,
+                                BackgroundTransparency = 0.82, Position = uDim2FromOffset(22, 58), Size = uDim2FromOffset(386,
+                                1), ZIndex = 12})
+                        getUIGradient2(scanTable2(Frame2, 17, 22, 68, 386, 24, data.Warn, false, {TextColor3 = color3FromRGB(255,
+                                72, 72)}), ColorSequence.new(color3FromRGB(255, 132, 123), color3FromRGB(239, 28, 28)))
+                        local body, state = data.Body, {TextWrapped = true}
+                        state.TextYAlignment, state.LineHeight, state.TextTransparency = scrollingFrame.TextYAlignment.Top, 1.14, 0.12
+                        scanTable2(Frame2, 15, 22, 98, 386, 74, body, false, state)
+                        scanTable2(Frame2, 14, 22, 176, 386, 46, data.Tip, false, {TextWrapped = true,
+                                TextYAlignment = scrollingFrame.TextYAlignment.Top, LineHeight = 1.12, TextColor3 = color3FromRGB(255, 176,
+                                120), RichText = true})
+
+                        local function destroyAll(input2)
+                                ScreenGui:Destroy()
+
+                                if inputRef.dlg == ScreenGui then
+                                        inputRef.dlg = nil
+                                end
+
+                                tryCall2(input2)
+                        end
+
+                        state, body = ipairs, {{22, data.Cancel or "Cancel", data.no}, {224, data.Accept or "OK", data.ok}}
+
+                        for index3, item in state(body) do
+                                clampValue2, data = index3 == 2, createInstance("TextButton", {Parent = Frame2, Active = true,
+                                        BackgroundTransparency = 1, Position = uDim2FromOffset(item[1], 244), Size = uDim2FromOffset(184,
+                                        46), ZIndex = 14})
+                                index3 = createInstance("Frame", {Parent = data, AnchorPoint = vector2New(0.5, 0.5),
+                                        BackgroundColor3 = (clampValue2 and color3FromRGB(175, 0, 0)) or color3FromRGB(24, 25,
+                                        30), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, 0.92), ZIndex = 12})
+                                getUIStroke(index3, 1.6)
+                                local Frame3 = createInstance("Frame", {Parent = index3, AnchorPoint = vector2New(0.5, 0),
+                                        BackgroundColor3 = color3FromRGBResult, Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1,
+                                        0.9), ZIndex = 12})
+                                getUIGradient2(Frame3, (clampValue2 and scanTableResult4) or input)
+                                getUIGradient2(createInstance("Frame", {Parent = Frame3, AnchorPoint = vector2New(0.5, 0.5),
+                                        BackgroundColor3 = color3FromRGBResult, Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.965,
+                                        0.88), ZIndex = 13}), (clampValue2 and scanTableResult5) or input)
+                                Frame3, index3 = item[2], {AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5),
+                                        Size = uDim2FromScale(0.9, 0.6), TextWrapped = true}
+                                index3.TextXAlignment, index3.ZIndex = scrollingFrame.TextXAlignment.Center, 15
+                                scanTable2(data, 17, 0, 0, 0, 0, Frame3, true, index3)
+
+                                local function destroyValue()
+                                        destroyAll(item[3])
+                                end
+
+                                data.MouseButton1Click:Connect(destroyValue)
+                        end
+                end
+
+                local state3 = {TextScale = 1, TitleScale = 1, Font = "Gotham", LineHeight = 1.16, Padding = 1,
+                        Alignment = "Left", BackgroundColor = color3FromRGBResult2, BackgroundTransparency = 0.5, StrokeColor = color3FromRGBResult2, StrokeTransparency = 0, StrokeScale = 0.05, CornerScale = 0.35, ScrollBarColor = color3FromRGBResult, ScrollBarTransparency = 0}
+                state3.TextColor = color3FromRGB(235, 235, 235)
+                state3.TextStrokeTransparency = 0.7
+                state3.MinLines = 4
+                state3.MaxLines = 0
+                state3.AutoHeight = true
+                state3.ClipContent = true
+                local cache3 = {gotham = font}
+                cache3["gotham medium"] = Font.new(textValue, scrollingFrame.FontWeight.Medium)
+                cache3.fredoka = Font.new("rbxasset://fonts/families/FredokaOne.json")
+                cache3.code = Font.new("rbxasset://fonts/families/RobotoMono.json", scrollingFrame.FontWeight.Bold)
+                local alignments = {left = left}
+                alignments.center = scrollingFrame.TextXAlignment.Center
+                alignments.right = right
+
+                local function tryCall3(value)
+                        if typeof(value) == "Font" then
+                                return value
+                        end
+
+                        if typeof(value) == "EnumItem" then
+                                local callResult, result = pcall(Font.fromEnum, value)
+                                if callResult then
+                                        return result
+                                end
+                        end
+
+                        if type(value) == "string" then
+                                return cache3[value:lower()] or font
+                        end
+                end
+
+                local function tryCall4(value, input)
+                        if typeof(value) == "Color3" then
+                                return value
+                        end
+
+                        if type(value) == "string" then
+                                local callResult, result = pcall(Color3.fromHex, value)
+                                if callResult then
+                                        return result
+                                end
+                        end
+
+                        return input
+                end
+
+                local function toNumberOrDefault(input, input2)
+                        local number = tonumber(input)
+                        if number == nil then
+                                return input2
+                        end
+                        return number
+                end
+
+                local function clampValue2(input, input2)
+                        return math.clamp(toNumberOrDefault(input, input2), 0, 1)
+                end
+
+                local function destroyInstances2(parent, color, rotation)
+                        local chilliCanvasGradient = parent:FindFirstChild("ChilliCanvasGradient")
+
+                        if color == nil then
+                                if chilliCanvasGradient then
+                                        chilliCanvasGradient:Destroy()
+                                end
+
+                                return
+                        end
+
+                        if typeof(color) == "Instance" then
+                                if color:IsA("UIGradient") then
+                                        if chilliCanvasGradient then
+                                                chilliCanvasGradient:Destroy()
+                                        end
+
+                                        local callResult, result = pcall(color.Clone, color)
+
+                                        if callResult then
+                                                if result then
+                                                        result.Name = "ChilliCanvasGradient"
+
+                                                        if rotation ~= nil then
+                                                                result.Rotation = rotation
+                                                        end
+
+                                                        result.Parent = parent
+                                                end
+                                        end
+
+                                        return
+                                end
+                        end
+
+                        if typeof(color) == "ColorSequence" then
+                                local chilliCanvasGradient2 = chilliCanvasGradient or createInstance("UIGradient",
+                                        {Name = "ChilliCanvasGradient", Parent = parent})
+                                chilliCanvasGradient2.Color = color
+
+                                if rotation ~= nil then
+                                        chilliCanvasGradient2.Rotation = rotation
+                                end
+                        end
+                end
+
+                local function destroyAll(input, amount4)
+                        local uiCorner = input:FindFirstChildOfClass("UICorner")
+
+                        if amount4 == nil then
+                                if uiCorner then
+                                        uiCorner:Destroy()
+                                end
+
+                                return
+                        elseif amount4 <= 0 then
+                                if uiCorner then
+                                        uiCorner:Destroy()
+                                end
+
+                                return
+                        end;
+
+                        (uiCorner or createInstance("UICorner", {Parent = input})).CornerRadius = uDimNew(0,
+                                math.floor(amount4 + 0.5))
+                end
+
+                local function destroyAll2(input, color, threshold, input2, applyStrokeMode)
+                        local uiStroke = input:FindFirstChildOfClass("UIStroke")
+
+                        if threshold == nil then
+                                if uiStroke then
+                                        uiStroke:Destroy()
+                                end
+
+                                return
+                        elseif threshold <= 0 then
+                                if uiStroke then
+                                        uiStroke:Destroy()
+                                end
+
+                                return
+                        end
+
+                        uiStroke = uiStroke or createInstance("UIStroke", {LineJoinMode = scrollingFrame.LineJoinMode.Round,
+                                Parent = input})
+                        uiStroke.ApplyStrokeMode, uiStroke.Color, uiStroke.Thickness, uiStroke.Transparency = applyStrokeMode
+                                or scrollingFrame.ApplyStrokeMode.Contextual, color or color3FromRGBResult2, math.max(0.01,
+                                threshold), clampValue2(input2, 0)
+                end
+
+                local function collectDescendants(value)
+                        if typeof(value) ~= "Instance" then
+                                return
+                        end
+                        local callResult, result = pcall(value.Clone, value)
+
+                        if callResult then
+                                if not (result) then
+                                        return
+                                end
+                        else
+                                return
+                        end
+
+                        for _, descendant in ipairs(result:GetDescendants()) do
+                                if ((descendant:IsA("LuaSourceContainer") or descendant:IsA("ParticleEmitter")) or descendant:IsA("Trail"))
+                                        or descendant:IsA("Beam") then
+                                        descendant:Destroy()
+                                elseif descendant:IsA("Light") then
+                                        descendant:Destroy()
+                                elseif descendant:IsA("Sound") then
+                                        descendant:Destroy()
+                                elseif descendant:IsA("Fire") then
+                                        descendant:Destroy()
+                                elseif descendant:IsA("Smoke") then
+                                        descendant:Destroy()
+                                elseif descendant:IsA("Sparkles") then
+                                        descendant:Destroy()
+                                elseif descendant:IsA("BasePart") then
+                                        descendant.Anchored = true
+                                        descendant.CanCollide = false
+                                        descendant.CastShadow = false
+                                end
+                        end
+
+                        if result:IsA("BasePart") then
+                                result.Anchored = true
+                        end
+
+                        return result
+                end
+
+                local function checkState7(value)
+                        if typeof(value) ~= "Instance" then
+                                return false
+                        else
+                                local gameRef2 = game
+                                if not (value:IsDescendantOf(gameRef2)) then
+                                        return false
+                                end
+                        end
+
+                        local parent = value
+
+                        while parent do
+                                if parent:IsA("GuiObject") then
+                                        if not (parent.Visible) then
+                                                return false
+                                        end
+                                end
+
+                                if parent:IsA("LayerCollector") then
+                                        return parent.Enabled
+                                end
+                                parent = parent.Parent
+                        end
+
+                        return false
+                end
+
+                local function toNumberOrDefault2(data, data2)
+                        if typeof(data.Size) == "UDim2" then
+                                return data.Size
+                        end
+                        local number, number2, number3, number4 = tonumber(data.WidthScale), tonumber(data.Width), tonumber(data.HeightScale), tonumber(data.Height)
+                        local tempValue, tempValue2 = ((number and uDimNew(number, 0)) or (number2 and uDimNew(0,
+                                math.floor((number2 * data2.Unit) + 0.5))))
+                                or (uDimNew(1, 0)), (number3 and uDimNew(number3, 0)) or uDimNew(0,
+                                math.floor(((number4 or 1) * data2.Unit) + 0.5))
+                        return uDim2New(tempValue.Scale, tempValue.Offset, tempValue2.Scale, tempValue2.Offset)
+                end
+
+                local function clampValue7(data, data2)
+                        if typeof(data.Position) == "UDim2" then
+                                return data.Position
+                        end
+                        return uDim2FromOffset(math.floor((toNumberOrDefault(data.X, 0) * data2.Unit) + 0.5),
+                                math.floor((toNumberOrDefault(data.Y, 0) * data2.Unit) + 0.5))
+                end
+
+                local function checkState8(input, value)
+                        value = if type(value) == "table" then if type(value.Get) == "function" then value.Get() else value else value
+                        if typeof(value) == "Instance" then
+                                return value
+                        end
+                        return input.root
+                end
+
+                local function doStep19(items2, input, input2)
+                        items2.pp[#items2.pp + 1] = {input, input2}
+                        items2.dirty = true
+                end
+
+                local function doStep20(backgroundColor3, data, data2)
+                        local fieldValue = backgroundColor3.m
+                        data.Size, data.Position = toNumberOrDefault2(data2, fieldValue), clampValue7(data2, fieldValue)
+
+                        if typeof(data2.AnchorPoint) == "Vector2" then
+                                data.AnchorPoint = data2.AnchorPoint
+                        end
+
+                        if data2.LayoutOrder ~= nil then
+                                data.LayoutOrder = tonumber(data2.LayoutOrder) or 0
+                        end
+
+                        if data2.ZIndex ~= nil then
+                                data.ZIndex = tonumber(data2.ZIndex) or data.ZIndex
+                        end
+
+                        if data2.Visible ~= nil then
+                                data.Visible = data2.Visible ~= false
+                        end
+
+                        backgroundColor3 = tryCall4(data2.Background, nil)
+
+                        if backgroundColor3 then
+                                data.BackgroundColor3, data.BackgroundTransparency = backgroundColor3, clampValue2(data2.BackgroundTransparency, 0)
+                        elseif data2.BackgroundTransparency ~= nil then
+                                data.BackgroundTransparency = clampValue2(data2.BackgroundTransparency, 1)
+                        end
+
+                        if data2.Corner ~= nil then
+                                destroyAll(data, toNumberOrDefault(data2.Corner, 0) * fieldValue.Unit)
+                        end
+
+                        if data2.Clip ~= nil then
+                                data.ClipsDescendants = data2.Clip == true
+                        end
+                end
+
+                local function scanTable6(items2, instance, firstValue, firstValue2, callback)
+                        local state = {Kind = firstValue, Spec = firstValue2, Get = function()
+                                return instance
+                        end}
+
+                        state.Apply = function()
+                                callback()
+                                return state
+                        end
+
+                        state.Set = function(value)
+                                if type(value) == "table" then
+                                        for key, value2 in next, value, nil do
+                                                firstValue2[key] = value2
+                                        end
+                                end
+
+                                items2.q(state)
+                                return state
+                        end
+
+                        state.SetVisible = function(input)
+                                firstValue2.Visible = input ~= false
+                                instance.Visible = input ~= false
+                                return state
+                        end
+
+                        state.Destroy = function()
+                                local pos = table.find(items2.el, state)
+
+                                if pos then
+                                        table.remove(items2.el, pos)
+                                end
+
+                                instance:Destroy()
+                                items2.dirty = true
+                        end
+
+                        items2.el[#items2.el + 1] = state
+                        items2.q(state)
+                        return state
+                end
+
+                local handlers = {Frame = function(input, instance)
+                        local scrollingFrame2 = createInstance(((instance.Scrolling == true) and "ScrollingFrame") or "Frame",
+                                {Name = tostring(instance.Name or "Panel"), BackgroundColor3 = tryCall4(instance.Background,
+                                color3FromRGBResult2), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 1), ZIndex = tonumber(instance.ZIndex) or 6})
+
+                        if scrollingFrame2:IsA("ScrollingFrame") then
+                                scrollingFrame2.Active, scrollingFrame2.AutomaticCanvasSize, scrollingFrame2.CanvasSize, scrollingFrame2.ElasticBehavior, scrollingFrame2.ScrollBarImageColor3, scrollingFrame2.ScrollingDirection = true, scrollingFrame.AutomaticSize.Y, uDim2New(), scrollingFrame.ElasticBehavior.Never, tryCall4(instance.ScrollBarColor,
+                                        input.sty.ScrollBarColor), scrollingFrame.ScrollingDirection.Y
+                        end
+
+                        if instance.Layout ~= nil then
+                                createInstance("UIListLayout", {Parent = scrollingFrame2,
+                                        FillDirection = ((tostring(instance.Layout):lower() == "row") and scrollingFrame.FillDirection.Horizontal)
+                                        or scrollingFrame.FillDirection.Vertical, SortOrder = scrollingFrame.SortOrder.LayoutOrder})
+                        end
+
+                        doStep19(input, scrollingFrame2, checkState8(input, instance.Parent))
+
+                        return scanTable6(input, scrollingFrame2, "Frame", instance, function()
+                                doStep20(input, scrollingFrame2, instance)
+
+                                if (instance.StrokeColor ~= nil) or (instance.StrokeThickness ~= nil) then
+                                        destroyAll2(scrollingFrame2, tryCall4(instance.StrokeColor, color3FromRGBResult2),
+                                                toNumberOrDefault(instance.StrokeThickness,
+                                                0.06) * input.m.Unit, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Border)
+                                end
+
+                                if instance.Gradient ~= nil then
+                                        destroyInstances2(scrollingFrame2, instance.Gradient, instance.GradientRotation)
+                                end
+
+                                local uiListLayout = scrollingFrame2:FindFirstChildOfClass("UIListLayout")
+
+                                if uiListLayout then
+                                        uiListLayout.Padding = uDimNew(0, math.floor((toNumberOrDefault(instance.Spacing,
+                                                0.2) * input.m.Unit) + 0.5))
+                                end
+
+                                if scrollingFrame2:IsA("ScrollingFrame") then
+                                        scrollingFrame2.ScrollBarThickness = math.max(2, math.floor(input.m.TextSize * 0.5))
+                                end
+
+                                if instance.AutoHeight == true then
+                                        scrollingFrame2.AutomaticSize = scrollingFrame.AutomaticSize.Y
+                                end
+                        end)
+                end, Text = function(input, instance)
+                        local TextLabel = createInstance("TextLabel", {Name = tostring(instance.Name or "Text"),
+                                RichText = instance.Rich ~= false, TextScaled = false, TextStrokeTransparency = 1, TextWrapped = instance.Wrap ~= false, TextYAlignment = scrollingFrame.TextYAlignment.Top, ZIndex = tonumber(instance.ZIndex) or 7})
+                        doStep19(input, TextLabel, checkState8(input, instance.Parent))
+
+                        return scanTable6(input, TextLabel, "Text", instance, function()
+                                local fieldValue, sty = input.m, input.sty
+                                TextLabel.Text, TextLabel.RichText, TextLabel.TextWrapped = tostring(instance.Text
+                                        or ""), instance.Rich ~= false, instance.Wrap ~= false
+                                TextLabel.FontFace = tryCall3(instance.Font) or fieldValue.Font
+                                TextLabel.TextSize = math.max(6, math.floor((fieldValue.TextSize * toNumberOrDefault(instance.Scale,
+                                        1)) + 0.5))
+                                TextLabel.LineHeight, TextLabel.TextColor3, TextLabel.TextTransparency = toNumberOrDefault(instance.LineHeight,
+                                        fieldValue.LineHeight), tryCall4(instance.Color, sty.TextColor), clampValue2(instance.Transparency, 0)
+                                TextLabel.TextStrokeColor3, TextLabel.TextStrokeTransparency = tryCall4(instance.TextStrokeColor,
+                                        color3FromRGBResult2), clampValue2(instance.TextStrokeTransparency, sty.TextStrokeTransparency)
+                                TextLabel.TextXAlignment = alignments[tostring(instance.Align or ""):lower()] or fieldValue.Align
+                                sty = tostring(instance.VAlign or "top"):lower()
+                                TextLabel.TextYAlignment = (((sty == "center") and scrollingFrame.TextYAlignment.Center) or ((sty == "bottom") and scrollingFrame.TextYAlignment.Bottom))
+                                        or scrollingFrame.TextYAlignment.Top
+                                destroyInstances2(TextLabel, instance.Gradient, instance.GradientRotation)
+
+                                if (instance.StrokeThickness ~= nil) or (instance.StrokeColor ~= nil) then
+                                        destroyAll2(TextLabel, tryCall4(instance.StrokeColor, color3FromRGBResult2),
+                                                toNumberOrDefault(instance.StrokeThickness,
+                                                0.1) * TextLabel.TextSize, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Contextual)
+                                end
+
+                                doStep20(input, TextLabel, instance)
+
+                                if typeof(instance.Size) ~= "UDim2" then
+                                        if instance.Height == nil then
+                                                if instance.HeightScale == nil then
+                                                        sty = TextLabel.Size.X
+                                                        TextLabel.Size = uDim2New(sty.Scale, sty.Offset, 0, 100000)
+                                                        TextLabel.Size = uDim2New(sty.Scale, sty.Offset, 0, math.max(TextLabel.TextSize,
+                                                                math.ceil(TextLabel.TextBounds.Y)))
+                                                end
+                                        end
+                                end
+                        end)
+                end, Button = function(input, instance)
+                        local TextButton = createInstance("TextButton", {Name = tostring(instance.Name or "Button"),
+                                BackgroundColor3 = tryCall4(instance.Background,
+                                color3FromRGBResult2), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 0.35), RichText = instance.Rich ~= false, TextScaled = false, TextStrokeTransparency = 1, ZIndex = tonumber(instance.ZIndex) or 8})
+                        doStep19(input, TextButton, checkState8(input, instance.Parent))
+                        local tempValue, tempValue2, tempValue4 = false, false, true
+
+                        local function clampValue3()
+                                local numVal = clampValue2(instance.BackgroundTransparency, 0.35)
+                                local numVal2 = (if tempValue4 then not tempValue4 else math.clamp(numVal + 0.25, 0,
+                                        1)) or (tempValue2 and clampValue2(instance.PressTransparency, numVal - 0.18))
+                                local numVal3 = numVal2 or (tempValue and clampValue2(instance.HoverTransparency, numVal - 0.12))
+                                numVal2 = numVal3 or numVal
+                                TextButton.BackgroundTransparency, TextButton.TextTransparency = numVal2, (tempValue4 and clampValue2(instance.Transparency,
+                                        0)) or 0.4
+                        end
+
+                        local button = scanTable6(input, TextButton, "Button", instance, function()
+                                local fieldValue = input.m
+                                TextButton.Text, TextButton.RichText, TextButton.FontFace = tostring(instance.Text or ""), instance.Rich ~= false, tryCall3(instance.Font)
+                                        or fieldValue.Font
+                                TextButton.TextSize, TextButton.TextColor3 = math.max(6,
+                                        math.floor((fieldValue.TextSize * toNumberOrDefault(instance.Scale,
+                                        1)) + 0.5)), tryCall4(instance.Color, color3FromRGBResult)
+                                TextButton.TextXAlignment = alignments[tostring(instance.Align or "center"):lower()]
+                                        or scrollingFrame.TextXAlignment.Center
+                                destroyInstances2(TextButton, instance.Gradient, instance.GradientRotation)
+                                destroyAll2(TextButton, tryCall4(instance.StrokeColor, color3FromRGBResult2),
+                                        toNumberOrDefault(instance.StrokeThickness,
+                                        0.05) * fieldValue.Unit, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Border)
+                                destroyAll(TextButton, toNumberOrDefault(instance.Corner, 0.3) * fieldValue.Unit)
+                                local numVal = toNumberOrDefault2(instance, fieldValue)
+                                numVal = if typeof(instance.Size) ~= "UDim2" then if instance.Width == nil then if instance.WidthScale == nil then uDim2New(0,
+                                        math.floor(TextButton.TextBounds.X + fieldValue.Unit), numVal.Y.Scale, numVal.Y.Offset) else numVal else numVal else numVal
+                                TextButton.Size, TextButton.Position = numVal, clampValue7(instance, fieldValue)
+
+                                if instance.LayoutOrder ~= nil then
+                                        TextButton.LayoutOrder = tonumber(instance.LayoutOrder) or 0
+                                end
+
+                                clampValue3()
+                        end)
+
+                        TextButton.MouseEnter:Connect(function()
+                                tempValue = true
+                                clampValue3()
+                        end)
+
+                        TextButton.MouseLeave:Connect(function()
+                                tempValue, tempValue2 = false, false
+                                clampValue3()
+                        end)
+
+                        TextButton.MouseButton1Down:Connect(function()
+                                tempValue2 = true
+                                clampValue3()
+                        end)
+
+                        TextButton.MouseButton1Up:Connect(function()
+                                tempValue2 = false
+                                clampValue3()
+                        end)
+
+                        TextButton.Activated:Connect(function()
+                                if tempValue4 then
+                                        if type(instance.Callback) == "function" then
+                                                pcall(instance.Callback, button)
+                                        end
+                                end
+                        end)
+
+                        button.SetText = function(input2)
+                                instance.Text = tostring(input2 or "")
+                                TextButton.Text = instance.Text
+                                return button
+                        end
+
+                        button.SetCallback = function(callback)
+                                instance.Callback = callback
+                                return button
+                        end
+
+                        button.SetEnabled = function(input2)
+                                tempValue4 = input2 ~= false
+                                clampValue3()
+                                return button
+                        end
+
+                        return button
+                end, Image = function(input, instance)
+                        local ImageLabel = createInstance("ImageLabel", {Name = tostring(instance.Name or "Image"),
+                                BackgroundColor3 = tryCall4(instance.Background,
+                                color3FromRGBResult2), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 1), ScaleType = scrollingFrame.ScaleType.Fit, ZIndex = tonumber(instance.ZIndex) or 7})
+                        doStep19(input, ImageLabel, checkState8(input, instance.Parent))
+
+                        local image = scanTable6(input, ImageLabel, "Image", instance, function()
+                                local fieldValue = input.m
+                                ImageLabel.Image, ImageLabel.ImageColor3, ImageLabel.ImageTransparency = tostring(instance.Image or ""), tryCall4(instance.ImageColor,
+                                        color3FromRGBResult), clampValue2(instance.Transparency, 0)
+
+                                if instance.ScaleType ~= nil then
+                                        local text = tostring(instance.ScaleType):lower()
+                                        ImageLabel.ScaleType = (((text == "stretch") and scrollingFrame.ScaleType.Stretch) or ((text == "crop") and scrollingFrame.ScaleType.Crop))
+                                                or scrollingFrame.ScaleType.Fit
+                                end
+
+                                doStep20(input, ImageLabel, instance)
+
+                                if typeof(instance.Size) ~= "UDim2" then
+                                        if instance.Width == nil then
+                                                if instance.WidthScale == nil then
+                                                        local offset = ImageLabel.Size.Y.Offset
+                                                        ImageLabel.Size = uDim2FromOffset(offset, offset)
+                                                end
+                                        end
+                                end
+
+                                if (instance.StrokeColor ~= nil) or (instance.StrokeThickness ~= nil) then
+                                        destroyAll2(ImageLabel, tryCall4(instance.StrokeColor, color3FromRGBResult),
+                                                toNumberOrDefault(instance.StrokeThickness,
+                                                0.08) * fieldValue.Unit, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Border)
+                                end
+
+                                destroyAll(ImageLabel, toNumberOrDefault(instance.Corner, 0.3) * fieldValue.Unit)
+                        end)
+
+                        image.SetImage = function(image2)
+                                instance.Image = image2
+                                ImageLabel.Image = tostring(image2 or "")
+                                return image
+                        end
+
+                        return image
+                end, Bar = function(input, instance)
+                        local Frame2 = createInstance("Frame", {Name = tostring(instance.Name or "Bar"),
+                                BackgroundColor3 = tryCall4(instance.Background, color3FromRGB(40, 40,
+                                55)), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 0.25), ClipsDescendants = true, ZIndex = tonumber(instance.ZIndex) or 7})
+                        doStep19(input, Frame2, checkState8(input, instance.Parent))
+                        local Frame3 = createInstance("Frame", {Parent = Frame2, Name = "Fill",
+                                BackgroundColor3 = tryCall4(instance.FillColor,
+                                color3FromRGBResult3), BackgroundTransparency = clampValue2(instance.FillTransparency, 0), Size = uDim2FromScale(0, 1), ZIndex = Frame2.ZIndex + 1})
+
+                        local bar = scanTable6(input, Frame2, "Bar", instance, function()
+                                local fieldValue = input.m
+                                doStep20(input, Frame2, instance)
+
+                                if typeof(instance.Size) ~= "UDim2" then
+                                        if instance.Height == nil then
+                                                if instance.HeightScale == nil then
+                                                        Frame2.Size = uDim2New(Frame2.Size.X.Scale, Frame2.Size.X.Offset, 0, math.max(2,
+                                                                math.floor(fieldValue.Unit * 0.32)))
+                                                end
+                                        end
+                                end
+
+                                Frame2.BackgroundColor3, Frame3.BackgroundColor3 = tryCall4(instance.Background, color3FromRGB(40, 40,
+                                        55)), tryCall4(instance.FillColor, color3FromRGBResult3)
+                                Frame3.Size = uDim2FromScale(clampValue2(instance.Alpha, 0), 1)
+                                destroyAll(Frame2, toNumberOrDefault(instance.Corner, 0.16) * fieldValue.Unit)
+                                destroyAll(Frame3, toNumberOrDefault(instance.Corner, 0.16) * fieldValue.Unit)
+                                destroyInstances2(Frame3, instance.FillGradient, instance.GradientRotation)
+                        end)
+
+                        bar.SetAlpha = function(alpha)
+                                instance.Alpha = alpha
+                                Frame3.Size = uDim2FromScale(clampValue2(alpha, 0), 1)
+                                return bar
+                        end
+
+                        return bar
+                end, Model = function(input, instance)
+                        local ViewportFrame = createInstance("ViewportFrame", {Name = tostring(instance.Name or "Model"),
+                                Ambient = tryCall4(instance.Ambient, color3FromRGB(170, 170,
+                                180)), BackgroundColor3 = tryCall4(instance.Background, color3FromRGBResult2), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 1), LightColor = tryCall4(instance.LightColor, color3FromRGBResult), LightDirection = ((typeof(instance.LightDirection) == "Vector3")
+                                and instance.LightDirection) or Vector3.new(-0.6, -1, -0.4), ZIndex = tonumber(instance.ZIndex) or 7})
+                        doStep19(input, ViewportFrame, checkState8(input, instance.Parent))
+                        local Camera = createInstance("Camera", {Parent = ViewportFrame,
+                                FieldOfView = toNumberOrDefault(instance.FieldOfView, 40)})
+                        ViewportFrame.CurrentCamera = Camera
+                        local cameraOrbit = {}
+                        cameraOrbit.Center = Vector3.new(0, 0, 0)
+                        cameraOrbit.Distance = 10
+                        cameraOrbit.Angle = 0
+                        cameraOrbit.Spin = instance.Spin ~= false
+                        cameraOrbit.Height = toNumberOrDefault(instance.CameraHeight, 0.35)
+                        cameraOrbit.Zoom = toNumberOrDefault(instance.Zoom, 1.05)
+
+                        local function checkState3()
+                                if cameraOrbit.Model then
+                                        local unit = Vector3.new(math.sin(cameraOrbit.Angle), cameraOrbit.Height,
+                                                math.cos(cameraOrbit.Angle)).Unit
+                                        Camera.CFrame = CFrame.lookAt(cameraOrbit.Center + (unit * cameraOrbit.Distance), cameraOrbit.Center)
+                                end
+                        end
+
+                        local function destroyInstances(template)
+                                if cameraOrbit.Model then
+                                        cameraOrbit.Model:Destroy()
+                                        cameraOrbit.Model = nil
+                                end
+
+                                cameraOrbit.Template = template
+                                local descendants = collectDescendants(template)
+                                if not (descendants) then
+                                        return
+                                end
+                                local boundingBox, size
+
+                                if descendants:IsA("Model") then
+                                        boundingBox, size = descendants:GetBoundingBox()
+                                else
+                                        if descendants:IsA("BasePart") then
+                                                boundingBox, size = descendants.CFrame, descendants.Size
+                                        else
+                                        end
+                                end
+
+                                if not (boundingBox) then
+                                        descendants:Destroy()
+                                        return
+                                end
+                                cameraOrbit.Center, cameraOrbit.Radius = boundingBox.Position, size.Magnitude * 0.5
+                                cameraOrbit.Distance = (cameraOrbit.Radius / math.tan(math.rad(Camera.FieldOfView / 2))) * cameraOrbit.Zoom
+                                descendants.Parent = ViewportFrame
+                                cameraOrbit.Model = descendants
+                                checkState3()
+                        end
+
+                        local model = scanTable6(input, ViewportFrame, "Model", instance, function()
+                                local fieldValue = input.m
+                                doStep20(input, ViewportFrame, instance)
+
+                                if typeof(instance.Size) ~= "UDim2" then
+                                        if instance.Width == nil then
+                                                if instance.WidthScale == nil then
+                                                        local offset = ViewportFrame.Size.Y.Offset
+                                                        ViewportFrame.Size = uDim2FromOffset(offset, offset)
+                                                end
+                                        end
+                                end
+
+                                if instance.Corner ~= nil then
+                                        destroyAll(ViewportFrame, toNumberOrDefault(instance.Corner, 0) * fieldValue.Unit)
+                                end
+
+                                if (instance.StrokeColor ~= nil) or (instance.StrokeThickness ~= nil) then
+                                        destroyAll2(ViewportFrame, tryCall4(instance.StrokeColor, color3FromRGBResult),
+                                                toNumberOrDefault(instance.StrokeThickness,
+                                                0.08) * fieldValue.Unit, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Border)
+                                end
+
+                                fieldValue = toNumberOrDefault(instance.Zoom, 1.05)
+
+                                if fieldValue ~= cameraOrbit.Zoom then
+                                        if cameraOrbit.Radius then
+                                                cameraOrbit.Distance = (cameraOrbit.Radius / math.tan(math.rad(Camera.FieldOfView / 2))) * fieldValue
+                                        end
+                                end
+
+                                cameraOrbit.Zoom, cameraOrbit.Height = fieldValue, toNumberOrDefault(instance.CameraHeight, 0.35)
+
+                                if instance.Model ~= cameraOrbit.Template then
+                                        destroyInstances(instance.Model)
+                                end
+
+                                ViewportFrame.Visible = (instance.Visible ~= false) and (cameraOrbit.Model ~= nil)
+                        end)
+
+                        model.SetModel = function(model2)
+                                instance.Model = model2
+                                input.q(model)
+                                return model
+                        end
+
+                        model.SetSpin = function(input2)
+                                cameraOrbit.Spin = input2 ~= false
+                                return model
+                        end
+
+                        model.Step = function(input2)
+                                if cameraOrbit.Model then
+                                        if cameraOrbit.Spin then
+                                                cameraOrbit.Angle = (cameraOrbit.Angle + (0.4886921905584123 * input2)) % 6.283185307179586
+                                                checkState3()
+                                        end
+                                end
+                        end
+
+                        input.mods[#input.mods + 1] = model
+                        return model
+                end}
+
+                handlers.Rect, handlers.Label = handlers.Frame, handlers.Text
+
+                widgetSpecs.Surface = function(input, data)
+                        local copy = table.clone(state3)
+
+                        for key, value in next, ((type(data.Style) == "table") and data.Style) or {}, nil do
+                                if state3[key] ~= nil then
+                                        copy[key] = value
+                                end
+                        end
+
+                        local tempValue = ((data.Title ~= nil) and tostring(data.Title)) or tostring(data.Name)
+                        local tempValue2 = data.ShowTitle ~= false
+                        local visible = data.Search == true
+                        local tempValue4 = input:Row(data.Name)
+                        tempValue4.canvas = true
+                        tempValue4.ratio = nil
+                        local fieldValue = tempValue4.r
+                        local fieldValue2 = tempValue4.m
+                        local fieldValue3 = tempValue4.lb
+                        local uiStroke = fieldValue2:FindFirstChildOfClass("UIStroke")
+                        fieldValue2.ClipsDescendants = copy.ClipContent ~= false
+                        fieldValue3.AnchorPoint = vector2New(0, 0)
+                        local Frame2 = createInstance("Frame", {Parent = fieldValue2, Name = "SearchField",
+                                AnchorPoint = vector2New(0.5,
+                                0.5), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, Visible = false, ZIndex = 4, tryCall(0.1)})
+                        local doStepResult = doStep(createInstance("TextBox", {Parent = Frame2, Name = "SearchInput",
+                                AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.9,
+                                0.56), PlaceholderText = tostring(data.SearchPlaceholder
+                                or "Search..."), PlaceholderColor3 = color3FromRGB(198, 198, 198), ZIndex = 5}))
+                        local ScrollingFrame = createInstance("ScrollingFrame", {Parent = fieldValue2, Name = "CanvasScroll",
+                                Active = true, BackgroundTransparency = 1, CanvasSize = uDim2New(), ElasticBehavior = scrollingFrame.ElasticBehavior.Never, ScrollBarImageColor3 = copy.ScrollBarColor, ScrollBarImageTransparency = copy.ScrollBarTransparency, ScrollingDirection = scrollingFrame.ScrollingDirection.Y, ZIndex = 5})
+                        local Frame3 = createInstance("Frame", {Parent = fieldValue2, Name = "CanvasDock",
+                                BackgroundTransparency = 1, Visible = false, ZIndex = 7})
+                        local Frame4 = createInstance("Frame", {Parent = fieldValue2, Name = "CanvasDockRule",
+                                BackgroundColor3 = color3FromRGB(170, 174, 184), Visible = false, ZIndex = 7})
+                        local Frame5 = createInstance("Frame", {Parent = ScrollingFrame, Name = "CanvasRoot",
+                                AutomaticSize = scrollingFrame.AutomaticSize.Y, BackgroundTransparency = 1, Size = uDim2New(1, 0, 0,
+                                0), ZIndex = 6})
+
+                        if tostring(data.Layout or "stack"):lower() ~= "free" then
+                                createInstance("UIListLayout", {Parent = Frame5, Name = "CanvasLayout",
+                                        SortOrder = scrollingFrame.SortOrder.LayoutOrder})
+                        end
+
+                        local richView = {sty = copy, root = Frame5, el = {}, mods = {}, pp = {}, pa = {}, rh = {}}
+                        richView.m = {Unit = 16, TextSize = 13, LineHeight = copy.LineHeight, Font = font, Align = left, Width = 0}
+                        richView.query = ""
+                        richView.du = 0
+                        richView.dg = 0.22
+                        richView.dr = true
+                        richView.dirty = true
+                        richView.alive = true
+
+                        richView.q = function(input2)
+                                richView.pa[#richView.pa + 1] = input2
+                                richView.dirty = true
+                        end
+
+                        local function tryCall5()
+                                for index3 = #richView.pp, 1, -1 do
+                                        local tempValue5 = richView.pp[index3]
+
+                                        if ((tempValue5[1].Parent == nil) and tempValue5[2]) and (tempValue5[2].Parent ~= nil) then
+                                                if pcall(function()
+                                                        tempValue5[1].Parent = tempValue5[2]
+                                                end) then
+                                                        table.remove(richView.pp, index3)
+                                                end
+                                        elseif tempValue5[1].Parent ~= nil then
+                                                table.remove(richView.pp, index3)
+                                        end
+                                end
+                        end
+
+                        local tempValue6
+
+                        local function checkState3()
+                                local parent, tempValue5 = fieldValue.Parent, fieldValue.AbsoluteSize.X
+
+                                if parent then
+                                        if tempValue5 <= 0 then
+                                                return
+                                        end
+                                else
+                                        return
+                                end
+
+                                local tempValue7 = (parent.AbsoluteSize.X * factor5) / math.max(amount5, 0.001)
+                                tempValue7 = if tempValue7 <= 0 then tempValue5 else tempValue7
+                                local tempValue8, tempValue9 = (tempValue7 / 10) * 0.85, tempValue5 * 0.025
+                                local tempValue10, textSize, lineHeight = (tempValue8 * 0.2) * toNumberOrDefault(copy.Padding,
+                                        1), math.max(8, math.floor(((tempValue7 * 0.026) * toNumberOrDefault(copy.TextScale,
+                                        1)) + 0.5)), math.max(0.8, toNumberOrDefault(copy.LineHeight, 1.16))
+                                local unit, width, fieldValue4 = textSize * lineHeight, math.max(1,
+                                        tempValue5 - (tempValue9 * 2)), richView.m
+                                fieldValue4.TextSize, fieldValue4.LineHeight, fieldValue4.Unit, fieldValue4.Width, fieldValue4.Font, fieldValue4.Align = textSize, lineHeight, unit, width, tryCall3(copy.Font)
+                                        or font, alignments[tostring(copy.Alignment):lower()] or left
+                                fieldValue2.BackgroundColor3, fieldValue2.BackgroundTransparency, fieldValue2.ClipsDescendants = tryCall4(copy.BackgroundColor,
+                                        color3FromRGBResult2), clampValue2(copy.BackgroundTransparency, 0.5), copy.ClipContent ~= false
+
+                                if uiStroke then
+                                        pcall(function()
+                                                uiStroke.StrokeSizingMode = scrollingFrame.StrokeSizingMode.FixedSize
+                                        end)
+
+                                        uiStroke.Color, uiStroke.Transparency, uiStroke.Thickness = tryCall4(copy.StrokeColor,
+                                                color3FromRGBResult2), clampValue2(copy.StrokeTransparency, 0), math.max(1, tempValue8 * toNumberOrDefault(copy.StrokeScale,
+                                                0.05))
+                                end
+
+                                parent = tempValue2 and (tempValue ~= "")
+                                local currentCount, tempValue11, scrollingEnabled = ((parent or visible) and tempValue8)
+                                        or 0, tempValue5 * 0.28, tempValue5 * 0.845
+                                Frame2.Visible = visible
+
+                                if visible then
+                                        Frame2.Size, Frame2.Position = uDim2FromOffset(tempValue11,
+                                                tempValue8 * 0.62), uDim2FromOffset(scrollingEnabled, tempValue8 / 2)
+                                end
+
+                                local tempValue12, visible2, tempValue13 = (tempValue8 * 0.64) * toNumberOrDefault(copy.TitleScale,
+                                        1), (visible and ((scrollingEnabled - (tempValue11 / 2)) - tempValue9)) or (tempValue5 - tempValue9)
+                                tempValue13, fieldValue3.Visible = tempValue, parent
+                                fieldValue3.Text = tempValue13
+                                fieldValue3.Position, fieldValue3.Size = uDim2FromOffset(tempValue9,
+                                        (tempValue8 - tempValue12) / 2), uDim2FromOffset(math.max(1, visible2 - tempValue9), tempValue12)
+                                fieldValue3.TextXAlignment = (visible and left) or fieldValue4.Align
+                                lineHeight = ((currentCount > 0) and currentCount) or tempValue10
+
+                                if richView.du > 0 then
+                                        scrollingEnabled, parent, currentCount = math.floor((richView.du * unit) + 0.5), math.floor((toNumberOrDefault(richView.dg,
+                                                0.22) * unit) + 0.5), ((richView.dr ~= false) and math.max(1, math.floor((textSize * 0.12) + 0.5))) or 0
+                                        Frame3.Visible, Frame3.Position, Frame3.Size = true, uDim2FromOffset(tempValue9,
+                                                lineHeight), uDim2FromOffset(width, scrollingEnabled)
+                                        Frame4.Visible = currentCount > 0
+
+                                        if currentCount > 0 then
+                                                Frame4.BackgroundColor3, Frame4.Position, Frame4.Size = tryCall4(richView.drc, color3FromRGB(170, 174,
+                                                        184)), uDim2FromOffset(tempValue9, (lineHeight + scrollingEnabled) + parent), uDim2FromOffset(width, currentCount)
+                                                lineHeight += (scrollingEnabled + (parent * 2)) + currentCount
+                                        else
+                                                lineHeight += scrollingEnabled + parent
+                                        end
+                                else
+                                        Frame3.Visible = false
+                                        Frame4.Visible = false
+                                end
+
+                                tryCall5()
+
+                                for _, item in ipairs(richView.rh) do
+                                        tryCall2(item, tempValue6, width, unit)
+                                end
+
+                                tryCall5()
+
+                                for _, item in ipairs(richView.el) do
+                                        pcall(item.Apply)
+                                end
+
+                                tempValue5 = richView.ch or math.ceil(Frame5.AbsoluteSize.Y)
+                                tempValue5 = math.max(tempValue5, math.ceil(unit * math.max(0, toNumberOrDefault(copy.MinLines, 0))), 1)
+                                visible2 = math.max(0, math.floor(toNumberOrDefault(copy.MaxLines, 0)))
+                                tempValue13 = math.min(tempValue5, ((visible2 > 0) and math.ceil(unit * visible2)) or (1 / 0))
+                                scrollingEnabled = tempValue5 > (tempValue13 + 0.5)
+                                ScrollingFrame.Position, ScrollingFrame.Size, ScrollingFrame.CanvasSize = uDim2FromOffset(tempValue9,
+                                        lineHeight), uDim2FromOffset(width, tempValue13), uDim2FromOffset(0, tempValue5)
+                                ScrollingFrame.ScrollBarThickness = (scrollingEnabled and math.max(2,
+                                        math.floor((tempValue7 * 0.006) + 0.5))) or 0
+                                ScrollingFrame.ScrollingEnabled = scrollingEnabled
+                                ScrollingFrame.ScrollBarImageColor3, ScrollingFrame.ScrollBarImageTransparency = tryCall4(copy.ScrollBarColor,
+                                        color3FromRGBResult), clampValue2(copy.ScrollBarTransparency, 0)
+                                tempValue12 = math.max(1, math.ceil((lineHeight + tempValue13) + tempValue10))
+                                fieldValue2.Size = uDim2New(1, 0, 0, tempValue12)
+                                fieldValue.Size = uDim2New(factor5, 0, 0, tempValue12 + math.ceil((tempValue8 * 0.15) / 0.85))
+                        end
+
+                        tempValue4.fit = function()
+                                richView.dirty = true
+                        end
+
+                        local amount4 = -1
+                        local amount7 = -1
+
+                        trackConnection(fieldValue:GetPropertyChangedSignal("AbsoluteSize"), function()
+                                if math.abs(fieldValue.AbsoluteSize.X - amount4) >= 0.5 then
+                                        amount4 = fieldValue.AbsoluteSize.X
+                                        richView.dirty = true
+                                end
+                        end)
+
+                        trackConnection(Frame5:GetPropertyChangedSignal("AbsoluteSize"), function()
+                                if math.abs(Frame5.AbsoluteSize.Y - amount7) >= 0.5 then
+                                        amount7 = Frame5.AbsoluteSize.Y
+                                        richView.dirty = true
+                                end
+                        end)
+
+                        doStep9(function()
+                                richView.dirty = true
+                        end)
+
+                        trackConnection(doStepResult:GetPropertyChangedSignal("Text"), function()
+                                if richView.query ~= doStepResult.Text then
+                                        richView.query = doStepResult.Text
+
+                                        if type(data.OnSearch) == "function" then
+                                                pcall(data.OnSearch, tempValue6, richView.query)
+                                        end
+
+                                        richView.dirty = true
+                                end
+                        end)
+
+                        trackConnection(doStepResult.Focused, function()
+                                animate(Frame2, {BackgroundTransparency = 0.42}, 0.16)
+                        end)
+
+                        trackConnection(doStepResult.FocusLost, function()
+                                animate(Frame2, {BackgroundTransparency = 0.6}, 0.16)
+                        end)
+
+                        local bestValue, bestValue2, tempValue14, startTime = 0.2, 0, true, 0
+
+                        local trackConnectionResult, handlers2 = trackConnection(RunService.Heartbeat, function(deltaTime)
+                                if richView.alive then
+                                        if fieldValue.Parent == nil then
+                                                return
+                                        end
+                                else
+                                        return
+                                end
+
+                                bestValue += deltaTime
+
+                                if bestValue >= 0.2 then
+                                        bestValue = 0
+                                        tempValue14 = checkState7(fieldValue)
+                                end
+
+                                if #richView.pp > 0 then
+                                        tryCall5()
+                                        richView.dirty = true
+                                end
+
+                                if #richView.pa > 0 then
+                                        for _, item in ipairs(richView.pa) do
+                                                pcall(item.Apply)
+                                        end
+
+                                        table.clear(richView.pa)
+                                        richView.dirty = true
+                                end
+
+                                if richView.dirty then
+                                        if tempValue14 then
+                                                if (os.clock() - startTime) >= 0.1 then
+                                                        richView.dirty = false
+                                                        startTime = os.clock()
+                                                        local callResult, result = pcall(checkState3)
+
+                                                        if not (callResult) then
+                                                                richView.dirty = true
+
+                                                                if not (richView.warned) then
+                                                                        richView.warned = true
+                                                                        warn("[Chilli] canvas " .. tostring(result))
+                                                                        items.errs[#items.errs + 1] = "canvas " .. tostring(result)
+                                                                end
+                                                        end
+                                                end
+                                        end
+                                end
+
+                                if tempValue14 and (#richView.mods > 0) then
+                                        bestValue2 += deltaTime
+
+                                        if bestValue2 >= 0.05 then
+                                                local bestValue2Ref = bestValue2
+                                                bestValue2 = 0
+
+                                                for _, mod in ipairs(richView.mods) do
+                                                        pcall(mod.Step, bestValue2Ref)
+                                                end
+                                        end
+                                end
+                        end), {Root = function()
+                                return Frame5
+                        end, Dock = function()
+                                return Frame3
+                        end, Scroll = function()
+                                return ScrollingFrame
+                        end, Plate = function()
+                                return fieldValue2
+                        end, SetDock = function(input2, value)
+                                richView.du = math.max(0, toNumberOrDefault(input2, 0))
+
+                                if type(value) == "table" then
+                                        if value.Gap ~= nil then
+                                                richView.dg = toNumberOrDefault(value.Gap, 0.22)
+                                        end
+
+                                        if value.Divider ~= nil then
+                                                richView.dr = value.Divider ~= false
+                                        end
+
+                                        if value.DividerColor ~= nil then
+                                                richView.drc = value.DividerColor
+                                        end
+                                end
+
+                                richView.dirty = true
+                        end, Unit = function()
+                                return richView.m.Unit
+                        end, Width = function()
+                                return richView.m.Width
+                        end, TextSize = function()
+                                return richView.m.TextSize
+                        end, LineHeight = function()
+                                return richView.m.LineHeight
+                        end, Font = function()
+                                return richView.m.Font
+                        end, Query = function()
+                                return richView.query
+                        end, Metrics = function()
+                                local fieldValue4 = richView.m
+                                return {Unit = fieldValue4.Unit, Width = fieldValue4.Width, TextSize = fieldValue4.TextSize,
+                                        LineHeight = fieldValue4.LineHeight, Font = fieldValue4.Font}
+                        end, SetContentHeight = function(input2)
+                                richView.ch = tonumber(input2)
+                                richView.dirty = true
+                        end, SetContentLines = function(input2)
+                                local number = tonumber(input2)
+                                richView.ch = (number and math.ceil(number * richView.m.Unit)) or nil
+                                richView.dirty = true
+                        end, Invalidate = function()
+                                richView.dirty = true
+                        end, Clear = function()
+                                for index3 = #richView.el, 1, -1 do
+                                        local tempValue5 = richView.el[index3]
+                                        richView.el[index3] = nil
+                                        index3 = tempValue5.Get()
+
+                                        if index3 then
+                                                index3:Destroy()
+                                        end
+                                end
+
+                                table.clear(richView.mods)
+                                table.clear(richView.pp)
+                                table.clear(richView.pa)
+                                richView.dirty = true
+                        end, OnResize = function(value)
+                                if type(value) == "function" then
+                                        richView.rh[#richView.rh + 1] = value
+                                end
+                        end, SetStyle = function(value)
+                                for key, value2 in next, ((type(value) == "table") and value) or {}, nil do
+                                        if state3[key] ~= nil then
+                                                copy[key] = value2
+                                        end
+                                end
+
+                                richView.dirty = true
+                        end, GetStyle = function()
+                                return table.clone(copy)
+                        end, SetTitle = function(input2)
+                                tempValue = tostring(input2 or "")
+                                richView.dirty = true
+                        end, SetSearchEnabled = function(input2)
+                                visible = input2 == true
+                                richView.dirty = true
+                        end, SetSearchQuery = function(input2)
+                                richView.query = tostring(input2 or "")
+                                doStepResult.Text = richView.query
+                                richView.dirty = true
+                        end, Attach = function(value, input2)
+                                if typeof(value) == "Instance" then
+                                        doStep19(richView, value, checkState8(richView, input2))
+                                end
+
+                                return value
+                        end}
+
+                        handlers2.Redraw = handlers2.Invalidate
+
+                        for key, handler in next, handlers, nil do
+                                handlers2[key] = function(value)
+                                        return handler(richView, ((type(value) == "table") and value) or {})
+                                end
+                        end
+
+                        local setmetatableFn2, entries = setmetatable, {__index = function(_, keyName)
+                                local handler = handlers2[keyName]
+                                if handler then
+                                        return function(unused, ...)
+                                                return handler(...)
+                                        end
+                                end
+                        end}
+
+                        tempValue6 = setmetatableFn2({}, entries)
+
+                        if type(data.Build) == "function" then
+                                local build = data.Build
+
+                                table.insert(richView.rh, 1, function(input2, input3, input4)
+                                        if build then
+                                                local build2 = build
+                                                build = nil
+                                                tryCall2(build2, input2, input3, input4)
+                                        end
+                                end)
+                        end
+
+                        return {Surface = tempValue6, row = tempValue4, Name = data.Name, GetSurface = function(unused)
+                                return tempValue6
+                        end, SetTitle = function(_, input2)
+                                handlers2.SetTitle(input2)
+                        end, SetStyle = function(_, input2)
+                                handlers2.SetStyle(input2)
+                        end, SetSearchQuery = function(_, input2)
+                                handlers2.SetSearchQuery(input2)
+                        end, GetSearchQuery = function(unused)
+                                return richView.query
+                        end, Destroy = function(unused)
+                                richView.alive = false
+                                trackConnectionResult:Disconnect()
+
+                                for index3, item in ipairs(richView.el) do
+                                        index3 = item.Get()
+
+                                        if index3 then
+                                                index3:Destroy()
+                                        end
+                                end
+
+                                tempValue4.h:Destroy()
+                        end}
+                end
+
+                widgetSpecs.CreateCanvas = function(input, input2)
+                        return input:Surface(input2)
+                end
+
+                widgetSpecs.CreateText = function(input, data)
+                        return input:Text(data.Name, data.Text)
+                end
+
+                widgetSpecs.CreateToggle = function(input, data)
+                        return input:Toggle(data.Name, data.Default, data.Callback, data.Note)
+                end
+
+                widgetSpecs.CreateDropdown = function(input, data)
+                        return input:Dropdown(data.Name, data.Options, data.Default, data.Callback, data.Multi, data.Note)
+                end
+        end
+
+        return items
+end
+
 -- ==== 02_sae : main feature script - owns ctx, then dispatches the runStep sections below ====
 local function loadAllSections()
         local ctx = {}
@@ -1927,6 +8147,10 @@ local function loadAllSections()
 
                 for _, connection in ipairs(connections) do
                         pcall(connection.Disconnect, connection)
+                end
+
+                if ctx.chilli and ctx.chilli.window then
+                        pcall(ctx.chilli.window.Destroy, ctx.chilli.window)
                 end
 
                 pcall(mainWindow.Destroy, mainWindow)
@@ -3105,6 +9329,35 @@ local function loadAllSections()
                         cache2 = itemCore:sub(1, 1) == "+"
                         itemCore = (cache2 and itemCore:sub(2)) or itemCore
                         cacheCore[itemCore] = index:Section(itemCore, cache2)
+                end
+        end
+
+        -- ==== Chilli-style Egg Predictor window (embedded, same UI as Chilli Hub) ====
+        ctx.chilli = {}
+        do
+                local okChilli, errChilli = pcall(function()
+                        local chilliUi = createChilliLibrary()
+                        local chilliWindow = chilliUi.Window({Title = "Pilat 7.0",
+                                Game = ((gameRef.GameId ~= 0) and gameRef.GameId) or gameRef.PlaceId,
+                                Key = Enum.KeyCode.RightControl})
+                        local chilliTab = chilliWindow:Tab("Predictor", nil)
+                        ctx.chilli.window = chilliWindow
+                        ctx.chilli.tab = chilliTab
+                        ctx.chilli.page = chilliTab.page
+                        ctx.chilli.egg = chilliTab:Section("Egg Predictor", true)
+                        ctx.chilli.fuse = chilliTab:Section("Fuse Predictor", false)
+                        chilliWindow:State("Open On Launch", false)
+
+                        ctx.chilli.open = function()
+                                chilliWindow:Show(true)
+                                pcall(chilliWindow.Select, chilliWindow, chilliTab)
+                                return true
+                        end
+                end)
+
+                if not okChilli then
+                        warn("[Pilat] Chilli predictor window failed: " .. tostring(errChilli))
+                        ctx.chilli = {}
                 end
         end
 
@@ -14117,13 +20370,13 @@ local function loadAllSections()
                 end
 
                 local ReplicatedStorage2 = ReplicatedStorage
-                local eggPredictor = cacheCore["Egg Predictor"]
-                local fusePredictor, statePred = cacheCore["Fuse Predictor"], {}
-                statePred.Page = entries4.Predictor.page
+                local eggPredictor = ctx.chilli.egg or cacheCore["Egg Predictor"]
+                local fusePredictor, statePred = ctx.chilli.fuse or cacheCore["Fuse Predictor"], {}
+                statePred.Page = ctx.chilli.page or entries4.Predictor.page
                 local state3 = {};
 
                 (function()
-                        state3.Ready = type(eggPredictor.CreateCanvas) == "function"
+                        state3.Ready = (ctx.chilli.egg ~= nil) and (type(ctx.chilli.egg.CreateCanvas) == "function")
                         state3.Bullet = utf8.char(8226)
                         state3.Color = {Text = "#FFFFFF", Income = "#4DFF7A", Clock = "#FFC24D", Ready = "#4DFF7A",
                                 Growing = "#FFC24D", Inventory = "#7FD8FF", Weight = "#CDE7FF", Scale = "#FFDF8A", Separator = "#7A8CC0", Hint = "#9FB8FF"}
@@ -18831,8 +25084,8 @@ local function loadAllSections()
                         return HttpService:GenerateGUID(false):gsub("-", ""):sub(1, 14)
                 end
 
-                local eggPredictor = cacheCore["Egg Predictor"]
-                local fusePredictor = cacheCore["Fuse Predictor"];
+                local eggPredictor = ctx.chilli.egg or cacheCore["Egg Predictor"]
+                local fusePredictor = ctx.chilli.fuse or cacheCore["Fuse Predictor"];
                 ({}).Page = entries4.Predictor.page
                 local position
                 local doStep9ResultEggs = doStep9({name = "GoTo", mover = true, gap = 0.5, pri = 0, soft = true})
@@ -20306,20 +26559,98 @@ local function loadAllSections()
 
                         fieldValue.RequestEggRefresh = requestEggRefresh
 
-                        -- Egg Predictor (pilatSae approach: paragraph + button, not toggle/canvas)
-                        eggPredictor:CreateText({Name = "Egg Predictor", Text = "Egg cards for every egg you own (placed and in your bag): the egg, its name, rarity and mutations, then the weight in kg (yellow) above the money per second (green) it gives once hatched."})
-                        eggPredictor:Button("Open Egg Predictor", "Open Egg Predictor", function()
-                                -- Use pilatPanels.openPredictor() exactly like pilatSae does
-                                local genv = getgenv and getgenv() or _G
-                                local panels = genv.PilatPanels
-                                if panels and type(panels.openPredictor) == "function" then
-                                        panels.openPredictor()
-                                elseif genv.__PilatV7Panels and type(genv.__PilatV7Panels.openPredictor) == "function" then
-                                        genv.__PilatV7Panels.openPredictor()
-                                else
-                                        pilatV4Config.EggPredictUI = not pilatV4Config.EggPredictUI
+                        if fieldValue.Ready then
+                                eggPredictor:CreateDropdown({Name = "Sort By", Options = nameList2, Default = nameList2[1],
+                                        Callback = function(sort)
+                                        if table.find(nameList2, sort) then
+                                                state4.Sort = sort
+                                                requestEggRefresh()
+                                        end
+                                end})
+
+                                eggPredictor:CreateToggle({Name = "Preview Card", Default = true, Callback = function(input)
+                                        state4.Spotlight = input == true
+                                        requestEggRefresh()
+                                end})
+
+                                eggPredictor:CreateCanvas({Name = "Egg Predictor", Search = true, SearchPlaceholder = "Search eggs...",
+                                        Layout = "free", OnSearch = function()
+                                        requestEggRefresh()
+                                end, Style = {TextScale = 0.84, LineHeight = 1.1, MinLines = 16, MaxLines = 34,
+                                        BackgroundTransparency = 0.5, ScrollBarColor = Color3.fromRGB(170, 174,
+                                        184), TextColor = Color3.fromRGB(255, 255, 255), TextStrokeTransparency = 0.7}, Build = function(input)
+                                        doStep20(input)
+                                        requestEggRefresh()
+                                end})
+
+                                local RunService2 = ctx.RunService
+
+                                trackConnection(RunService2.Heartbeat, function(deltaTime)
+                                        local tempValue8 = fieldValue.PageVisible()
+                                        local Frame5 = (tempValue8 and (Frame ~= nil)) and fieldValue.IsShown(Frame)
+
+                                        if Frame5 then
+                                                if not (tempValue5) then
+                                                        tempValue2 = true
+                                                end
+                                        end
+
+                                        tempValue5 = Frame5
+                                        if not (tempValue8) then
+                                                return
+                                        end
+
+                                        if Frame5 then
+                                                if tempValue7 then
+                                                        if tempValue7.Rays then
+                                                                if tempValue7.Frame.Visible then
+                                                                        tempValue7.RaysClock += deltaTime
+
+                                                                        if tempValue7.RaysClock >= 0.05 then
+                                                                                tempValue7.Rays.Rotation = (tempValue7.Rays.Rotation + (tempValue7.RaysClock * 6)) % 360
+                                                                                tempValue7.RaysClock = 0
+                                                                        end
+                                                                end
+                                                        end
+                                                end
+                                        end
+
+                                        bestValue += deltaTime
+
+                                        if (Frame5 and tempValue2) or (bestValue >= amount) then
+                                                bestValue = 0
+
+                                                if Frame5 then
+                                                        tempValue2 = false
+                                                        pcall(scanTable9)
+                                                end
+
+                                                if fieldValue.RefreshFuse then
+                                                        pcall(fieldValue.RefreshFuse)
+                                                end
+                                        end
+
+                                        if fieldValue.PlaceFuse then
+                                                fieldValue.PlaceFuse()
+                                        end
+                                end)
+                        else
+                                eggPredictor:CreateText({Name = "Egg Predictor", Text = "Egg Predictor window could not be created."})
+                        end
+
+                        -- Pilat main window: short note + button that opens the predictor window
+                        do
+                                local pilatEggSection = cacheCore["Egg Predictor"]
+
+                                if pilatEggSection and (pilatEggSection ~= eggPredictor) then
+                                        pilatEggSection:CreateText({Name = "Egg Predictor", Text = "Egg cards for every egg you own (placed and in your bag): the egg, its name, rarity and mutations, then the weight in kg (yellow) above the money per second (green) it gives once hatched. Opens in its own window (RightCtrl also toggles it)."})
+                                        pilatEggSection:Button("Open Egg Predictor", "Open Egg Predictor", function()
+                                                if ctx.chilli and ctx.chilli.open then
+                                                        ctx.chilli.open()
+                                                end
+                                        end, "Opens the egg predictor window. Sort by value, rarity or time left, filter ready / growing / in bag, and search by name.")
                                 end
-                        end, "Opens the egg card window. Sort by value, rarity, weight or time left, and filter ready / growing / in bag.")
+                        end
                 end)();
 
                 (function()
@@ -42900,6 +49231,10 @@ local function loadAllSections()
                 end, "Bat rivals away from dropped eggs while sniping.")
             end
         end)
+
+        if ctx.chilli and ctx.chilli.window then
+                pcall(function() ctx.chilli.window:Finish() end)
+        end
 
         mainWindow:Finish()
 
