@@ -18161,6 +18161,57 @@ local function loadAllSections()
                         return out
                 end
 
+                -- FIX: use the steal panel's own egg list (ctx.state.allEggs = same scan Auto Steal uses),
+                -- so the checker shows exactly what the steal panel sees. Old scan stays as fallback.
+                local scanLegacy = scan
+                scan = function()
+                        local okA, list = pcall(function() return ctx.state.allEggs() end)
+                        if not (okA and type(list) == "table") then
+                                local out = scanLegacy()
+                                if checker.dbg then checker.dbg.via = "legacy:" .. tostring(not okA and list or "no list") end
+                                return out
+                        end
+                        local byUid = {}
+                        local okR, records = pcall(ctx.readFieldEggs)
+                        if okR and type(records) == "table" then
+                                for key, rec in pairs(records) do
+                                        if type(rec) == "table" then byUid[tostring(rec.Uid or key)] = rec end
+                                end
+                        end
+                        local out = {}
+                        for _, f in ipairs(list) do
+                                if type(f) == "table" and f.Uid then
+                                        local d = f.cat and dirOf(f.cat)
+                                        local rar = d and d.Rarity
+                                        local scale = tonumber(f.s) or 1
+                                        out[#out + 1] = {
+                                                uid = f.Uid,
+                                                name = f.n or f.Name or tostring(f.cat or "Egg"),
+                                                rarity = (rar and (rar.DisplayName or rar._id)) or "?",
+                                                rnum = tonumber(f.r) or (rar and tonumber(rar.RarityNumber or rar.Rank)) or 0,
+                                                color = (rar and typeof(rar.Color) == "Color3") and rar.Color or C.text,
+                                                area = tostring(f.a or "?"),
+                                                rate = tonumber(f.v) or 0,
+                                                kg = kgOf(f.cat, scale),
+                                                scale = scale,
+                                                muts = type(f.m) == "table" and f.m or {},
+                                                icon = iconOf(d, byUid[tostring(f.Uid)]),
+                                        }
+                                end
+                        end
+                        if #out == 0 then
+                                local legacy = scanLegacy()
+                                if #legacy > 0 then
+                                        if checker.dbg then checker.dbg.via = "legacy" end
+                                        return legacy
+                                end
+                        end
+                        checker.dbg = checker.dbg or {records = 0, noCF = 0, state = 0, carried = 0, first = 0}
+                        checker.dbg.via = "steal"
+                        checker.dbg.stealN = #list
+                        return out
+                end
+
                 -- ===== queue picked eggs into the steal queue (same as HUD "Steal now") =====
                 local function queueEggs(uids)
                         local state = ctx.state
@@ -18645,6 +18696,9 @@ local function loadAllSections()
                                         checker.emptyLbl.Text = "Scan error: " .. tostring(eggs):sub(1, 120)
                                         checker.emptyLbl.Visible = true
                                 end
+                                if checker.headLbl then
+                                        checker.headLbl.Text = "ERR: " .. tostring(eggs):sub(1, 70)
+                                end
                                 return
                         end
 
@@ -18722,6 +18776,14 @@ local function loadAllSections()
                         checker.raritySeg.set(checker.rarity)
                         checker.sortSeg.set(checker.sort)
                         checker.paintRows()
+                        -- FIX: show the diagnosis in the header line (always visible), not only in the empty label
+                        checker.runs = (checker.runs or 0) + 1
+                        if #eggs == 0 and checker.dbg and checker.headLbl then
+                                local d = checker.dbg
+                                checker.headLbl.Text = d.err and ("ERR read: " .. tostring(d.err):sub(1, 60))
+                                        or string.format("#%d %s steal-list %s | recs %d nopos %d claimed %d held %d first %d",
+                                                checker.runs, tostring(d.via), tostring(d.stealN), d.records, d.noCF, d.state, d.carried, d.first)
+                        end
                 end
 
                 local function openChecker()
