@@ -24310,12 +24310,25 @@ local function loadAllSections()
                         return nil
                 end
 
+                local iconCache = setmetatable({}, {__mode = "k"})
+
                 local function iconOf(d, rec)
-                        -- FIX: show the EGG picture (same source as the steal panel), not the pet's
+                        -- FIX: show the EGG picture (same source as the steal panel), not the pet's.
+                        -- EggIcon can yield, so it runs in its own thread and never blocks the scan.
                         if rec then
-                                local okI, res = pcall(function() return ctx.modules.Rec.EggIcon(rec) end)
-                                local img = okI and normImage(res)
-                                if img then return img end
+                                local cached = iconCache[rec]
+                                if cached == nil then
+                                        iconCache[rec] = false
+                                        task.spawn(function()
+                                                local okI, res = pcall(function() return ctx.modules.Rec.EggIcon(rec) end)
+                                                local img = okI and normImage(res)
+                                                if img then
+                                                        iconCache[rec] = img
+                                                end
+                                        end)
+                                elseif cached then
+                                        return cached
+                                end
                         end
                         if type(d) ~= "table" then
                                 return nil
@@ -24442,69 +24455,72 @@ local function loadAllSections()
                         return out
                 end
 
-                -- FIX: use the steal panel's own egg list (ctx.state.allEggs = same scan Auto Steal uses),
-                -- so the checker shows exactly what the steal panel sees. Old scan stays as fallback.
+                -- FIX v2: Refresh must ALWAYS rescan and ALWAYS show something.
+                -- Step 1 reads the field directly (instant, no yielding); step 2 enriches with the steal panel's list
+                -- (exact rates). Step 1 is published in checker.partial, so a hung step 2 can never blank the window.
                 local scanLegacy = scan
                 scan = function()
-                        local okA, list = pcall(function() return ctx.state.allEggs() end)
-                        if not (okA and type(list) == "table") then
-                                local out = scanLegacy()
-                                if checker.dbg then checker.dbg.via = "legacy:" .. tostring(not okA and list or "no list") end
-                                return out
-                        end
-                        local byUid = {}
-                        local okR, records = pcall(ctx.readFieldEggs)
-                        if okR and type(records) == "table" then
-                                for key, rec in pairs(records) do
-                                        if type(rec) == "table" then byUid[tostring(rec.Uid or key)] = rec end
-                                end
-                        end
-                        local out = {}
-                        for _, f in ipairs(list) do
-                                if type(f) == "table" and f.Uid then
-                                        local d = f.cat and dirOf(f.cat)
-                                        local rar = d and d.Rarity
-                                        local scale = tonumber(f.s) or 1
-                                        out[#out + 1] = {
-                                                uid = f.Uid,
-                                                name = f.n or f.Name or tostring(f.cat or "Egg"),
-                                                rarity = (rar and (rar.DisplayName or rar._id)) or "?",
-                                                rnum = tonumber(f.r) or (rar and tonumber(rar.RarityNumber or rar.Rank)) or 0,
-                                                color = (rar and typeof(rar.Color) == "Color3") and rar.Color or C.text,
-                                                area = tostring(f.a or "?"),
-                                                rate = tonumber(f.v) or 0,
-                                                kg = kgOf(f.cat, scale),
-                                                scale = scale,
-                                                muts = type(f.m) == "table" and f.m or {},
-                                                icon = iconOf(d, byUid[tostring(f.Uid)]),
-                                        }
-                                end
-                        end
-                        if #out == 0 then
-                                local legacy = scanLegacy()
-                                if #legacy > 0 then
-                                        if checker.dbg then checker.dbg.via = "legacy" end
-                                        return legacy
-                                end
-                        end
-                        local seen = {}
-                        for _, e in ipairs(out) do
-                                seen[tostring(e.uid)] = true
-                        end
-                        local added = 0
-                        local okL, legacyList = pcall(scanLegacy)
-                        if okL and type(legacyList) == "table" then
-                                for _, e in ipairs(legacyList) do
-                                        if not seen[tostring(e.uid)] then
-                                                seen[tostring(e.uid)] = true
+                        local out, seen = {}, {}
+                        checker.partial = out
+                        checker.dbg = nil
+                        local okL, legacy = pcall(scanLegacy)
+                        local dbg = checker.dbg or {records = 0, noCF = 0, state = 0, carried = 0, first = 0}
+                        if okL and type(legacy) == "table" then
+                                for _, e in ipairs(legacy) do
+                                        local k = tostring(e.uid)
+                                        if not seen[k] then
+                                                seen[k] = e
                                                 out[#out + 1] = e
-                                                added += 1
                                         end
                                 end
+                        elseif not okL then
+                                dbg.err = tostring(legacy)
                         end
-                        checker.dbg = checker.dbg or {records = 0, noCF = 0, state = 0, carried = 0, first = 0}
-                        checker.dbg.via = "steal+" .. tostring(added)
-                        checker.dbg.stealN = #list
+                        dbg.via = "field"
+                        checker.dbg = dbg
+
+                        local okA, list = pcall(function() return ctx.state.allEggs() end)
+                        if okA and type(list) == "table" then
+                                local byUid = {}
+                                local okR, records = pcall(ctx.readFieldEggs)
+                                if okR and type(records) == "table" then
+                                        for key, rec in pairs(records) do
+                                                if type(rec) == "table" then byUid[tostring(rec.Uid or key)] = rec end
+                                        end
+                                end
+                                for _, f in ipairs(list) do
+                                        if type(f) == "table" and f.Uid then
+                                                local d = f.cat and dirOf(f.cat)
+                                                local rar = d and d.Rarity
+                                                local scale = tonumber(f.s) or 1
+                                                local ent = {
+                                                        uid = f.Uid,
+                                                        name = f.n or f.Name or tostring(f.cat or "Egg"),
+                                                        rarity = (rar and (rar.DisplayName or rar._id)) or "?",
+                                                        rnum = tonumber(f.r) or (rar and tonumber(rar.RarityNumber or rar.Rank)) or 0,
+                                                        color = (rar and typeof(rar.Color) == "Color3") and rar.Color or C.text,
+                                                        area = tostring(f.a or "?"),
+                                                        rate = tonumber(f.v) or 0,
+                                                        kg = kgOf(f.cat, scale),
+                                                        scale = scale,
+                                                        muts = type(f.m) == "table" and f.m or {},
+                                                        icon = iconOf(d, byUid[tostring(f.Uid)]),
+                                                }
+                                                local old = seen[tostring(f.Uid)]
+                                                if old then
+                                                        ent.icon = ent.icon or old.icon
+                                                        for k2, v2 in pairs(ent) do old[k2] = v2 end
+                                                else
+                                                        seen[tostring(f.Uid)] = ent
+                                                        out[#out + 1] = ent
+                                                end
+                                        end
+                                end
+                                dbg.via = "field+steal"
+                                dbg.stealN = #list
+                        else
+                                dbg.via = "field (steal list: " .. tostring(list):sub(1, 40) .. ")"
+                        end
                         return out
                 end
 
@@ -24773,14 +24789,14 @@ local function loadAllSections()
                         end)
                         checker.raritySeg = makeSeg(frame, UDim2.fromOffset(14, 42), UDim2.new(1, -28, 0, 28), rarOpts, function(v)
                                 checker.rarity = v
-                                checker.refresh()
+                                checker.refresh(true)
                         end, true)
 
                         -- sort + clear
                         checker.sortSeg = makeSeg(frame, UDim2.fromOffset(14, 76), UDim2.new(1, -96, 0, 28),
                                 {{"value", "Best value"}, {"weight", "Best weight"}, {"rarity", "Rarity"}}, function(v)
                                         checker.sort = v
-                                        checker.refresh()
+                                        checker.refresh(true)
                                 end, false)
                         makeButton(frame, "Clear", UDim2.new(1, -78, 0, 76), UDim2.fromOffset(64, 28), false, function()
                                 checker.picked = {}
@@ -24845,8 +24861,8 @@ local function loadAllSections()
                         checker.emptyLbl.Visible = false
 
                         -- bottom bar
-                        makeButton(frame, "Refresh", UDim2.new(0, 14, 1, -46), UDim2.fromOffset(96, 34), false, function()
-                                checker.refresh()
+                        checker.refreshBtn = makeButton(frame, "Refresh", UDim2.new(0, 14, 1, -46), UDim2.fromOffset(96, 34), false, function()
+                                checker.refresh(true)
                         end)
                         checker.stealBtn = makeButton(frame, "Steal selected", UDim2.new(0, 118, 1, -46), UDim2.new(1, -132, 0, 34), true, function()
                                 local uids = {}
@@ -24866,7 +24882,7 @@ local function loadAllSections()
                                 task.delay(1.5, function()
                                         checker.paintRows()
                                 end)
-                                checker.refresh()
+                                checker.refresh(true)
                         end)
 
                         -- row pool
@@ -24937,8 +24953,12 @@ local function loadAllSections()
                         end
                         checker.newRow = newRow
 
-                        checker.refresh()
-                        checker.syncSettings()
+                        pcall(checker.syncSettings)
+                        pcall(function()
+                                checker.raritySeg.set(checker.rarity)
+                                checker.sortSeg.set(checker.sort)
+                        end)
+                        checker.refresh(true)
                         return gui
                 end
 
@@ -24981,22 +25001,28 @@ local function loadAllSections()
                         checker.detLbl.TextSize = tp and 10 or 11
                 end
 
-                checker.refresh = function()
-                        if not checker.gui or not checker.gui.Parent then
+                local function safeNum(x)
+                        x = tonumber(x) or 0
+                        if x ~= x then
+                                return 0
+                        end
+                        return x
+                end
+
+                -- draws a list of eggs (or an error) into the window. Never yields.
+                checker.render = function(eggs, errText)
+                        if not (checker.gui and checker.gui.Parent) then
                                 return
                         end
-                        local okS, eggs = xpcall(scan, function(e) return tostring(e) end)
-                        if not okS then
-                                warn("[Pilat] Egg Checker scan error: " .. tostring(eggs))
-                                if checker.emptyLbl then
-                                        checker.emptyLbl.Text = "Scan error: " .. tostring(eggs):sub(1, 120)
-                                        checker.emptyLbl.Visible = true
-                                end
-                                if checker.headLbl then
-                                        checker.headLbl.Text = "ERR: " .. tostring(eggs):sub(1, 70)
-                                end
-                                return
+                        if type(eggs) ~= "table" then
+                                eggs = {}
+                                errText = errText or "scan returned nothing"
                         end
+                        local copy = {}
+                        for _, e in ipairs(eggs) do
+                                copy[#copy + 1] = e
+                        end
+                        eggs = copy
 
                         -- drop picks for eggs that left the field
                         local alive = {}
@@ -25019,22 +25045,22 @@ local function loadAllSections()
                                 eggs = f
                         end
 
+                        -- strict ordering (NaN-safe, uid tiebreak) so table.sort can never throw "invalid order function"
                         table.sort(eggs, function(a, b)
+                                local first, second
                                 if checker.sort == "weight" then
-                                        if a.kg ~= b.kg then
-                                                return a.kg > b.kg
-                                        end
-                                        return a.rate > b.rate
+                                        first, second = {safeNum(a.kg), safeNum(a.rate)}, {safeNum(b.kg), safeNum(b.rate)}
                                 elseif checker.sort == "rarity" then
-                                        if a.rnum ~= b.rnum then
-                                                return a.rnum > b.rnum
+                                        first, second = {safeNum(a.rnum), safeNum(a.rate)}, {safeNum(b.rnum), safeNum(b.rate)}
+                                else
+                                        first, second = {safeNum(a.rate), safeNum(a.rnum)}, {safeNum(b.rate), safeNum(b.rnum)}
+                                end
+                                for i = 1, 2 do
+                                        if first[i] ~= second[i] then
+                                                return first[i] > second[i]
                                         end
-                                        return a.rate > b.rate
                                 end
-                                if a.rate ~= b.rate then
-                                        return a.rate > b.rate
-                                end
-                                return a.rnum > b.rnum
+                                return tostring(a.uid) < tostring(b.uid)
                         end)
 
                         for i, e in ipairs(eggs) do
@@ -25071,36 +25097,104 @@ local function loadAllSections()
                                 checker.rows[i].uid = nil
                         end
 
+                        checker.runs = (checker.runs or 0) + 1
+                        local d = checker.dbg
                         checker.emptyLbl.Visible = #eggs == 0
-                        if #eggs == 0 and checker.dbg then
-                                local d = checker.dbg
-                                checker.emptyLbl.Text = d.err and ("Cannot read field eggs: " .. d.err:sub(1, 100))
-                                        or string.format("No eggs. field records %d (no position %d, claimed/carried %d, held by player %d, first-area %d)",
-                                                d.records, d.noCF, d.state, d.carried, d.first)
+                        if #eggs == 0 then
+                                checker.emptyLbl.Text = (d and d.err) and ("Cannot read field eggs: " .. tostring(d.err):sub(1, 100))
+                                        or "No eggs on the field right now."
                         end
                         checker.countLbl.Text = #eggs .. (#eggs == 1 and " egg" or " eggs")
-                        checker.raritySeg.set(checker.rarity)
-                        checker.sortSeg.set(checker.sort)
+                        pcall(function()
+                                checker.raritySeg.set(checker.rarity)
+                                checker.sortSeg.set(checker.sort)
+                        end)
                         checker.paintRows()
-                        if checker.rowErr and checker.headLbl then
-                                checker.headLbl.Text = "row err: " .. checker.rowErr:sub(1, 70)
-                                checker.rowErr = nil
+
+                        -- header line = live status, so you can see Refresh really ran
+                        if checker.headLbl then
+                                if checker.rowErr then
+                                        checker.headLbl.Text = "row err: " .. checker.rowErr:sub(1, 70)
+                                        checker.rowErr = nil
+                                elseif errText then
+                                        checker.headLbl.Text = "#" .. checker.runs .. " " .. tostring(errText):sub(1, 70)
+                                elseif #eggs == 0 and d then
+                                        checker.headLbl.Text = d.err and ("ERR read: " .. tostring(d.err):sub(1, 60))
+                                                or string.format("#%d %s | recs %d nopos %d claimed %d held %d first %d",
+                                                        checker.runs, tostring(d.via), d.records or 0, d.noCF or 0, d.state or 0, d.carried or 0, d.first or 0)
+                                elseif next(checker.picked) == nil then
+                                        checker.headLbl.Text = "Tap eggs to pick them  (#" .. checker.runs .. ")"
+                                end
                         end
-                        -- FIX: show the diagnosis in the header line (always visible), not only in the empty label
-                        checker.runs = (checker.runs or 0) + 1
-                        if #eggs == 0 and checker.dbg and checker.headLbl then
-                                local d = checker.dbg
-                                checker.headLbl.Text = d.err and ("ERR read: " .. tostring(d.err):sub(1, 60))
-                                        or string.format("#%d %s steal-list %s | recs %d nopos %d claimed %d held %d first %d",
-                                                checker.runs, tostring(d.via), tostring(d.stealN), d.records, d.noCF, d.state, d.carried, d.first)
+                end
+
+                -- Refresh: non-blocking. manual=true (button / open) always starts a fresh scan; the 1.5s auto-loop never stacks scans.
+                checker.refresh = function(manual)
+                        if not (checker.gui and checker.gui.Parent) then
+                                return
                         end
+                        local now = os.clock()
+                        if checker.scanning and not manual and (now - (checker.scanStart or 0)) < 4 then
+                                return
+                        end
+                        checker.token = (checker.token or 0) + 1
+                        local token = checker.token
+                        checker.scanning, checker.scanStart = true, now
+                        pcall(function() ctx.state.fresh() end)
+                        if manual and checker.refreshBtn then
+                                checker.refreshBtn.Text = "Scanning..."
+                        end
+
+                        local finished = false
+                        local function done(eggs, errText)
+                                if finished then
+                                        return
+                                end
+                                finished = true
+                                if token ~= checker.token then
+                                        return
+                                end
+                                checker.scanning = false
+                                local okR, errR = pcall(checker.render, eggs, errText)
+                                if not okR then
+                                        warn("[Pilat] Egg Checker render error: " .. tostring(errR))
+                                        if checker.headLbl then
+                                                checker.headLbl.Text = "render err: " .. tostring(errR):sub(1, 70)
+                                        end
+                                end
+                                local btn = checker.refreshBtn
+                                if btn and btn.Text == "Scanning..." then
+                                        btn.Text = okR and "Refreshed" or "Refresh"
+                                        task.delay(1, function()
+                                                if btn.Parent and btn.Text == "Refreshed" then
+                                                        btn.Text = "Refresh"
+                                                end
+                                        end)
+                                end
+                        end
+
+                        task.spawn(function()
+                                local okS, res = xpcall(scan, function(e) return tostring(e) end)
+                                if okS then
+                                        done(res, nil)
+                                else
+                                        warn("[Pilat] Egg Checker scan error: " .. tostring(res))
+                                        done(checker.partial, "scan error: " .. tostring(res))
+                                end
+                        end)
+                        -- watchdog: if the steal-list step hangs, still show the direct field scan
+                        task.delay(4, function()
+                                if not finished then
+                                        done(checker.partial, "steal list timed out - showing field scan")
+                                end
+                        end)
                 end
 
                 local function openChecker()
                         if checker.gui and checker.gui.Parent then
                                 checker.frame.Visible = not checker.frame.Visible
                                 if checker.frame.Visible then
-                                        checker.refresh()
+                                        checker.refresh(true)
                                         checker.syncSettings()
                                 end
                                 return
