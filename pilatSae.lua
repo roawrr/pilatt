@@ -42911,8 +42911,14 @@ local function loadAllSections()
                         nkb.conns = {}
                 end
 
-                doStepCore(cacheCore.Utility, "No Knockback", "noKb", false, nkbApply,
+                nkb.ctrl = doStepCore(cacheCore.Utility, "No Knockback", "noKb", false, nkbApply,
                         "Silences the game's RigSync/Refresh client handler so hits and guards can't throw you around. Turn off to restore it.")
+
+                if nkb.ctrl then
+                        nkb.ctrl.QGetState = function()
+                                return ctx.hubSettings.noKb == true
+                        end
+                end
 
                 trackConnection(ctx.localPlayer.CharacterAdded, function()
                         local hubSettings = ctx.hubSettings
@@ -42927,8 +42933,14 @@ local function loadAllSections()
                 end)
 
                 -- ==== Misc > Utility : Stop Priority (read by the task scheduler: halts all tasks while ON) ====
-                doStepCore(cacheCore.Utility, "Stop Priority", "stopPrio", false, nil,
+                nkb.sp = doStepCore(cacheCore.Utility, "Stop Priority", "stopPrio", false, nil,
                         "ON: stops every running task and starts nothing new. OFF: the queue picks the highest-priority task again and carries on.")
+
+                if nkb.sp then
+                        nkb.sp.QGetState = function()
+                                return ctx.hubSettings.stopPrio == true
+                        end
+                end
 
                 local doStep9ResultMove = doStep9({name = "Afk", gap = 120, at = os.clock() + 60})
 
@@ -49896,13 +49908,35 @@ local function loadAllSections()
                         end
                 end
 
+                -- real on/off of ANY toggle: QGetState (script flag) if the control has one, else the real menu switch, else Value
+                function Q.featOn(feat)
+                        local c = feat.ctrl
+                        if type(c.QGetState) == "function" then
+                                local okS, v = pcall(c.QGetState)
+                                if okS then
+                                        return v == true
+                                end
+                        end
+                        -- every other toggle: read the real switch in the menu (not the cached Value) and keep Value in step
+                        if type(c.Real) == "function" then
+                                local okR, v = pcall(c.Real, c)
+                                if okR and type(v) == "boolean" then
+                                        if c.Value ~= v then
+                                                c.Value = v
+                                        end
+                                        return v
+                                end
+                        end
+                        return c.Value == true
+                end
+
                 paintRec = function(rec)
                         local d = rec.d
                         local feat = Q.reg[d.key]
                         local on, st = false, "?"
                         if feat then
                                 if feat.type == "toggle" then
-                                        on = feat.ctrl.Value == true
+                                        on = Q.featOn(feat)
                                         st = on and "ON" or "OFF"
                                 else
                                         on = rec.flash == true
@@ -49943,7 +49977,7 @@ local function loadAllSections()
                         end
                         if feat.type == "toggle" then
                                 pcall(function()
-                                        feat.ctrl:Set(not (feat.ctrl.Value == true))
+                                        feat.ctrl:Set(not Q.featOn(feat))
                                 end)
                         else
                                 rec.flash = true
