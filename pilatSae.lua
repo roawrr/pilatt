@@ -34,7 +34,7 @@ do
         pilatHubLoading.Parent = pilatHubLoading2
         Instance.new("UICorner", pilatHubLoading).CornerRadius = UDim.new(0, 10)
         local uiElement = Instance.new("UIStroke", pilatHubLoading)
-        uiElement.Color = Color3.fromRGB(180, 180, 190)
+        uiElement.Color = Color3.fromRGB(62, 139, 255)
         uiElement.Thickness = 1.5
         uiElement.Transparency = 0.2
         uiElement = Instance.new("TextLabel")
@@ -53,7 +53,7 @@ do
         textLabel.Size = UDim2.new(1, -24, 0, 18)
         textLabel.Font = Enum.Font.GothamBold
         textLabel.TextSize = 15
-        textLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
+        textLabel.TextColor3 = Color3.fromRGB(90, 165, 255)
         textLabel.TextXAlignment = Enum.TextXAlignment.Right
         textLabel.Text = "0%"
         textLabel.Parent = pilatHubLoading
@@ -70,7 +70,7 @@ do
         uiElement = Instance.new("Frame")
         uiElement.Position = UDim2.fromOffset(12, 46)
         uiElement.Size = UDim2.new(1, -24, 0, 8)
-        uiElement.BackgroundColor3 = Color3.fromRGB(42, 42, 50)
+        uiElement.BackgroundColor3 = Color3.fromRGB(26, 38, 66)
         uiElement.Parent = pilatHubLoading
         Instance.new("UICorner", uiElement).CornerRadius = UDim.new(1, 0)
         local frame = Instance.new("Frame")
@@ -78,8 +78,7 @@ do
         frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         frame.Parent = uiElement
         Instance.new("UICorner", frame).CornerRadius = UDim.new(1, 0)
-        Instance.new("UIGradient", frame).Color = ColorSequence.new(Color3.fromRGB(200, 200, 210), Color3.fromRGB(232,
-                232, 238))
+        Instance.new("UIGradient", frame).Color = ColorSequence.new(Color3.fromRGB(46, 120, 255), Color3.fromRGB(120, 195, 255))
         pilatHubLoading2.Parent = CoreGui
         local filePath, tempValue = "PilatLibrary/SAE_LoadProgress.txt"
 
@@ -123,7 +122,7 @@ do
                         if tempValue and (tempValue < 10) then
                                 pcall(function()
                                         textLabel2.Text = "Last load stopped at " .. (tostring(tempValue * 10) .. ("% (part " .. (tostring(tempValue + 1) .. " / 10)")))
-                                        textLabel2.TextColor3 = Color3.fromRGB(255, 170, 90)
+                                        textLabel2.TextColor3 = Color3.fromRGB(120, 195, 255)
                                 end)
 
                                 task.delay(8, function()
@@ -1323,10 +1322,10 @@ local function createChilliLibrary()
                         color3FromRGB(221, 221, 221)}, {1, color3FromRGB(236, 236, 236)})
                 local scanTableResult2 = scanTable({0, color3FromRGB(0, 36, 84)}, {1, color3FromRGB(0, 31, 54)})
                 local scanTableResult3 = scanTable({0, color3FromRGBResult3}, {1, color3FromRGB(20, 109, 0)})
-                local scanTableResult4 = scanTable({0, color3FromRGB(255, 193, 194)}, {0.0570934266, color3FromRGB(255, 132,
-                        123)}, {1, color3FromRGB(239, 28, 28)})
-                local scanTableResult5 = scanTable({0, color3FromRGB(255, 193, 194)}, {0.0155709349, color3FromRGB(255, 132,
-                        123)}, {1, color3FromRGB(239, 28, 28)})
+                local scanTableResult4 = scanTable({0, color3FromRGB(194, 193, 255)}, {0.0570934266, color3FromRGB(123, 132,
+                        255)}, {1, color3FromRGB(28, 28, 239)})
+                local scanTableResult5 = scanTable({0, color3FromRGB(194, 193, 255)}, {0.0155709349, color3FromRGB(123, 132,
+                        255)}, {1, color3FromRGB(28, 28, 239)})
                 local touchEnabled = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
                         and not UserInputService.MouseEnabled
                 local left = scrollingFrame.TextXAlignment.Left
@@ -1606,7 +1605,7 @@ local function createChilliLibrary()
                                 0.5), Size = instance.Size, LayoutOrder = instance.LayoutOrder or 0, ZIndex = instance.ZIndex or 99})
                         local Frame = createInstance("Frame", {Parent = TextButton, Name = "Main", AnchorPoint = vector2New(0.5,
                                 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, (instance.full and 1)
-                                or 0.92), BackgroundColor3 = color3FromRGB(175, 0, 0), tryCall((instance.full and 0.07) or 0.06)})
+                                or 0.92), BackgroundColor3 = color3FromRGB(0, 0, 175), tryCall((instance.full and 0.07) or 0.06)})
                         local Frame2 = createInstance("Frame", {Parent = Frame, Name = "ColorFrame", AnchorPoint = vector2New(0.5,
                                 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTableResult4, "RedGradient")})
                         local Frame3, checkState2Result = createInstance("Frame", {Parent = Frame2, Name = "Transparent",
@@ -1872,12 +1871,12 @@ local function createChilliLibrary()
                                 0.5), Position = uDim2New(0.5, 0, 1.55, 0), Size = registry.size, BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.4, tryCall(0.008)})
                         registry.main = Frame
                         local Frame2 = createInstance("Frame", {Parent = Frame, Name = "Top", AnchorPoint = vector2New(0.5, 0),
-                                Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.125), BackgroundColor3 = color3FromRGB(111,
-                                0, 2), tryCall(0.06, color3FromRGB(58, 0, 0))})
+                                Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.125), BackgroundColor3 = color3FromRGB(2,
+                                0, 111), tryCall(0.06, color3FromRGB(0, 0, 58))})
                         computed = createInstance("Frame", {Parent = Frame2, Name = "Color", AnchorPoint = vector2New(0.5, 0),
                                 Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1,
-                                0.88), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(253, 86, 89)}, {1,
-                                color3FromRGB(255, 11, 15)}))})
+                                0.88), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(89, 86, 253)}, {1,
+                                color3FromRGB(15, 11, 255)}))})
                         createInstance("Frame", {Parent = computed, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
                                 Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.988,
                                 0.87), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.9})
@@ -1887,8 +1886,8 @@ local function createChilliLibrary()
                                 AnchorPoint = vector2New(0.5, 0.5), LayoutOrder = 1, ZIndex = 99, getUIAspectRatioConstraint(1)})
                         computed2 = createInstance("Frame", {Parent = createInstance("Frame", {Parent = TextButton, Name = "Main",
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1,
-                                1), BackgroundColor3 = color3FromRGB(126, 0, 0), tryCall(0.09, color3FromRGB(76, 0,
-                                0))}), Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(255, 130, 130)}, {1, color3FromRGB(239, 28, 28)}))})
+                                1), BackgroundColor3 = color3FromRGB(0, 0, 126), tryCall(0.09, color3FromRGB(0, 0,
+                                76))}), Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(130, 130, 255)}, {1, color3FromRGB(28, 28, 239)}))})
                         createInstance("Frame", {Parent = computed2, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
                                 Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.96,
                                 0.88), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.9})
@@ -2102,7 +2101,7 @@ local function createChilliLibrary()
                         for _, item in ipairs(items4) do
                                 createInstance("Frame", {Parent = TextButton3, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
                                         Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.82,
-                                        0.2), Rotation = item, BackgroundColor3 = color3FromRGB(255, 72, 72), ZIndex = 10})
+                                        0.2), Rotation = item, BackgroundColor3 = color3FromRGB(72, 72, 255), ZIndex = 10})
                         end
 
                         animate2(TextButton3, 1.12, 0.9)
@@ -2387,7 +2386,7 @@ local function createChilliLibrary()
                         for _, tab in ipairs(data.Tabs) do
                                 tab.page.Visible = tab == cur
                                 local base, state = tab.base, {}
-                                state.BackgroundColor3 = ((tab == cur) and color3FromRGB(255, 54, 54)) or color3FromRGB(175, 0, 0)
+                                state.BackgroundColor3 = ((tab == cur) and color3FromRGB(54, 54, 255)) or color3FromRGB(0, 0, 175)
                                 animate(base, state, 0.14)
                         end
 
@@ -4349,7 +4348,7 @@ local function createChilliLibrary()
                                 or ""), TextWrapped = true, TextXAlignment = left, TextYAlignment = scrollingFrame.TextYAlignment.Top, TextTransparency = 0.28, ZIndex = 103})
                         local Frame3, state = createInstance("Frame", {Parent = createInstance("Frame", {Parent = Frame2,
                                 Name = "Track", AnchorPoint = vector2New(0.5, 1), Position = uDim2FromScale(0.5,
-                                1), Size = uDim2FromScale(1, 0.055), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.45, Visible = threshold > 0, ZIndex = 102}), Name = "Fill", AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(1, 1), BackgroundColor3 = color3FromRGB(239, 28, 28), ZIndex = 103}), {slot = fieldValue, card = Frame2}
+                                1), Size = uDim2FromScale(1, 0.055), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.45, Visible = threshold > 0, ZIndex = 102}), Name = "Fill", AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(1, 1), BackgroundColor3 = color3FromRGB(28, 28, 239), ZIndex = 103}), {slot = fieldValue, card = Frame2}
                         list2[#list2 + 1] = state
                         animate(fieldValue, {Size = uDim2FromScale(1, 0.115)}, 0.3, quint)
                         animate(Frame2, {Position = uDim2FromScale(1, 0.5)}, 0.3, quint)
@@ -6272,14 +6271,14 @@ local function createChilliLibrary()
                         createInstance("Frame", {Parent = Frame2, BackgroundColor3 = color3FromRGBResult,
                                 BackgroundTransparency = 0.82, Position = uDim2FromOffset(22, 58), Size = uDim2FromOffset(386,
                                 1), ZIndex = 12})
-                        getUIGradient2(scanTable2(Frame2, 17, 22, 68, 386, 24, data.Warn, false, {TextColor3 = color3FromRGB(255,
-                                72, 72)}), ColorSequence.new(color3FromRGB(255, 132, 123), color3FromRGB(239, 28, 28)))
+                        getUIGradient2(scanTable2(Frame2, 17, 22, 68, 386, 24, data.Warn, false, {TextColor3 = color3FromRGB(72,
+                                72, 255)}), ColorSequence.new(color3FromRGB(123, 132, 255), color3FromRGB(28, 28, 239)))
                         local body, state = data.Body, {TextWrapped = true}
                         state.TextYAlignment, state.LineHeight, state.TextTransparency = scrollingFrame.TextYAlignment.Top, 1.14, 0.12
                         scanTable2(Frame2, 15, 22, 98, 386, 74, body, false, state)
                         scanTable2(Frame2, 14, 22, 176, 386, 46, data.Tip, false, {TextWrapped = true,
-                                TextYAlignment = scrollingFrame.TextYAlignment.Top, LineHeight = 1.12, TextColor3 = color3FromRGB(255, 176,
-                                120), RichText = true})
+                                TextYAlignment = scrollingFrame.TextYAlignment.Top, LineHeight = 1.12, TextColor3 = color3FromRGB(120, 176,
+                                255), RichText = true})
 
                         local function destroyAll(input2)
                                 ScreenGui:Destroy()
@@ -6298,7 +6297,7 @@ local function createChilliLibrary()
                                         BackgroundTransparency = 1, Position = uDim2FromOffset(item[1], 244), Size = uDim2FromOffset(184,
                                         46), ZIndex = 14})
                                 index3 = createInstance("Frame", {Parent = data, AnchorPoint = vector2New(0.5, 0.5),
-                                        BackgroundColor3 = (clampValue2 and color3FromRGB(175, 0, 0)) or color3FromRGB(24, 25,
+                                        BackgroundColor3 = (clampValue2 and color3FromRGB(0, 0, 175)) or color3FromRGB(24, 25,
                                         30), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, 0.92), ZIndex = 12})
                                 getUIStroke(index3, 1.6)
                                 local Frame3 = createInstance("Frame", {Parent = index3, AnchorPoint = vector2New(0.5, 0),
@@ -19842,9 +19841,38 @@ local function loadAllSections()
                                 equipBest = header:FindFirstChildOfClass("UIGradient")
 
                                 if equipBest then
-                                        -- Steal panel: black gradient (was red)
-                                        equipBest.Color = scanTable3({{0, color3FromRGB(10, 10, 12)}, {0.53, color3FromRGB(28, 28, 32)}, {1,
-                                                color3FromRGB(18, 18, 22)}})
+                                        -- Steal panel: blue gradient
+                                        equipBest.Color = scanTable3({{0, color3FromRGB(92, 170, 255)}, {0.53, color3FromRGB(52, 124, 255)}, {1,
+                                                color3FromRGB(30, 92, 224)}})
+                                end
+
+                                -- Steal panel: any other near-black surface in the panel -> blue (text stays white)
+                                if not descendants:GetAttribute("PilatBlue") then
+                                        descendants:SetAttribute("PilatBlue", true)
+                                        pcall(function()
+                                                local function isDark(c)
+                                                        return math.max(c.R, c.G, c.B) < 0.32
+                                                end
+
+                                                for _, obj in ipairs(descendants:GetDescendants()) do
+                                                        if obj:IsA("GuiObject") and obj.BackgroundTransparency < 1 and isDark(obj.BackgroundColor3) then
+                                                                obj.BackgroundColor3 = Color3.fromRGB(40, 110, 235)
+                                                        elseif obj:IsA("UIGradient") then
+                                                                local dark = false
+                                                                for _, key in ipairs(obj.Color.Keypoints) do
+                                                                        if isDark(key.Value) then
+                                                                                dark = true
+                                                                        end
+                                                                end
+                                                                if dark then
+                                                                        obj.Color = scanTable3({{0, color3FromRGB(92, 170, 255)}, {0.53, color3FromRGB(52, 124, 255)}, {1,
+                                                                                color3FromRGB(30, 92, 224)}})
+                                                                end
+                                                        elseif obj:IsA("UIStroke") and isDark(obj.Color) then
+                                                                obj.Color = Color3.fromRGB(30, 92, 224)
+                                                        end
+                                                end
+                                        end)
                                 end
 
                                 -- Steal panel logo: replace with a white Common Egg icon
@@ -24459,8 +24487,23 @@ local function loadAllSections()
                                         return legacy
                                 end
                         end
+                        local seen = {}
+                        for _, e in ipairs(out) do
+                                seen[tostring(e.uid)] = true
+                        end
+                        local added = 0
+                        local okL, legacyList = pcall(scanLegacy)
+                        if okL and type(legacyList) == "table" then
+                                for _, e in ipairs(legacyList) do
+                                        if not seen[tostring(e.uid)] then
+                                                seen[tostring(e.uid)] = true
+                                                out[#out + 1] = e
+                                                added += 1
+                                        end
+                                end
+                        end
                         checker.dbg = checker.dbg or {records = 0, noCF = 0, state = 0, carried = 0, first = 0}
-                        checker.dbg.via = "steal"
+                        checker.dbg.via = "steal+" .. tostring(added)
                         checker.dbg.stealN = #list
                         return out
                 end
@@ -25003,15 +25046,25 @@ local function loadAllSections()
                                 row.frame.LayoutOrder = i
                                 row.frame.Visible = true
                                 row.uid = e.uid
-                                row.icon.Image = e.icon or ""
-                                local mtxt = ""
-                                if #e.muts > 0 then
-                                        mtxt = '  <font color="#9AA3B5" size="11">' .. esc(table.concat(e.muts, " + ")) .. "</font>"
+                                local okRow, errRow = pcall(function()
+                                        row.icon.Image = (type(e.icon) == "string") and e.icon or ""
+                                        local mtxt = ""
+                                        local mnames = {}
+                                        for _, mv in ipairs(e.muts or {}) do
+                                                mnames[#mnames + 1] = tostring(mv)
+                                        end
+                                        if #mnames > 0 then
+                                                mtxt = '  <font color="#9AA3B5" size="11">' .. esc(table.concat(mnames, " + ")) .. "</font>"
+                                        end
+                                        row.name.Text = esc(e.name) .. mtxt
+                                        row.name.TextColor3 = (typeof(e.color) == "Color3") and e.color or C.text
+                                        row.sub.Text = string.format("%s  ·  %s  ·  <b>%s</b>  ·  <b>x%.2f</b>", esc(e.rarity), esc(e.area), fmtKg(e.kg), tonumber(e.scale) or 1)
+                                        row.rate.Text = fmtNum(e.rate) .. "/s"
+                                end)
+                                if not okRow then
+                                        checker.rowErr = tostring(errRow)
+                                        row.name.Text = esc((e and e.name) or "Egg")
                                 end
-                                row.name.Text = esc(e.name) .. mtxt
-                                row.name.TextColor3 = e.color
-                                row.sub.Text = string.format("%s  ·  %s  ·  <b>%s</b>  ·  <b>x%.2f</b>", esc(e.rarity), esc(e.area), fmtKg(e.kg), e.scale)
-                                row.rate.Text = fmtNum(e.rate) .. "/s"
                         end
                         for i = #eggs + 1, #checker.rows do
                                 checker.rows[i].frame.Visible = false
@@ -25029,6 +25082,10 @@ local function loadAllSections()
                         checker.raritySeg.set(checker.rarity)
                         checker.sortSeg.set(checker.sort)
                         checker.paintRows()
+                        if checker.rowErr and checker.headLbl then
+                                checker.headLbl.Text = "row err: " .. checker.rowErr:sub(1, 70)
+                                checker.rowErr = nil
+                        end
                         -- FIX: show the diagnosis in the header line (always visible), not only in the empty label
                         checker.runs = (checker.runs or 0) + 1
                         if #eggs == 0 and checker.dbg and checker.headLbl then
