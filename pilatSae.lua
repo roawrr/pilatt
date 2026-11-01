@@ -718,7 +718,11 @@ local function createUiLibrary()
                                                 Content = desc,
                                                 Placeholder = "e.g. 1B, 100M, 5K, 0",
                                                 Default = displayDefault,
-                                                Callback = function(v)
+                                                Callback = function(...)
+                                                        local v
+                                                        for _, a in ipairs({...}) do
+                                                                if type(a) == "string" or type(a) == "number" then v = a break end
+                                                        end
                                                         local parsed = parseValue(v)
                                                         if parsed then
                                                                 ctrl.Value = parsed
@@ -16888,6 +16892,16 @@ local function loadAllSections()
                                 state.v = tonumber(inputFarm) or state.v
                         end, "log", nil, "Sell " .. (text:lower() .. "s worth less than this (0 = off)"), doStepCoreResult)
 
+                        local presetMap = {["Use typed value"] = false, ["Off (0)"] = 0, ["100M"] = 1e8, ["500M"] = 5e8, ["1B"] = 1e9,
+                                ["5B"] = 5e9, ["10B"] = 1e10, ["50B"] = 5e10, ["100B"] = 1e11, ["500B"] = 5e11, ["1T"] = 1e12}
+                        autoSell:Dropdown(text .. " Sell Value Preset", {"Use typed value", "Off (0)", "100M", "500M", "1B", "5B", "10B", "50B",
+                                "100B", "500B", "1T"}, "Use typed value", function(pick)
+                                if type(pick) == "table" then pick = pick[1] end
+                                local val = presetMap[tostring(pick)]
+                                state.preset = (val ~= false) and val or nil
+                                if state.preset ~= nil then state.v = state.preset end
+                        end, false, "Quick pick for the sell value (overrides the typed box)", doStepCoreResult)
+
                         doStepCore(autoSell, "Keep Mutated " .. (text .. "s"), textFarm .. "Keep", text ~= "Egg", nil,
                                 "Never sell mutated " .. (text:lower() .. "s"), doStepCoreResult)
 
@@ -16956,20 +16970,47 @@ local function loadAllSections()
                 -- FIX: read bag eggs the same way pilatSae does (Egg.ReadOwnerEggs) and keep a breakdown
                 -- so the preview can say WHY an egg is skipped.
                 local dbg = {read = 0, placed = 0, held = 0, err = 0}
-                -- FIX: if the typed limit never reached state.v (callback missed), read it from the box itself
-                for _, st in ipairs({Pet, Egg}) do
-                        if (tonumber(st.v) or 0) <= 0 and st.ctrl then
-                                local okR, raw = pcall(function() return st.ctrl:Real() end)
-                                if okR and raw ~= nil then
-                                        local n = tonumber(raw)
-                                        if not n then
-                                                local t = tostring(raw):gsub("[%s,]", ""):upper()
-                                                local num, suf = t:match("^([%d%.]+)(%a*)$")
-                                                local mult = ({K = 1e3, M = 1e6, B = 1e9, T = 1e12, QA = 1e15})[suf or ""] or 1
-                                                n = tonumber(num) and tonumber(num) * mult or nil
+                -- FIX: the UI library does not always fire the input callback, so read the typed limit
+                -- straight from the on-screen TextBox that sits next to the "... Sell Value" label.
+                local function findBox(title)
+                        local roots = {}
+                        pcall(function() if gethui then roots[#roots + 1] = gethui() end end)
+                        pcall(function() roots[#roots + 1] = game:GetService("CoreGui") end)
+                        pcall(function() roots[#roots + 1] = ctx.localPlayer:FindFirstChildOfClass("PlayerGui") end)
+                        for _, root in ipairs(roots) do
+                                local okD, desc = pcall(function() return root:GetDescendants() end)
+                                if okD then
+                                        for _, lbl in ipairs(desc) do
+                                                if lbl:IsA("TextLabel") and tostring(lbl.Text):lower():find(title:lower(), 1, true) then
+                                                        local up = lbl.Parent
+                                                        for _ = 1, 4 do
+                                                                if not up then break end
+                                                                local tb = up:FindFirstChildWhichIsA("TextBox", true)
+                                                                if tb then return tb end
+                                                                up = up.Parent
+                                                        end
+                                                end
                                         end
-                                        if n and n > 0 then st.v = n end
                                 end
+                        end
+                end
+                local function parseLimit(raw)
+                        local n = tonumber(raw)
+                        if n then return n end
+                        local t = tostring(raw or ""):gsub("[%s,]", ""):upper()
+                        local num, suf = t:match("^([%d%.]+)(%a*)$")
+                        local mult = ({[""] = 1, K = 1e3, M = 1e6, B = 1e9, T = 1e12, QA = 1e15})[suf or ""]
+                        if tonumber(num) and mult then return tonumber(num) * mult end
+                        return nil
+                end
+                for _, pair in ipairs({{Pet, "Pet Sell Value"}, {Egg, "Egg Sell Value"}}) do
+                        local st, title = pair[1], pair[2]
+                        if not (st.box and st.box.Parent) then st.box = findBox(title) end
+                        if st.preset ~= nil then
+                                st.v = st.preset
+                        elseif st.box then
+                                local n = parseLimit(st.box.Text)
+                                if n then st.v = n end
                         end
                 end
                 do
@@ -17055,7 +17096,7 @@ local function loadAllSections()
 
                         doStep5("sellTx", function()
                                 tempValue6:Set(("Pet matches  -  %d pets for %s"):format(#petUids, formatCompact(petValue)))
-                                tempValue7:Set(("Egg matches  -  %d eggs (%d Halloween) for %s  |  bag %d, placed %d, held %d, err %d  |  rule %s, limit %s"):format(#eggUids, hwCount, formatCompact(eggValue), dbg.read, dbg.placed, dbg.held, dbg.err, tostring(Egg.rule), formatCompact(Egg.v or 0)))
+                                tempValue7:Set(("Egg matches  -  %d eggs (%d Halloween) for %s  |  bag %d, placed %d, held %d, err %d  |  rule %s, limit %s, box %s"):format(#eggUids, hwCount, formatCompact(eggValue), dbg.read, dbg.placed, dbg.held, dbg.err, tostring(Egg.rule), formatCompact(Egg.v or 0), Egg.box and ("\""..tostring(Egg.box.Text).."\"") or "not found"))
                         end)
 
                         -- respect enabled flags / one-type run
@@ -17988,9 +18029,21 @@ local function loadAllSections()
                         return nil
                 end
 
-                local function iconOf(d)
+                local function iconOf(d, rec)
+                        -- FIX: show the EGG picture (same source as the steal panel), not the pet's
+                        if rec then
+                                local okI, res = pcall(function() return ctx.modules.Rec.EggIcon(rec) end)
+                                local img = okI and normImage(res)
+                                if img then return img end
+                        end
                         if type(d) ~= "table" then
                                 return nil
+                        end
+                        if type(d.Egg) == "table" then
+                                for _, k in ipairs({"Icon", "Image", "Thumbnail", "ImageId", "IconId", "Texture"}) do
+                                        local img = normImage(d.Egg[k])
+                                        if img then return img end
+                                end
                         end
                         local keys = {"Image", "Icon", "Thumbnail", "ImageId", "IconId", "Texture", "Asset", "DisplayImage"}
                         for _, k in ipairs(keys) do
@@ -18069,17 +18122,19 @@ local function loadAllSections()
                         if not ok or type(records) ~= "table" then
                                 return out
                         end
-                        for _, rec in pairs(records) do
-                                if type(rec) == "table" and rec.Uid and rec.State ~= "Claimed" and rec.State ~= "Carried"
+                        for key, rec in pairs(records) do
+                                -- FIX: records are keyed by uid; many have no .Uid field (the steal code uses item.Uid or key)
+                                local recUid = type(rec) == "table" and (rec.Uid or key) or nil
+                                if type(rec) == "table" and type(recUid) == "string" and rec.State ~= "Claimed" and rec.State ~= "Carried"
                                         and not rec.CarrierUserId and typeof(rec.BottomCFrame) == "CFrame"
-                                        and not tostring(rec.Uid):find("FirstAreaEgg") then
+                                        and not recUid:find("FirstAreaEgg") then
                                         local cat = rec.AssetCategory or rec.Category
                                         local d = cat and dirOf(cat)
                                         local scale = tonumber(rec.AssetScale or rec.Scale) or 1
                                         local rar = d and d.Rarity
                                         local muts = mutsOf(rec)
                                         out[#out + 1] = {
-                                                uid = rec.Uid,
+                                                uid = recUid,
                                                 name = (d and d.DisplayName) or tostring(cat or "Egg"),
                                                 rarity = (rar and (rar.DisplayName or rar._id)) or "?",
                                                 rnum = (rar and tonumber(rar.RarityNumber or rar.Rank)) or 0,
@@ -18089,7 +18144,7 @@ local function loadAllSections()
                                                 kg = kgOf(cat, scale),
                                                 scale = scale,
                                                 muts = muts,
-                                                icon = iconOf(d),
+                                                icon = iconOf(d, rec),
                                         }
                                 end
                         end
