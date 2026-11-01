@@ -518,6 +518,9 @@ local function createUiLibrary()
                 local function wrapControl(pilatCtrl, ctype, defaults)
                         local ctrl = defaults or {}
                         ctrl.Type = ctype
+                        if type(ctrl.Title) == "string" then
+                                ctrl.QBName = ctrl.Title -- Quick Buttons: real feature name (ctrl.Title is replaced by a function below)
+                        end
                         ctrl.Skip = ctrl.Skip
                         ctrl.ls = ctrl.ls or {}
                         ctrl.kids = ctrl.kids or {}
@@ -635,7 +638,11 @@ local function createUiLibrary()
                         sec._pilat = itemsObj
 
                         local function addControl(ctype, pilatArgs)
-                                if not itemsObj then return wrapControl(nil, ctype, pilatArgs) end
+                                if not itemsObj then
+                                        local w0 = wrapControl(nil, ctype, pilatArgs)
+                                        w0.QBSec = display or name
+                                        return w0
+                                end
                                 local methodMap = {
                                         toggle = "AddToggle",
                                         slider = "AddSlider",
@@ -651,17 +658,24 @@ local function createUiLibrary()
                                 if m and type(itemsObj[m]) == "function" then
                                         pcall(function() pilatCtrl = itemsObj[m](itemsObj, pilatArgs) end)
                                 end
-                                return wrapControl(pilatCtrl, ctype, pilatArgs)
+                                local wrapped = wrapControl(pilatCtrl, ctype, pilatArgs)
+                                wrapped.QBSec = display or name
+                                return wrapped
                         end
 
                         -- feature code calls: section:Toggle(name, default, callback, note)
                         sec.Toggle = function(self, name, default, callback, note)
+                                local ctrlRef
                                 local ctrl = addControl("toggle", {
                                         Title = tostring(name or "Toggle"),
                                         Content = (type(note) == "string") and note or "",
                                         Default = default == true,
-                                        Callback = function(v) tryCall(callback, v) end,
+                                        Callback = function(v)
+                                                if ctrlRef then ctrlRef.Value = (v == true) end -- keep Value true to the real switch (Quick Buttons reads it)
+                                                tryCall(callback, v)
+                                        end,
                                 })
+                                ctrlRef = ctrl
                                 ctrl.Value = default == true
                                 ctrl.Def = default == true
                                 self.Opts[#self.Opts + 1] = ctrl
@@ -9318,7 +9332,7 @@ local function loadAllSections()
         end
 
         local cacheCore, entries4, itemsCore = {}, {}, {{"Farm", nil, {"+Auto Steal", "+Egg Checker", "Auto Progression",
-                "Auto Mutation", "Auto Place Egg", "Auto Treadmill", "Auto Hatch & Equip", "Auto Sell", "Auto Fuse Machine", "Auto Favorite", "Priority Rotation", "Priority"}}, {"Event", nil, {"Pumpkin Boss", "Halloween Dimension", "Halloween Monsters", "Ghost Dog & Fishing", "Phantom Express", "Shooting Star", "Butterfly Bloom", "The Hollow"}}, {"Admin Abuse", "Right", {"Capture The Egg", "Admin Treadmill", "Instant Steal V3", "Minigame Eggs", "Cursed Island Wars"}}, {"Player", nil, {"ESP", "+Movement", "+Character", "+Combat"}}, {"Predictor", nil, {"Discord Webhook", "+Egg Predictor"}}, {"Server", nil, {"+Server"}}, {"Misc", nil, {"+Performance", "+Utility"}}, {"Auto Hop", nil, {"+Pilat Finder"}}}
+                "Auto Mutation", "Auto Place Egg", "Auto Treadmill", "Auto Hatch & Equip", "Auto Sell", "Auto Fuse Machine", "Auto Favorite", "Priority Rotation", "Priority"}}, {"Event", nil, {"Pumpkin Boss", "Halloween Dimension", "Halloween Monsters", "Ghost Dog & Fishing", "Phantom Express", "Shooting Star", "Butterfly Bloom", "The Hollow"}}, {"Admin Abuse", "Right", {"Capture The Egg", "Admin Treadmill", "Instant Steal V3", "Minigame Eggs", "Cursed Island Wars"}}, {"Player", nil, {"ESP", "+Movement", "+Character", "+Combat"}}, {"Predictor", nil, {"Discord Webhook", "+Egg Predictor"}}, {"Server", nil, {"+Server"}}, {"Misc", nil, {"+Performance", "+Utility"}}, {"Auto Hop", nil, {"+Pilat Finder"}}, {"Quick", nil, {"Quick Buttons"}}}
 
         for index, item in ipairs(itemsCore) do
                 index = mainWindow:Tab(item[1], item[2])
@@ -49381,6 +49395,1416 @@ local function loadAllSections()
                     pilatV4Config.SnipePunch = v == true
                 end, "Bat rivals away from dropped eggs while sniping.")
             end
+        end)
+
+        -- ==== 22_quickbuttons#1 (floating Quick Buttons: ANY toggle / button of the hub as an on-screen button) ====
+        runStep("22_quickbuttons#1", function()
+                local UIS = game:GetService("UserInputService")
+                local HttpS = game:GetService("HttpService")
+                local GUI_NAME = "__PilatQuickButtons"
+                local SAVE_DIR, SAVE_PATH = "PilatLibrary", "PilatLibrary/QuickButtons.json"
+                local SEC_NAME = "Quick Buttons"
+
+                local C = {
+                        bg = Color3.fromRGB(18, 20, 28), panel = Color3.fromRGB(26, 29, 40),
+                        row = Color3.fromRGB(32, 36, 50), stroke = Color3.fromRGB(58, 64, 86),
+                        accent = Color3.fromRGB(110, 120, 255), text = Color3.fromRGB(235, 238, 248),
+                        muted = Color3.fromRGB(150, 158, 182), good = Color3.fromRGB(126, 224, 151),
+                        bad = Color3.fromRGB(235, 87, 87),
+                }
+                local PALETTE = {"#2ECC71", "#3E8BFF", "#EB5757", "#FF9F43", "#9B59FF", "#FF69B4", "#00C8DC", "#FACC15", "#2A2E3F", "#10131C", "#EBEEF8"}
+                local SHAPES = {"round", "pill", "square"}
+                local DEF = {w = 112, h = 46, ts = 14, op = 0.1, shape = "round", on = "#2ECC71", off = "#2A2E3F", tc = "#EBEEF8", st = true}
+
+                local Q = {recs = {}, reg = {}, list = {}, selected = nil, edit = false, page = "Buttons", dead = false,
+                        syncers = {}, rep = 0}
+
+                -- ===== small helpers =====
+                local function clampNum(v, lo, hi, d)
+                        v = tonumber(v)
+                        if not v or v ~= v then
+                                return d
+                        end
+                        return math.max(lo, math.min(hi, v))
+                end
+
+                local function round2(x)
+                        return math.floor(x * 100 + 0.5) / 100
+                end
+
+                local function hexToColor(h, fallback)
+                        if type(h) == "string" then
+                                local s = (h:gsub("#", ""))
+                                if #s == 6 and s:match("^%x+$") then
+                                        return Color3.fromRGB(tonumber(s:sub(1, 2), 16), tonumber(s:sub(3, 4), 16), tonumber(s:sub(5, 6), 16))
+                                end
+                        end
+                        return fallback
+                end
+
+                local function validHex(h)
+                        if type(h) ~= "string" then
+                                return nil
+                        end
+                        local s = (h:gsub("[#%s]", ""))
+                        if #s == 6 and s:match("^%x+$") then
+                                return "#" .. s:upper()
+                        end
+                        return nil
+                end
+
+                local function mk(class, props, parent)
+                        local o = Instance.new(class)
+                        if props then
+                                for k, v in pairs(props) do
+                                        o[k] = v
+                                end
+                        end
+                        if parent then
+                                o.Parent = parent
+                        end
+                        return o
+                end
+
+                local function corner(o, r)
+                        return mk("UICorner", {CornerRadius = UDim.new(0, r or 8)}, o)
+                end
+
+                local function stroke(o, color, t)
+                        return mk("UIStroke", {Color = color or C.stroke, Transparency = t or 0.4, Thickness = 1,
+                                ApplyStrokeMode = Enum.ApplyStrokeMode.Border}, o)
+                end
+
+                local function label(parent, text, size, color, bold, align)
+                        return mk("TextLabel", {BackgroundTransparency = 1, Font = bold and Enum.Font.GothamBold or Enum.Font.GothamMedium,
+                                TextSize = size or 12, TextColor3 = color or C.text, TextXAlignment = align or Enum.TextXAlignment.Left,
+                                Text = text or "", TextTruncate = Enum.TextTruncate.AtEnd}, parent)
+                end
+
+                local function button(parent, text, pos, size, cb, primary)
+                        local b = mk("TextButton", {AutoButtonColor = false, BorderSizePixel = 0, Font = Enum.Font.GothamBold, TextSize = 12,
+                                Text = text, BackgroundColor3 = primary and C.accent or C.panel,
+                                TextColor3 = primary and Color3.fromRGB(255, 255, 255) or C.text, Position = pos, Size = size}, parent)
+                        corner(b, 7)
+                        if not primary then
+                                stroke(b, C.stroke, 0.4)
+                        end
+                        if cb then
+                                b.MouseButton1Click:Connect(cb)
+                        end
+                        return b
+                end
+
+                local function textbox(parent, text, pos, size, onCommit)
+                        local t = mk("TextBox", {BackgroundColor3 = C.panel, BorderSizePixel = 0, Font = Enum.Font.GothamMedium, TextSize = 12,
+                                TextColor3 = C.text, PlaceholderColor3 = C.muted, Text = text or "", ClearTextOnFocus = false,
+                                Position = pos, Size = size}, parent)
+                        corner(t, 7)
+                        stroke(t, C.stroke, 0.4)
+                        if onCommit then
+                                t.FocusLost:Connect(function()
+                                        onCommit(t.Text)
+                                end)
+                        end
+                        return t
+                end
+
+                local function isPress(input)
+                        return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
+                end
+
+                local function notify(title, body)
+                        pcall(function()
+                                mainWindow:Notify(title, body, 2)
+                        end)
+                end
+
+                -- press / drag / tap on a GuiObject (works for mouse and touch)
+                -- h.getPos() -> Vector2 (px) | h.canDrag() -> bool | h.onDrag(Vector2) | h.onDrop() | h.onTap()
+                local function bindPress(guiObj, h)
+                        guiObj.InputBegan:Connect(function(input)
+                                if not isPress(input) then
+                                        return
+                                end
+                                local startMouse = input.Position
+                                local startPos = h.getPos()
+                                local moved = false
+                                local moveConn, endConn
+                                moveConn = UIS.InputChanged:Connect(function(i)
+                                        if i == input or (i.UserInputType == Enum.UserInputType.MouseMovement
+                                                and input.UserInputType == Enum.UserInputType.MouseButton1) then
+                                                local d = Vector2.new(i.Position.X - startMouse.X, i.Position.Y - startMouse.Y)
+                                                if not moved and d.Magnitude > 8 then
+                                                        moved = true
+                                                end
+                                                if moved and h.canDrag() then
+                                                        h.onDrag(startPos + d)
+                                                end
+                                        end
+                                end)
+                                endConn = input.Changed:Connect(function()
+                                        if input.UserInputState == Enum.UserInputState.End then
+                                                moveConn:Disconnect()
+                                                endConn:Disconnect()
+                                                if moved then
+                                                        if h.canDrag() and h.onDrop then
+                                                                h.onDrop()
+                                                        end
+                                                else
+                                                        h.onTap()
+                                                end
+                                        end
+                                end)
+                        end)
+                end
+
+                -- hold a button to repeat (used by the +/- steppers)
+                local function bindRepeat(btn, fn)
+                        btn.InputBegan:Connect(function(input)
+                                if not isPress(input) then
+                                        return
+                                end
+                                Q.rep = Q.rep + 1
+                                local my = Q.rep
+                                local down = true
+                                local ch
+                                ch = input.Changed:Connect(function()
+                                        if input.UserInputState == Enum.UserInputState.End then
+                                                down = false
+                                                ch:Disconnect()
+                                        end
+                                end)
+                                fn()
+                                task.spawn(function()
+                                        task.wait(0.4)
+                                        while down and my == Q.rep and not Q.dead do
+                                                fn()
+                                                task.wait(0.07)
+                                        end
+                                end)
+                        end)
+                end
+
+                -- ===== config (saved to PilatLibrary/QuickButtons.json) =====
+                local function sanitize(b, id)
+                        return {
+                                id = id, key = tostring(b.key),
+                                label = (type(b.label) == "string" and b.label ~= "") and b.label:sub(1, 40) or tostring(b.key):match("([^:]+)$") or "Button",
+                                fx = clampNum(b.fx, 0, 1, 0.05), fy = clampNum(b.fy, 0, 1, 0.3),
+                                w = clampNum(b.w, 24, 500, DEF.w), h = clampNum(b.h, 20, 400, DEF.h),
+                                ts = clampNum(b.ts, 6, 60, DEF.ts), op = clampNum(b.op, 0, 0.95, DEF.op),
+                                shape = (b.shape == "pill" or b.shape == "square" or b.shape == "round") and b.shape or DEF.shape,
+                                on = validHex(b.on) or DEF.on, off = validHex(b.off) or DEF.off, tc = validHex(b.tc) or DEF.tc,
+                                st = b.st ~= false,
+                        }
+                end
+
+                local function loadCfg()
+                        local cfg = {enabled = true, gear = true, scale = 1, gfx = 0.012, gfy = 0.30, nextId = 1, buttons = {}}
+                        local ok, raw = pcall(function()
+                                if type(isfile) == "function" and isfile(SAVE_PATH) then
+                                        return readfile(SAVE_PATH)
+                                end
+                                return nil
+                        end)
+                        if ok and type(raw) == "string" and raw ~= "" then
+                                local okD, data = pcall(function()
+                                        return HttpS:JSONDecode(raw)
+                                end)
+                                if okD and type(data) == "table" then
+                                        cfg.enabled = data.enabled ~= false
+                                        cfg.gear = data.gear ~= false
+                                        cfg.scale = clampNum(data.scale, 0.4, 3, 1)
+                                        cfg.gfx = clampNum(data.gfx, 0, 1, cfg.gfx)
+                                        cfg.gfy = clampNum(data.gfy, 0, 1, cfg.gfy)
+                                        if type(data.buttons) == "table" then
+                                                for _, b in ipairs(data.buttons) do
+                                                        if type(b) == "table" and type(b.key) == "string" then
+                                                                cfg.buttons[#cfg.buttons + 1] = sanitize(b, cfg.nextId)
+                                                                cfg.nextId = cfg.nextId + 1
+                                                        end
+                                                end
+                                        end
+                                end
+                        end
+                        return cfg
+                end
+
+                local function flushSave()
+                        Q.saveQueued = false
+                        local cfg = Q.cfg
+                        local out = {enabled = cfg.enabled, gear = cfg.gear, scale = cfg.scale, gfx = cfg.gfx, gfy = cfg.gfy, buttons = {}}
+                        for _, d in ipairs(cfg.buttons) do
+                                out.buttons[#out.buttons + 1] = {key = d.key, label = d.label, fx = d.fx, fy = d.fy, w = d.w, h = d.h,
+                                        ts = d.ts, op = d.op, shape = d.shape, on = d.on, off = d.off, tc = d.tc, st = d.st}
+                        end
+                        pcall(function()
+                                if type(makefolder) == "function" and type(isfolder) == "function" and not isfolder(SAVE_DIR) then
+                                        makefolder(SAVE_DIR)
+                                end
+                                writefile(SAVE_PATH, HttpS:JSONEncode(out))
+                        end)
+                end
+
+                local function save()
+                        if Q.saveQueued then
+                                return
+                        end
+                        Q.saveQueued = true
+                        task.delay(0.5, flushSave)
+                end
+
+                Q.cfg = loadCfg()
+
+                -- ===== feature registry (every toggle + button of the hub) =====
+                local function rebuildRegistry()
+                        local reg, list = {}, {}
+                        for _, opt in ipairs(mainWindow.Opts or {}) do
+                                if type(opt) == "table" and (opt.Type == "toggle" or opt.Type == "button")
+                                        and type(opt.QBName) == "string" and opt.QBName ~= "" and opt.QBSec ~= SEC_NAME then
+                                        local base = tostring(opt.QBSec or "?") .. "::" .. opt.QBName
+                                        local key, n = base, 1
+                                        while reg[key] do
+                                                n = n + 1
+                                                key = base .. " #" .. n
+                                        end
+                                        local e = {key = key, name = opt.QBName, sec = tostring(opt.QBSec or "?"), type = opt.Type, ctrl = opt}
+                                        reg[key] = e
+                                        list[#list + 1] = e
+                                end
+                        end
+                        Q.reg, Q.list = reg, list
+                end
+
+                local function countFor(key)
+                        local n = 0
+                        for _, d in ipairs(Q.cfg.buttons) do
+                                if d.key == key then
+                                        n = n + 1
+                                end
+                        end
+                        return n
+                end
+
+                -- ===== GUI root =====
+                local parentGui = (gethui and gethui()) or game:GetService("CoreGui")
+                pcall(function()
+                        local old = parentGui:FindFirstChild(GUI_NAME)
+                        if old then
+                                old:Destroy()
+                        end
+                end)
+                local gui = mk("ScreenGui", {Name = GUI_NAME, ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 99990,
+                        ZIndexBehavior = Enum.ZIndexBehavior.Sibling})
+                pcall(function()
+                        gui.ScreenInsets = Enum.ScreenInsets.None
+                end)
+                gui.Parent = parentGui
+                Q.gui = gui
+                Q.layer = mk("Frame", {Name = "Buttons", BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
+                        Active = false, Visible = Q.cfg.enabled}, gui)
+
+                local function vp()
+                        local s = gui.AbsoluteSize
+                        if s and s.X > 50 and s.Y > 50 then
+                                return s
+                        end
+                        local cam = workspace.CurrentCamera
+                        return (cam and cam.ViewportSize) or Vector2.new(1024, 768)
+                end
+
+                -- ===== quick button records =====
+                local paintRec, layoutRec, fireRec, selectButton
+
+                local function makeRec(d)
+                        local rec = {d = d}
+                        local btn = mk("TextButton", {Name = "QB" .. d.id, AutoButtonColor = false, Text = "", BorderSizePixel = 0, ZIndex = 2}, Q.layer)
+                        rec.btn = btn
+                        rec.corner = mk("UICorner", {}, btn)
+                        rec.stroke = mk("UIStroke", {Thickness = 1, Color = C.stroke, Transparency = 0.5,
+                                ApplyStrokeMode = Enum.ApplyStrokeMode.Border}, btn)
+                        mk("UIPadding", {PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4)}, btn)
+                        rec.label = mk("TextLabel", {BackgroundTransparency = 1, Font = Enum.Font.GothamBold, TextWrapped = true,
+                                TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 3, Text = "", Size = UDim2.fromScale(1, 1)}, btn)
+                        rec.sub = mk("TextLabel", {BackgroundTransparency = 1, Font = Enum.Font.GothamMedium, ZIndex = 3, Text = "",
+                                TextTransparency = 0.2, Size = UDim2.fromScale(1, 0.36)}, btn)
+                        bindPress(btn, {
+                                getPos = function()
+                                        return Vector2.new(btn.Position.X.Offset, btn.Position.Y.Offset)
+                                end,
+                                canDrag = function()
+                                        return Q.edit
+                                end,
+                                onDrag = function(p)
+                                        local v = vp()
+                                        local sz = btn.AbsoluteSize
+                                        local x = math.clamp(p.X, 0, math.max(0, v.X - sz.X))
+                                        local y = math.clamp(p.Y, 0, math.max(0, v.Y - sz.Y))
+                                        btn.Position = UDim2.fromOffset(math.floor(x), math.floor(y))
+                                        d.fx, d.fy = x / v.X, y / v.Y
+                                end,
+                                onDrop = function()
+                                        save()
+                                        if Q.refreshEdit then
+                                                Q.refreshEdit()
+                                        end
+                                end,
+                                onTap = function()
+                                        if Q.edit then
+                                                selectButton(d.id, true)
+                                        else
+                                                fireRec(rec)
+                                        end
+                                end,
+                        })
+                        return rec
+                end
+
+                layoutRec = function(rec)
+                        local d, v, gs = rec.d, vp(), Q.cfg.scale
+                        local w, h = d.w * gs, d.h * gs
+                        local x = math.clamp(d.fx * v.X, 0, math.max(0, v.X - w))
+                        local y = math.clamp(d.fy * v.Y, 0, math.max(0, v.Y - h))
+                        rec.btn.Size = UDim2.fromOffset(math.floor(w), math.floor(h))
+                        rec.btn.Position = UDim2.fromOffset(math.floor(x), math.floor(y))
+                        if d.shape == "pill" then
+                                rec.corner.CornerRadius = UDim.new(0.5, 0)
+                        elseif d.shape == "square" then
+                                rec.corner.CornerRadius = UDim.new(0, 0)
+                        else
+                                rec.corner.CornerRadius = UDim.new(0, math.floor(math.min(w, h) * 0.22))
+                        end
+                        local showSub = d.st and h >= 34
+                        rec.label.TextSize = math.clamp(math.floor(d.ts * gs), 6, 60)
+                        rec.sub.TextSize = math.clamp(math.floor(d.ts * gs * 0.72), 6, 40)
+                        if showSub then
+                                rec.label.Position = UDim2.fromScale(0, 0.04)
+                                rec.label.Size = UDim2.fromScale(1, 0.58)
+                                rec.sub.Position = UDim2.fromScale(0, 0.6)
+                                rec.sub.Visible = true
+                        else
+                                rec.label.Position = UDim2.fromScale(0, 0)
+                                rec.label.Size = UDim2.fromScale(1, 1)
+                                rec.sub.Visible = false
+                        end
+                end
+
+                paintRec = function(rec)
+                        local d = rec.d
+                        local feat = Q.reg[d.key]
+                        local on, st = false, "?"
+                        if feat then
+                                if feat.type == "toggle" then
+                                        on = feat.ctrl.Value == true
+                                        st = on and "ON" or "OFF"
+                                else
+                                        on = rec.flash == true
+                                        st = "TAP"
+                                end
+                        else
+                                st = "MISSING"
+                        end
+                        rec.btn.BackgroundColor3 = on and hexToColor(d.on, C.good) or hexToColor(d.off, C.panel)
+                        rec.btn.BackgroundTransparency = d.op
+                        rec.label.Text = d.label
+                        rec.label.TextColor3 = hexToColor(d.tc, C.text)
+                        rec.sub.Text = st
+                        rec.sub.TextColor3 = hexToColor(d.tc, C.text)
+                        if Q.edit then
+                                local sel = Q.selected == d.id
+                                rec.stroke.Color = C.accent
+                                rec.stroke.Thickness = sel and 3 or 1.5
+                                rec.stroke.Transparency = sel and 0 or 0.45
+                        else
+                                rec.stroke.Color = feat and C.stroke or C.bad
+                                rec.stroke.Thickness = 1
+                                rec.stroke.Transparency = feat and 0.5 or 0.1
+                        end
+                end
+
+                fireRec = function(rec)
+                        local d = rec.d
+                        local feat = Q.reg[d.key]
+                        if not feat then
+                                rebuildRegistry()
+                                feat = Q.reg[d.key]
+                        end
+                        if not feat then
+                                notify("Quick Button", "Feature not found: " .. tostring(d.key))
+                                paintRec(rec)
+                                return
+                        end
+                        if feat.type == "toggle" then
+                                pcall(function()
+                                        feat.ctrl:Set(not (feat.ctrl.Value == true))
+                                end)
+                        else
+                                rec.flash = true
+                                task.delay(0.18, function()
+                                        rec.flash = false
+                                        if rec.btn.Parent then
+                                                paintRec(rec)
+                                        end
+                                end)
+                                task.spawn(function()
+                                        pcall(function()
+                                                feat.ctrl:Press()
+                                        end)
+                                end)
+                        end
+                        paintRec(rec)
+                end
+
+                local function nextSlot()
+                        local v = vp()
+                        local n = #Q.cfg.buttons
+                        local w, h = DEF.w * Q.cfg.scale, DEF.h * Q.cfg.scale
+                        local perRow = math.max(1, math.floor((v.X - 24) / (w + 8)))
+                        local col, row = n % perRow, math.floor(n / perRow)
+                        local x = 12 + col * (w + 8)
+                        local y = 70 + (row * (h + 8)) % math.max(h, v.Y - 140)
+                        return x / v.X, y / v.Y
+                end
+
+                function Q.add(key, lbl)
+                        local fx, fy = nextSlot()
+                        local d = sanitize({key = key, label = lbl, fx = fx, fy = fy}, Q.cfg.nextId)
+                        Q.cfg.nextId = Q.cfg.nextId + 1
+                        table.insert(Q.cfg.buttons, d)
+                        local rec = makeRec(d)
+                        Q.recs[d.id] = rec
+                        layoutRec(rec)
+                        paintRec(rec)
+                        save()
+                        return d
+                end
+
+                function Q.remove(id)
+                        local rec = Q.recs[id]
+                        if rec then
+                                rec.btn:Destroy()
+                                Q.recs[id] = nil
+                        end
+                        for i, d in ipairs(Q.cfg.buttons) do
+                                if d.id == id then
+                                        table.remove(Q.cfg.buttons, i)
+                                        break
+                                end
+                        end
+                        if Q.selected == id then
+                                Q.selected = nil
+                        end
+                        save()
+                end
+
+                function Q.duplicate(id)
+                        local src
+                        for _, d in ipairs(Q.cfg.buttons) do
+                                if d.id == id then
+                                        src = d
+                                end
+                        end
+                        if not src then
+                                return nil
+                        end
+                        local v = vp()
+                        local copy = sanitize(src, Q.cfg.nextId)
+                        copy.fx = math.min(1, src.fx + 24 / v.X)
+                        copy.fy = math.min(1, src.fy + 24 / v.Y)
+                        Q.cfg.nextId = Q.cfg.nextId + 1
+                        table.insert(Q.cfg.buttons, copy)
+                        local rec = makeRec(copy)
+                        Q.recs[copy.id] = rec
+                        layoutRec(rec)
+                        paintRec(rec)
+                        save()
+                        return copy
+                end
+
+                function Q.relayout()
+                        for _, rec in pairs(Q.recs) do
+                                layoutRec(rec)
+                                paintRec(rec)
+                        end
+                        if Q.layoutGear then
+                                Q.layoutGear()
+                        end
+                end
+
+                local function findData(id)
+                        for _, d in ipairs(Q.cfg.buttons) do
+                                if d.id == id then
+                                        return d
+                                end
+                        end
+                        return nil
+                end
+
+                for _, d in ipairs(Q.cfg.buttons) do
+                        local rec = makeRec(d)
+                        Q.recs[d.id] = rec
+                end
+
+                -- ===== gear button (always draggable, opens the manager) =====
+                local gear = mk("TextButton", {Name = "Gear", AutoButtonColor = false, BorderSizePixel = 0, Text = "QB", Font = Enum.Font.GothamBold,
+                        TextSize = 14, TextColor3 = C.text, BackgroundColor3 = C.bg, BackgroundTransparency = 0.1,
+                        Size = UDim2.fromOffset(40, 40), ZIndex = 6, Visible = Q.cfg.gear}, gui)
+                corner(gear, 20)
+                local gearStroke = stroke(gear, C.accent, 0.2)
+                gearStroke.Thickness = 2
+
+                Q.layoutGear = function()
+                        local v = vp()
+                        local x = math.clamp(Q.cfg.gfx * v.X, 0, math.max(0, v.X - 40))
+                        local y = math.clamp(Q.cfg.gfy * v.Y, 0, math.max(0, v.Y - 40))
+                        gear.Position = UDim2.fromOffset(math.floor(x), math.floor(y))
+                end
+
+                bindPress(gear, {
+                        getPos = function()
+                                return Vector2.new(gear.Position.X.Offset, gear.Position.Y.Offset)
+                        end,
+                        canDrag = function()
+                                return true
+                        end,
+                        onDrag = function(p)
+                                local v = vp()
+                                local x = math.clamp(p.X, 0, math.max(0, v.X - 40))
+                                local y = math.clamp(p.Y, 0, math.max(0, v.Y - 40))
+                                gear.Position = UDim2.fromOffset(math.floor(x), math.floor(y))
+                                Q.cfg.gfx, Q.cfg.gfy = x / v.X, y / v.Y
+                        end,
+                        onDrop = function()
+                                save()
+                        end,
+                        onTap = function()
+                                if Q.mgr and Q.mgr.Visible then
+                                        Q.mgr.Visible = false
+                                else
+                                        Q.openManager()
+                                end
+                        end,
+                })
+
+                -- ===== global setters (shared by gear / manager / Pilat tab) =====
+                function Q.syncAll()
+                        gear.Text = Q.edit and "EDIT" or "QB"
+                        gear.TextSize = Q.edit and 11 or 14
+                        gearStroke.Color = Q.edit and C.good or C.accent
+                        for _, fn in ipairs(Q.syncers) do
+                                pcall(fn)
+                        end
+                end
+
+                function Q.setEnabled(v)
+                        if Q.cfg.enabled == (v == true) then
+                                return
+                        end
+                        Q.cfg.enabled = v == true
+                        Q.layer.Visible = Q.cfg.enabled
+                        save()
+                        Q.syncAll()
+                end
+
+                function Q.setGear(v)
+                        if Q.cfg.gear == (v == true) then
+                                return
+                        end
+                        Q.cfg.gear = v == true
+                        gear.Visible = Q.cfg.gear
+                        save()
+                        Q.syncAll()
+                end
+
+                function Q.setEdit(v)
+                        if Q.edit == (v == true) then
+                                return
+                        end
+                        Q.edit = v == true
+                        for _, rec in pairs(Q.recs) do
+                                paintRec(rec)
+                        end
+                        Q.syncAll()
+                end
+
+                function Q.setScale(v)
+                        Q.cfg.scale = clampNum(v, 0.4, 3, 1)
+                        Q.relayout()
+                        save()
+                        Q.syncAll()
+                end
+
+                selectButton = function(id, goEdit)
+                        Q.selected = id
+                        for _, rec in pairs(Q.recs) do
+                                paintRec(rec)
+                        end
+                        if Q.refreshEdit then
+                                Q.refreshEdit()
+                        end
+                        if goEdit and Q.mgr and Q.mgr.Visible and Q.showPage then
+                                Q.showPage("Edit")
+                        end
+                end
+
+                -- ===== manager window =====
+                local MW, MH = 400, 520
+
+                local function buildManager()
+                        local mgr = mk("Frame", {Name = "Manager", BackgroundColor3 = C.bg, BorderSizePixel = 0, Active = true,
+                                Size = UDim2.fromOffset(MW, MH), ZIndex = 20, Visible = false}, gui)
+                        corner(mgr, 12)
+                        stroke(mgr, C.stroke, 0.3)
+                        Q.mgr = mgr
+                        local uiScale = mk("UIScale", {}, mgr)
+
+                        local function fit()
+                                local v = vp()
+                                local s = math.clamp(math.min(1, (v.X * 0.94) / MW, (v.Y * 0.92) / MH), 0.55, 1)
+                                uiScale.Scale = s
+                                local x = math.clamp(mgr.Position.X.Offset, 0, math.max(0, v.X - MW * s))
+                                local y = math.clamp(mgr.Position.Y.Offset, 0, math.max(0, v.Y - 40 * s))
+                                mgr.Position = UDim2.fromOffset(x, y)
+                        end
+                        do
+                                local v = vp()
+                                local s = math.clamp(math.min(1, (v.X * 0.94) / MW, (v.Y * 0.92) / MH), 0.55, 1)
+                                mgr.Position = UDim2.fromOffset(math.floor((v.X - MW * s) / 2), math.floor((v.Y - MH * s) / 2))
+                                fit()
+                        end
+                        Q.fitManager = fit
+
+                        -- header (drag handle)
+                        local header = mk("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 38), Active = true, ZIndex = 21}, mgr)
+                        local title = label(header, "Quick Buttons", 15, C.text, true)
+                        title.Position = UDim2.fromOffset(14, 0)
+                        title.Size = UDim2.new(1, -60, 1, 0)
+                        title.ZIndex = 22
+                        local closeBtn = button(header, "X", UDim2.new(1, -36, 0, 6), UDim2.fromOffset(26, 26), function()
+                                mgr.Visible = false
+                        end)
+                        closeBtn.ZIndex = 22
+                        bindPress(header, {
+                                getPos = function()
+                                        return Vector2.new(mgr.Position.X.Offset, mgr.Position.Y.Offset)
+                                end,
+                                canDrag = function()
+                                        return true
+                                end,
+                                onDrag = function(p)
+                                        local v = vp()
+                                        local s = uiScale.Scale
+                                        mgr.Position = UDim2.fromOffset(math.clamp(p.X, 0, math.max(0, v.X - MW * s)),
+                                                math.clamp(p.Y, 0, math.max(0, v.Y - 40 * s)))
+                                end,
+                                onTap = function() end,
+                        })
+
+                        -- tab bar
+                        local TABS = {"Buttons", "Add", "Edit", "Global"}
+                        local tabBtns, pages = {}, {}
+                        local tabHolder = mk("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 44), Size = UDim2.new(1, -24, 0, 30), ZIndex = 21}, mgr)
+                        mk("UIGridLayout", {CellSize = UDim2.new(1 / #TABS, -4, 1, 0), CellPadding = UDim2.fromOffset(4, 0),
+                                SortOrder = Enum.SortOrder.LayoutOrder}, tabHolder)
+
+                        function Q.showPage(name)
+                                Q.page = name
+                                for k, p in pairs(pages) do
+                                        p.Visible = (k == name)
+                                end
+                                for k, b in pairs(tabBtns) do
+                                        local on = (k == name)
+                                        b.BackgroundColor3 = on and C.accent or C.panel
+                                        b.TextColor3 = on and Color3.fromRGB(255, 255, 255) or C.muted
+                                end
+                                if name == "Buttons" and Q.refreshList then
+                                        Q.refreshList()
+                                elseif name == "Add" and Q.refreshAdd then
+                                        Q.refreshAdd()
+                                elseif name == "Edit" and Q.refreshEdit then
+                                        Q.refreshEdit()
+                                end
+                        end
+
+                        for i, name in ipairs(TABS) do
+                                local b = mk("TextButton", {AutoButtonColor = false, BorderSizePixel = 0, Font = Enum.Font.GothamBold, TextSize = 12,
+                                        Text = name, LayoutOrder = i, BackgroundColor3 = C.panel, TextColor3 = C.muted, ZIndex = 22}, tabHolder)
+                                corner(b, 7)
+                                b.MouseButton1Click:Connect(function()
+                                        Q.showPage(name)
+                                end)
+                                tabBtns[name] = b
+                        end
+
+                        local function newScrollPage(name)
+                                local p = mk("ScrollingFrame", {Name = name, BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 82),
+                                        Size = UDim2.new(1, -24, 1, -94), ScrollBarThickness = 3, ScrollBarImageColor3 = C.accent,
+                                        AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(), ScrollingDirection = Enum.ScrollingDirection.Y,
+                                        Visible = false, ZIndex = 21}, mgr)
+                                mk("UIListLayout", {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder}, p)
+                                pages[name] = p
+                                return p
+                        end
+
+                        local function formRow(page, h)
+                                Q.order = (Q.order or 0) + 1
+                                local r = mk("Frame", {BackgroundColor3 = C.panel, BorderSizePixel = 0, Size = UDim2.new(1, -6, 0, h or 36),
+                                        LayoutOrder = Q.order, ZIndex = 22}, page)
+                                corner(r, 8)
+                                return r
+                        end
+
+                        local function rowTitle(row, text)
+                                local l = label(row, text, 12, C.muted, true)
+                                l.Position = UDim2.fromOffset(10, 0)
+                                l.Size = UDim2.new(1, -150, 1, 0)
+                                l.ZIndex = 23
+                                return l
+                        end
+
+                        -- switch row: title + ON/OFF button
+                        local function switchRow(page, title, get, set)
+                                local row = formRow(page, 36)
+                                rowTitle(row, title)
+                                local b = button(row, "OFF", UDim2.new(1, -70, 0.5, -14), UDim2.fromOffset(60, 28), nil)
+                                b.ZIndex = 23
+                                local function refresh()
+                                        local on = get() == true
+                                        b.Text = on and "ON" or "OFF"
+                                        b.BackgroundColor3 = on and C.good or C.row
+                                        b.TextColor3 = on and Color3.fromRGB(10, 20, 14) or C.muted
+                                end
+                                b.MouseButton1Click:Connect(function()
+                                        set(not (get() == true))
+                                        refresh()
+                                end)
+                                Q.syncers[#Q.syncers + 1] = refresh
+                                refresh()
+                                return row, refresh
+                        end
+
+                        -- stepper row: title [-] [value] [+]  (hold to repeat, value is typeable)
+                        local function stepperRow(page, title, get, set, step, lo, hi, fmt, parse)
+                                local row = formRow(page, 38)
+                                rowTitle(row, title)
+                                local minus = button(row, "-", UDim2.new(1, -176, 0.5, -15), UDim2.fromOffset(38, 30), nil)
+                                local plus = button(row, "+", UDim2.new(1, -46, 0.5, -15), UDim2.fromOffset(38, 30), nil)
+                                local box = textbox(row, "", UDim2.new(1, -134, 0.5, -15), UDim2.fromOffset(84, 30), nil)
+                                box.TextXAlignment = Enum.TextXAlignment.Center
+                                minus.ZIndex, plus.ZIndex, box.ZIndex = 23, 23, 23
+                                local function refresh()
+                                        local v = get()
+                                        box.Text = v ~= nil and (fmt and fmt(v) or tostring(v)) or "-"
+                                end
+                                local function apply(v)
+                                        v = math.max(lo, math.min(hi, v))
+                                        set(round2(v))
+                                        refresh()
+                                end
+                                bindRepeat(minus, function()
+                                        if get() ~= nil then
+                                                apply(get() - step)
+                                        end
+                                end)
+                                bindRepeat(plus, function()
+                                        if get() ~= nil then
+                                                apply(get() + step)
+                                        end
+                                end)
+                                box.FocusLost:Connect(function()
+                                        local n = tonumber((box.Text:gsub("%%", "")))
+                                        if n and get() ~= nil then
+                                                apply(parse and parse(n) or n)
+                                        else
+                                                refresh()
+                                        end
+                                end)
+                                return row, refresh
+                        end
+
+                        -- ================= PAGE: Buttons (list) =================
+                        local listPage = newScrollPage("Buttons")
+                        local listRows = {}
+                        local listEmpty = label(listPage, "No quick buttons yet.\nOpen the Add tab and tap any feature to put it on screen.", 12, C.muted, false)
+                        listEmpty.Size = UDim2.new(1, -6, 0, 50)
+                        listEmpty.TextWrapped = true
+                        listEmpty.TextYAlignment = Enum.TextYAlignment.Top
+                        listEmpty.LayoutOrder = -1
+                        listEmpty.ZIndex = 22
+
+                        local function newListRow()
+                                local r = {}
+                                local f = mk("Frame", {BackgroundColor3 = C.panel, BorderSizePixel = 0, Size = UDim2.new(1, -6, 0, 46), ZIndex = 22}, listPage)
+                                corner(f, 8)
+                                r.frame = f
+                                r.name = label(f, "", 13, C.text, true)
+                                r.name.Position = UDim2.fromOffset(10, 4)
+                                r.name.Size = UDim2.new(1, -112, 0, 20)
+                                r.name.ZIndex = 23
+                                r.sub = label(f, "", 11, C.muted, false)
+                                r.sub.Position = UDim2.fromOffset(10, 24)
+                                r.sub.Size = UDim2.new(1, -112, 0, 18)
+                                r.sub.ZIndex = 23
+                                r.edit = button(f, "Edit", UDim2.new(1, -96, 0.5, -14), UDim2.fromOffset(54, 28), nil, true)
+                                r.del = button(f, "X", UDim2.new(1, -36, 0.5, -14), UDim2.fromOffset(28, 28), nil)
+                                r.edit.ZIndex, r.del.ZIndex = 23, 23
+                                r.edit.MouseButton1Click:Connect(function()
+                                        if r.id then
+                                                selectButton(r.id, false)
+                                                Q.showPage("Edit")
+                                        end
+                                end)
+                                r.del.MouseButton1Click:Connect(function()
+                                        if r.id then
+                                                Q.remove(r.id)
+                                                Q.refreshList()
+                                                if Q.refreshAdd and pages.Add.Visible then
+                                                        Q.refreshAdd()
+                                                end
+                                        end
+                                end)
+                                return r
+                        end
+
+                        function Q.refreshList()
+                                local n = #Q.cfg.buttons
+                                listEmpty.Visible = n == 0
+                                for i, d in ipairs(Q.cfg.buttons) do
+                                        local r = listRows[i]
+                                        if not r then
+                                                r = newListRow()
+                                                listRows[i] = r
+                                        end
+                                        r.id = d.id
+                                        r.frame.LayoutOrder = i
+                                        r.frame.Visible = true
+                                        local feat = Q.reg[d.key]
+                                        r.name.Text = d.label
+                                        r.sub.Text = (feat and (feat.sec .. "  >  " .. feat.name .. "  (" .. feat.type .. ")")) or ("missing: " .. d.key)
+                                        r.sub.TextColor3 = feat and C.muted or C.bad
+                                end
+                                for i = n + 1, #listRows do
+                                        listRows[i].frame.Visible = false
+                                        listRows[i].id = nil
+                                end
+                        end
+
+                        -- ================= PAGE: Add (search all features) =================
+                        local addPage = mk("Frame", {Name = "Add", BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 82),
+                                Size = UDim2.new(1, -24, 1, -94), Visible = false, ZIndex = 21}, mgr)
+                        pages.Add = addPage
+                        local filterType = "all"
+                        local search = textbox(addPage, "", UDim2.fromOffset(0, 0), UDim2.new(1, -6, 0, 32), nil)
+                        search.PlaceholderText = "Search features (name or section)..."
+                        search.ZIndex = 22
+                        local chipHolder = mk("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 38), Size = UDim2.new(1, -6, 0, 28), ZIndex = 22}, addPage)
+                        local chips = {}
+                        local chipDefs = {{"all", "All"}, {"toggle", "Toggles"}, {"button", "Buttons"}}
+                        for i, cd in ipairs(chipDefs) do
+                                local b = button(chipHolder, cd[2], UDim2.new(0, (i - 1) * 74, 0, 0), UDim2.fromOffset(70, 28), nil)
+                                b.ZIndex = 23
+                                chips[cd[1]] = b
+                        end
+                        local addAllBtn = button(chipHolder, "Add all shown", UDim2.new(1, -112, 0, 0), UDim2.fromOffset(112, 28), nil, true)
+                        addAllBtn.ZIndex = 23
+                        local addList = mk("ScrollingFrame", {BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 72),
+                                Size = UDim2.new(1, 0, 1, -72), ScrollBarThickness = 3, ScrollBarImageColor3 = C.accent,
+                                AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(), ScrollingDirection = Enum.ScrollingDirection.Y,
+                                ZIndex = 22}, addPage)
+                        mk("UIListLayout", {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder}, addList)
+                        local addRows, shown = {}, {}
+
+                        local function newAddRow()
+                                local r = {}
+                                local b = mk("TextButton", {AutoButtonColor = false, Text = "", BorderSizePixel = 0, BackgroundColor3 = C.panel,
+                                        Size = UDim2.new(1, -6, 0, 42), ZIndex = 23}, addList)
+                                corner(b, 8)
+                                r.btn = b
+                                r.tag = label(b, "", 10, C.accent, true, Enum.TextXAlignment.Center)
+                                r.tag.Position = UDim2.fromOffset(6, 0)
+                                r.tag.Size = UDim2.fromOffset(34, 42)
+                                r.tag.ZIndex = 24
+                                r.name = label(b, "", 13, C.text, true)
+                                r.name.Position = UDim2.fromOffset(44, 3)
+                                r.name.Size = UDim2.new(1, -100, 0, 20)
+                                r.name.ZIndex = 24
+                                r.sec = label(b, "", 11, C.muted, false)
+                                r.sec.Position = UDim2.fromOffset(44, 22)
+                                r.sec.Size = UDim2.new(1, -100, 0, 16)
+                                r.sec.ZIndex = 24
+                                r.cnt = label(b, "", 11, C.good, true, Enum.TextXAlignment.Right)
+                                r.cnt.Position = UDim2.new(1, -92, 0, 0)
+                                r.cnt.Size = UDim2.fromOffset(50, 42)
+                                r.cnt.ZIndex = 24
+                                r.plus = label(b, "+", 22, C.accent, true, Enum.TextXAlignment.Center)
+                                r.plus.Position = UDim2.new(1, -38, 0, 0)
+                                r.plus.Size = UDim2.fromOffset(32, 42)
+                                r.plus.ZIndex = 24
+                                b.MouseButton1Click:Connect(function()
+                                        local e = r.entry
+                                        if e then
+                                                Q.add(e.key, e.name)
+                                                r.cnt.Text = "x" .. countFor(e.key)
+                                                Q.updateAddCounts()
+                                        end
+                                end)
+                                return r
+                        end
+
+                        function Q.updateAddCounts()
+                                for i = 1, #shown do
+                                        local r = addRows[i]
+                                        if r and r.entry then
+                                                local n = countFor(r.entry.key)
+                                                r.cnt.Text = n > 0 and ("x" .. n) or ""
+                                        end
+                                end
+                        end
+
+                        function Q.refreshAdd()
+                                rebuildRegistry()
+                                local q = search.Text:lower()
+                                shown = {}
+                                for _, e in ipairs(Q.list) do
+                                        if (filterType == "all" or e.type == filterType)
+                                                and (q == "" or e.name:lower():find(q, 1, true) or e.sec:lower():find(q, 1, true)) then
+                                                shown[#shown + 1] = e
+                                        end
+                                end
+                                for i, e in ipairs(shown) do
+                                        local r = addRows[i]
+                                        if not r then
+                                                r = newAddRow()
+                                                addRows[i] = r
+                                        end
+                                        r.entry = e
+                                        r.btn.LayoutOrder = i
+                                        r.btn.Visible = true
+                                        r.tag.Text = e.type == "toggle" and "TGL" or "BTN"
+                                        r.name.Text = e.name
+                                        r.sec.Text = e.sec
+                                end
+                                for i = #shown + 1, #addRows do
+                                        addRows[i].btn.Visible = false
+                                        addRows[i].entry = nil
+                                end
+                                Q.updateAddCounts()
+                                for k, b in pairs(chips) do
+                                        local on = k == filterType
+                                        b.BackgroundColor3 = on and C.accent or C.panel
+                                        b.TextColor3 = on and Color3.fromRGB(255, 255, 255) or C.muted
+                                end
+                                addAllBtn.Text = "Add all (" .. #shown .. ")"
+                        end
+
+                        for k, b in pairs(chips) do
+                                b.MouseButton1Click:Connect(function()
+                                        filterType = k
+                                        Q.refreshAdd()
+                                end)
+                        end
+                        search:GetPropertyChangedSignal("Text"):Connect(function()
+                                Q.refreshAdd()
+                        end)
+                        addAllBtn.MouseButton1Click:Connect(function()
+                                local snapshot = {}
+                                for _, e in ipairs(shown) do
+                                        snapshot[#snapshot + 1] = e
+                                end
+                                for _, e in ipairs(snapshot) do
+                                        Q.add(e.key, e.name)
+                                end
+                                Q.updateAddCounts()
+                                notify("Quick Buttons", "Added " .. #snapshot .. " buttons")
+                        end)
+
+                        -- ================= PAGE: Edit =================
+                        local editPage = newScrollPage("Edit")
+                        local editRows, editRefreshers = {}, {}
+                        local function editRow(row)
+                                editRows[#editRows + 1] = row
+                                return row
+                        end
+                        local function cur()
+                                return Q.selected and findData(Q.selected) or nil
+                        end
+                        local function touch()
+                                local d = cur()
+                                local rec = d and Q.recs[d.id]
+                                if rec then
+                                        layoutRec(rec)
+                                        paintRec(rec)
+                                end
+                                save()
+                        end
+
+                        local infoRow = formRow(editPage, 52)
+                        local infoLbl = label(infoRow, "", 12, C.muted, false)
+                        infoLbl.Position = UDim2.fromOffset(10, 4)
+                        infoLbl.Size = UDim2.new(1, -20, 1, -8)
+                        infoLbl.TextWrapped = true
+                        infoLbl.TextYAlignment = Enum.TextYAlignment.Center
+                        infoLbl.ZIndex = 23
+
+                        -- label text
+                        local lblRow = editRow(formRow(editPage, 38))
+                        rowTitle(lblRow, "Label")
+                        local lblBox = textbox(lblRow, "", UDim2.new(1, -176, 0.5, -15), UDim2.fromOffset(166, 30), function(text)
+                                local d = cur()
+                                if d then
+                                        d.label = (text ~= "" and text or d.label):sub(1, 40)
+                                        touch()
+                                end
+                        end)
+                        lblBox.ZIndex = 23
+                        editRefreshers[#editRefreshers + 1] = function()
+                                local d = cur()
+                                lblBox.Text = d and d.label or ""
+                        end
+
+                        local function addStepper(title, field, step, lo, hi, fmt, parse, scaleToPx)
+                                local row, refresh
+                                row, refresh = stepperRow(editPage, title, function()
+                                        local d = cur()
+                                        if not d then
+                                                return nil
+                                        end
+                                        if scaleToPx == "x" then
+                                                return math.floor(d.fx * vp().X + 0.5)
+                                        elseif scaleToPx == "y" then
+                                                return math.floor(d.fy * vp().Y + 0.5)
+                                        end
+                                        return d[field]
+                                end, function(v)
+                                        local d = cur()
+                                        if not d then
+                                                return
+                                        end
+                                        if scaleToPx == "x" then
+                                                d.fx = v / vp().X
+                                        elseif scaleToPx == "y" then
+                                                d.fy = v / vp().Y
+                                        else
+                                                d[field] = v
+                                        end
+                                        touch()
+                                end, step, lo, hi, fmt, parse)
+                                editRow(row)
+                                editRefreshers[#editRefreshers + 1] = refresh
+                        end
+                        addStepper("Position X", nil, 10, 0, 4000, function(v) return tostring(v) end, nil, "x")
+                        addStepper("Position Y", nil, 10, 0, 4000, function(v) return tostring(v) end, nil, "y")
+                        addStepper("Width", "w", 5, 24, 500, function(v) return tostring(math.floor(v)) end)
+                        addStepper("Height", "h", 5, 20, 400, function(v) return tostring(math.floor(v)) end)
+                        addStepper("Text size", "ts", 1, 6, 60, function(v) return tostring(math.floor(v)) end)
+                        addStepper("Opacity", "op", 0.05, 0, 0.95, function(v) return tostring(math.floor((1 - v) * 100 + 0.5)) .. "%" end,
+                                function(n) return 1 - n / 100 end)
+
+                        -- shape cycle
+                        local shapeRow = editRow(formRow(editPage, 38))
+                        rowTitle(shapeRow, "Shape")
+                        local shapeBtn = button(shapeRow, "", UDim2.new(1, -116, 0.5, -15), UDim2.fromOffset(106, 30), nil)
+                        shapeBtn.ZIndex = 23
+                        shapeBtn.MouseButton1Click:Connect(function()
+                                local d = cur()
+                                if d then
+                                        local idx = table.find(SHAPES, d.shape) or 1
+                                        d.shape = SHAPES[(idx % #SHAPES) + 1]
+                                        shapeBtn.Text = d.shape
+                                        touch()
+                                end
+                        end)
+                        editRefreshers[#editRefreshers + 1] = function()
+                                local d = cur()
+                                shapeBtn.Text = d and d.shape or ""
+                        end
+
+                        -- colour rows: swatch + hex box + palette cycle
+                        local function colorRow(title, field)
+                                local row = editRow(formRow(editPage, 38))
+                                rowTitle(row, title)
+                                local swatch = mk("Frame", {BorderSizePixel = 0, Position = UDim2.new(1, -176, 0.5, -12), Size = UDim2.fromOffset(24, 24),
+                                        BackgroundColor3 = C.panel, ZIndex = 23}, row)
+                                corner(swatch, 6)
+                                stroke(swatch, C.stroke, 0.2)
+                                local box = textbox(row, "", UDim2.new(1, -144, 0.5, -15), UDim2.fromOffset(86, 30), function(text)
+                                        local d = cur()
+                                        local hx = validHex(text)
+                                        if d and hx then
+                                                d[field] = hx
+                                                touch()
+                                        end
+                                        Q.refreshEdit()
+                                end)
+                                box.ZIndex = 23
+                                local nextBtn = button(row, ">", UDim2.new(1, -50, 0.5, -15), UDim2.fromOffset(40, 30), nil)
+                                nextBtn.ZIndex = 23
+                                nextBtn.MouseButton1Click:Connect(function()
+                                        local d = cur()
+                                        if d then
+                                                local idx = 0
+                                                for i, p in ipairs(PALETTE) do
+                                                        if p == (d[field] or ""):upper() then
+                                                                idx = i
+                                                        end
+                                                end
+                                                d[field] = PALETTE[(idx % #PALETTE) + 1]
+                                                touch()
+                                                Q.refreshEdit()
+                                        end
+                                end)
+                                editRefreshers[#editRefreshers + 1] = function()
+                                        local d = cur()
+                                        box.Text = d and d[field] or ""
+                                        swatch.BackgroundColor3 = d and hexToColor(d[field], C.panel) or C.panel
+                                end
+                        end
+                        colorRow("ON colour", "on")
+                        colorRow("OFF colour", "off")
+                        colorRow("Text colour", "tc")
+
+                        -- show state text
+                        do
+                                local row, refresh = switchRow(editPage, "Show ON/OFF text", function()
+                                        local d = cur()
+                                        return d and d.st
+                                end, function(v)
+                                        local d = cur()
+                                        if d then
+                                                d.st = v
+                                                touch()
+                                        end
+                                end)
+                                editRow(row)
+                                editRefreshers[#editRefreshers + 1] = refresh
+                        end
+
+                        -- actions
+                        local actRow = editRow(formRow(editPage, 40))
+                        actRow.BackgroundTransparency = 1
+                        local testBtn = button(actRow, "Test", UDim2.new(0, 0, 0.5, -15), UDim2.new(0.32, -4, 0, 30), function()
+                                local d = cur()
+                                local rec = d and Q.recs[d.id]
+                                if rec then
+                                        fireRec(rec)
+                                end
+                        end, true)
+                        local dupBtn = button(actRow, "Duplicate", UDim2.new(0.34, 0, 0.5, -15), UDim2.new(0.32, -4, 0, 30), function()
+                                local d = cur()
+                                if d then
+                                        local copy = Q.duplicate(d.id)
+                                        if copy then
+                                                selectButton(copy.id, false)
+                                        end
+                                end
+                        end)
+                        local delBtn = button(actRow, "Delete", UDim2.new(0.68, 0, 0.5, -15), UDim2.new(0.32, -6, 0, 30), function()
+                                local d = cur()
+                                if d then
+                                        Q.remove(d.id)
+                                        Q.refreshEdit()
+                                end
+                        end)
+                        delBtn.TextColor3 = C.bad
+                        testBtn.ZIndex, dupBtn.ZIndex, delBtn.ZIndex = 23, 23, 23
+
+                        function Q.refreshEdit()
+                                local d = cur()
+                                if Q.selected and not d then
+                                        Q.selected = nil
+                                end
+                                for _, r in ipairs(editRows) do
+                                        r.Visible = d ~= nil
+                                end
+                                if d then
+                                        local feat = Q.reg[d.key]
+                                        infoLbl.Text = "Linked to: " .. d.key .. (feat and "" or "   (MISSING - feature not found)")
+                                        infoLbl.TextColor3 = feat and C.muted or C.bad
+                                        for _, fn in ipairs(editRefreshers) do
+                                                pcall(fn)
+                                        end
+                                else
+                                        infoLbl.Text = "Nothing selected. Pick a button in the Buttons tab, or turn on Edit mode (Global tab) and tap a button on screen."
+                                        infoLbl.TextColor3 = C.muted
+                                end
+                        end
+
+                        -- ================= PAGE: Global =================
+                        local globalPage = newScrollPage("Global")
+                        switchRow(globalPage, "Show quick buttons", function() return Q.cfg.enabled end, function(v) Q.setEnabled(v) end)
+                        switchRow(globalPage, "Edit mode (drag + tap to select)", function() return Q.edit end, function(v) Q.setEdit(v) end)
+                        switchRow(globalPage, "Show QB gear button", function() return Q.cfg.gear end, function(v) Q.setGear(v) end)
+                        do
+                                local row, refresh = stepperRow(globalPage, "Size of all buttons", function() return Q.cfg.scale end,
+                                        function(v) Q.setScale(v) end, 0.05, 0.4, 3, function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end,
+                                        function(n) return n / 100 end)
+                                Q.syncers[#Q.syncers + 1] = refresh
+                                refresh()
+                        end
+                        do
+                                local row = formRow(globalPage, 40)
+                                row.BackgroundTransparency = 1
+                                button(row, "Arrange all in a grid", UDim2.new(0, 0, 0.5, -15), UDim2.new(0.5, -4, 0, 30), function()
+                                        local v = vp()
+                                        local w, h = DEF.w * Q.cfg.scale, DEF.h * Q.cfg.scale
+                                        local perRow = math.max(1, math.floor((v.X - 24) / (w + 8)))
+                                        for i, d in ipairs(Q.cfg.buttons) do
+                                                local col, rw = (i - 1) % perRow, math.floor((i - 1) / perRow)
+                                                d.fx = (12 + col * (d.w * Q.cfg.scale + 8)) / v.X
+                                                d.fy = (70 + (rw * (h + 8)) % math.max(h, v.Y - 140)) / v.Y
+                                        end
+                                        Q.relayout()
+                                        save()
+                                        Q.refreshEdit()
+                                end).ZIndex = 23
+                                local wipe = button(row, "Delete ALL buttons", UDim2.new(0.5, 4, 0.5, -15), UDim2.new(0.5, -6, 0, 30), nil)
+                                wipe.ZIndex = 23
+                                wipe.TextColor3 = C.bad
+                                local armed = 0
+                                wipe.MouseButton1Click:Connect(function()
+                                        if os.clock() - armed < 3 then
+                                                armed = 0
+                                                wipe.Text = "Delete ALL buttons"
+                                                local ids = {}
+                                                for _, d in ipairs(Q.cfg.buttons) do
+                                                        ids[#ids + 1] = d.id
+                                                end
+                                                for _, id in ipairs(ids) do
+                                                        Q.remove(id)
+                                                end
+                                                Q.refreshEdit()
+                                        else
+                                                armed = os.clock()
+                                                wipe.Text = "Tap again to confirm"
+                                                task.delay(3, function()
+                                                        if wipe.Parent and os.clock() - armed >= 3 then
+                                                                wipe.Text = "Delete ALL buttons"
+                                                        end
+                                                end)
+                                        end
+                                end)
+                        end
+                        do
+                                local note = formRow(globalPage, 74)
+                                note.BackgroundTransparency = 1
+                                local t = label(note, "Tip: the QB gear button can always be dragged. If you hide both the buttons and the gear, bring them back from the Pilat menu > Quick tab. Settings are saved automatically.", 11, C.muted, false)
+                                t.Size = UDim2.new(1, -10, 1, 0)
+                                t.Position = UDim2.fromOffset(4, 0)
+                                t.TextWrapped = true
+                                t.TextYAlignment = Enum.TextYAlignment.Top
+                                t.ZIndex = 23
+                        end
+
+                        Q.showPage("Buttons")
+                        return mgr
+                end
+
+                function Q.openManager(page)
+                        rebuildRegistry()
+                        if not Q.mgr then
+                                local ok, err = pcall(buildManager)
+                                if not ok then
+                                        warn("[Pilat] Quick Buttons manager failed: " .. tostring(err))
+                                        notify("Quick Buttons", "Manager failed: " .. tostring(err):sub(1, 80))
+                                        return
+                                end
+                        end
+                        Q.mgr.Visible = true
+                        Q.fitManager()
+                        Q.showPage(page or Q.page or "Buttons")
+                        Q.syncAll()
+                end
+
+                -- ===== start-up =====
+                rebuildRegistry()
+                Q.layoutGear()
+                for _, rec in pairs(Q.recs) do
+                        layoutRec(rec)
+                        paintRec(rec)
+                end
+                Q.syncAll()
+                gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                        Q.relayout()
+                        if Q.fitManager then
+                                Q.fitManager()
+                        end
+                end)
+
+                -- state poller: keeps toggles in sync when they are switched from the Pilat menu / by the script itself
+                task.spawn(function()
+                        local lastReg = 0
+                        while not Q.dead and gui.Parent do
+                                if Q.cfg.enabled then
+                                        if os.clock() - lastReg > 4 then
+                                                lastReg = os.clock()
+                                                local missing = false
+                                                for _, rec in pairs(Q.recs) do
+                                                        if not Q.reg[rec.d.key] then
+                                                                missing = true
+                                                        end
+                                                end
+                                                if missing then
+                                                        rebuildRegistry()
+                                                end
+                                        end
+                                        for _, rec in pairs(Q.recs) do
+                                                paintRec(rec)
+                                        end
+                                end
+                                task.wait(0.35)
+                        end
+                end)
+
+                table.insert(ctx.state.cleanup, function()
+                        Q.dead = true
+                        pcall(function()
+                                gui:Destroy()
+                        end)
+                end)
+
+                -- ===== Pilat menu tab (Quick > Quick Buttons) =====
+                local sec = cacheCore[SEC_NAME]
+                if sec then
+                        Q.pt = {}
+                        local function ptSet(name, v)
+                                local c = Q.pt[name]
+                                if c then
+                                        Q.syncing = true
+                                        pcall(function()
+                                                c:Set(v, true)
+                                        end)
+                                        Q.syncing = false
+                                end
+                        end
+                        Q.pt.enabled = sec:Toggle("Show Quick Buttons", Q.cfg.enabled, function(v)
+                                if not Q.syncing then
+                                        Q.setEnabled(v)
+                                end
+                        end, "Show or hide every quick button on screen.")
+                        Q.pt.gear = sec:Toggle("Show QB Gear Button", Q.cfg.gear, function(v)
+                                if not Q.syncing then
+                                        Q.setGear(v)
+                                end
+                        end, "The small QB circle that opens the manager. Drag it anywhere.")
+                        Q.pt.edit = sec:Toggle("Edit Mode (drag buttons)", false, function(v)
+                                if not Q.syncing then
+                                        Q.setEdit(v)
+                                end
+                        end, "While on, quick buttons can be dragged and tapped to select (they do not fire). Turn off to use them.")
+                        sec:Button("Quick Button Manager", "Open Manager", function()
+                                Q.openManager()
+                        end, "Add any toggle or button of this hub as a floating quick button, then change its position, size, colour, shape and text.")
+                        Q.syncers[#Q.syncers + 1] = function()
+                                ptSet("enabled", Q.cfg.enabled)
+                                ptSet("gear", Q.cfg.gear)
+                                ptSet("edit", Q.edit)
+                        end
+                end
+
+                ctx.state.openQuickButtons = function(page)
+                        Q.openManager(page)
+                end
+                ctx.state.quickButtons = Q
         end)
 
         if ctx.chilli and ctx.chilli.window then
