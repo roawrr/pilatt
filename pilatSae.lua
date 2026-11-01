@@ -34,7 +34,7 @@ do
         pilatHubLoading.Parent = pilatHubLoading2
         Instance.new("UICorner", pilatHubLoading).CornerRadius = UDim.new(0, 10)
         local uiElement = Instance.new("UIStroke", pilatHubLoading)
-        uiElement.Color = Color3.fromRGB(62, 139, 255)
+        uiElement.Color = Color3.fromRGB(92, 130, 214)
         uiElement.Thickness = 1.5
         uiElement.Transparency = 0.2
         uiElement = Instance.new("TextLabel")
@@ -53,7 +53,7 @@ do
         textLabel.Size = UDim2.new(1, -24, 0, 18)
         textLabel.Font = Enum.Font.GothamBold
         textLabel.TextSize = 15
-        textLabel.TextColor3 = Color3.fromRGB(90, 165, 255)
+        textLabel.TextColor3 = Color3.fromRGB(128, 160, 226)
         textLabel.TextXAlignment = Enum.TextXAlignment.Right
         textLabel.Text = "0%"
         textLabel.Parent = pilatHubLoading
@@ -394,7 +394,7 @@ local function createUiLibrary()
                                 Footer = "Steal An Egg",
                                 Folder = "PilatSAEv7",
                                 Version = 1,
-                                Color = Color3.fromRGB(62, 139, 255),
+                                Color = Color3.fromRGB(92, 130, 214),
                                 ToggleImage = "https://raw.githubusercontent.com/roawrr/pilatt/main/pilat_256.png",
                                 KeyGate = false,
                                 AutoConfigTab = true,
@@ -1316,8 +1316,7 @@ local function createChilliLibrary()
                 local uDimNew = UDim.new
                 local color3FromRGBResult = color3FromRGB(255, 255, 255)
                 local color3FromRGBResult2 = color3FromRGB(0, 0, 0)
-                local color3FromRGBResult3, textValue = color3FromRGB(58, 255,
-                        55), "rbxasset://fonts/families/GothamSSm.json"
+                local color3FromRGBResult3, textValue = color3FromRGB(84, 184, 150), "rbxasset://fonts/families/GothamSSm.json"
                 local font = Font.new(textValue, scrollingFrame.FontWeight.ExtraBold, scrollingFrame.FontStyle.Normal)
                 local font2 = Font.new(textValue, scrollingFrame.FontWeight.ExtraBold, scrollingFrame.FontStyle.Italic)
                 local font3 = Font.fromEnum(scrollingFrame.Font.FredokaOne)
@@ -1334,12 +1333,10 @@ local function createChilliLibrary()
 
                 local scanTableResult = scanTable({0, color3FromRGBResult}, {0.486159176, color3FromRGBResult}, {0.519031167,
                         color3FromRGB(221, 221, 221)}, {1, color3FromRGB(236, 236, 236)})
-                local scanTableResult2 = scanTable({0, color3FromRGB(0, 36, 84)}, {1, color3FromRGB(0, 31, 54)})
-                local scanTableResult3 = scanTable({0, color3FromRGBResult3}, {1, color3FromRGB(20, 109, 0)})
-                local scanTableResult4 = scanTable({0, color3FromRGB(194, 193, 255)}, {0.0570934266, color3FromRGB(123, 132,
-                        255)}, {1, color3FromRGB(28, 28, 239)})
-                local scanTableResult5 = scanTable({0, color3FromRGB(194, 193, 255)}, {0.0155709349, color3FromRGB(123, 132,
-                        255)}, {1, color3FromRGB(28, 28, 239)})
+                local scanTableResult2 = scanTable({0, color3FromRGB(30, 38, 62)}, {1, color3FromRGB(22, 28, 46)})
+                local scanTableResult3 = scanTable({0, color3FromRGBResult3}, {1, color3FromRGB(34, 96, 78)})
+                local scanTableResult4 = scanTable({0, color3FromRGB(186, 200, 242)}, {0.0570934266, color3FromRGB(118, 144, 216)}, {1, color3FromRGB(64, 88, 172)})
+                local scanTableResult5 = scanTable({0, color3FromRGB(186, 200, 242)}, {0.0155709349, color3FromRGB(118, 144, 216)}, {1, color3FromRGB(64, 88, 172)})
                 local touchEnabled = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
                         and not UserInputService.MouseEnabled
                 local left = scrollingFrame.TextXAlignment.Left
@@ -1619,7 +1616,7 @@ local function createChilliLibrary()
                                 0.5), Size = instance.Size, LayoutOrder = instance.LayoutOrder or 0, ZIndex = instance.ZIndex or 99})
                         local Frame = createInstance("Frame", {Parent = TextButton, Name = "Main", AnchorPoint = vector2New(0.5,
                                 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, (instance.full and 1)
-                                or 0.92), BackgroundColor3 = color3FromRGB(0, 0, 175), tryCall((instance.full and 0.07) or 0.06)})
+                                or 0.92), BackgroundColor3 = color3FromRGB(40, 52, 108), tryCall((instance.full and 0.07) or 0.06)})
                         local Frame2 = createInstance("Frame", {Parent = Frame, Name = "ColorFrame", AnchorPoint = vector2New(0.5,
                                 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTableResult4, "RedGradient")})
                         local Frame3, checkState2Result = createInstance("Frame", {Parent = Frame2, Name = "Transparent",
@@ -1886,11 +1883,11 @@ local function createChilliLibrary()
                         registry.main = Frame
                         local Frame2 = createInstance("Frame", {Parent = Frame, Name = "Top", AnchorPoint = vector2New(0.5, 0),
                                 Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.125), BackgroundColor3 = color3FromRGB(2,
-                                0, 111), tryCall(0.06, color3FromRGB(0, 0, 58))})
+                                0, 111), tryCall(0.06, color3FromRGB(20, 26, 56))})
                         computed = createInstance("Frame", {Parent = Frame2, Name = "Color", AnchorPoint = vector2New(0.5, 0),
                                 Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1,
-                                0.88), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(89, 86, 253)}, {1,
-                                color3FromRGB(15, 11, 255)}))})
+                                0.88), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(104, 128, 206)}, {1,
+                                color3FromRGB(72, 98, 184)}))})
                         createInstance("Frame", {Parent = computed, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
                                 Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.988,
                                 0.87), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.9})
@@ -1900,8 +1897,7 @@ local function createChilliLibrary()
                                 AnchorPoint = vector2New(0.5, 0.5), LayoutOrder = 1, ZIndex = 99, getUIAspectRatioConstraint(1)})
                         computed2 = createInstance("Frame", {Parent = createInstance("Frame", {Parent = TextButton, Name = "Main",
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1,
-                                1), BackgroundColor3 = color3FromRGB(0, 0, 126), tryCall(0.09, color3FromRGB(0, 0,
-                                76))}), Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(130, 130, 255)}, {1, color3FromRGB(28, 28, 239)}))})
+                                1), BackgroundColor3 = color3FromRGB(34, 44, 92), tryCall(0.09, color3FromRGB(24, 32, 68))}), Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(140, 160, 226)}, {1, color3FromRGB(64, 88, 172)}))})
                         createInstance("Frame", {Parent = computed2, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
                                 Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.96,
                                 0.88), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.9})
@@ -2115,7 +2111,7 @@ local function createChilliLibrary()
                         for _, item in ipairs(items4) do
                                 createInstance("Frame", {Parent = TextButton3, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
                                         Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.82,
-                                        0.2), Rotation = item, BackgroundColor3 = color3FromRGB(72, 72, 255), ZIndex = 10})
+                                        0.2), Rotation = item, BackgroundColor3 = color3FromRGB(96, 122, 204), ZIndex = 10})
                         end
 
                         animate2(TextButton3, 1.12, 0.9)
@@ -2400,7 +2396,7 @@ local function createChilliLibrary()
                         for _, tab in ipairs(data.Tabs) do
                                 tab.page.Visible = tab == cur
                                 local base, state = tab.base, {}
-                                state.BackgroundColor3 = ((tab == cur) and color3FromRGB(54, 54, 255)) or color3FromRGB(0, 0, 175)
+                                state.BackgroundColor3 = ((tab == cur) and color3FromRGB(76, 102, 190)) or color3FromRGB(40, 52, 108)
                                 animate(base, state, 0.14)
                         end
 
@@ -4362,7 +4358,7 @@ local function createChilliLibrary()
                                 or ""), TextWrapped = true, TextXAlignment = left, TextYAlignment = scrollingFrame.TextYAlignment.Top, TextTransparency = 0.28, ZIndex = 103})
                         local Frame3, state = createInstance("Frame", {Parent = createInstance("Frame", {Parent = Frame2,
                                 Name = "Track", AnchorPoint = vector2New(0.5, 1), Position = uDim2FromScale(0.5,
-                                1), Size = uDim2FromScale(1, 0.055), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.45, Visible = threshold > 0, ZIndex = 102}), Name = "Fill", AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(1, 1), BackgroundColor3 = color3FromRGB(28, 28, 239), ZIndex = 103}), {slot = fieldValue, card = Frame2}
+                                1), Size = uDim2FromScale(1, 0.055), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.45, Visible = threshold > 0, ZIndex = 102}), Name = "Fill", AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(1, 1), BackgroundColor3 = color3FromRGB(64, 88, 172), ZIndex = 103}), {slot = fieldValue, card = Frame2}
                         list2[#list2 + 1] = state
                         animate(fieldValue, {Size = uDim2FromScale(1, 0.115)}, 0.3, quint)
                         animate(Frame2, {Position = uDim2FromScale(1, 0.5)}, 0.3, quint)
@@ -6285,8 +6281,7 @@ local function createChilliLibrary()
                         createInstance("Frame", {Parent = Frame2, BackgroundColor3 = color3FromRGBResult,
                                 BackgroundTransparency = 0.82, Position = uDim2FromOffset(22, 58), Size = uDim2FromOffset(386,
                                 1), ZIndex = 12})
-                        getUIGradient2(scanTable2(Frame2, 17, 22, 68, 386, 24, data.Warn, false, {TextColor3 = color3FromRGB(72,
-                                72, 255)}), ColorSequence.new(color3FromRGB(123, 132, 255), color3FromRGB(28, 28, 239)))
+                        getUIGradient2(scanTable2(Frame2, 17, 22, 68, 386, 24, data.Warn, false, {TextColor3 = color3FromRGB(96, 122, 204)}), ColorSequence.new(color3FromRGB(118, 144, 216), color3FromRGB(64, 88, 172)))
                         local body, state = data.Body, {TextWrapped = true}
                         state.TextYAlignment, state.LineHeight, state.TextTransparency = scrollingFrame.TextYAlignment.Top, 1.14, 0.12
                         scanTable2(Frame2, 15, 22, 98, 386, 74, body, false, state)
@@ -6311,7 +6306,7 @@ local function createChilliLibrary()
                                         BackgroundTransparency = 1, Position = uDim2FromOffset(item[1], 244), Size = uDim2FromOffset(184,
                                         46), ZIndex = 14})
                                 index3 = createInstance("Frame", {Parent = data, AnchorPoint = vector2New(0.5, 0.5),
-                                        BackgroundColor3 = (clampValue2 and color3FromRGB(0, 0, 175)) or color3FromRGB(24, 25,
+                                        BackgroundColor3 = (clampValue2 and color3FromRGB(40, 52, 108)) or color3FromRGB(24, 25,
                                         30), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, 0.92), ZIndex = 12})
                                 getUIStroke(index3, 1.6)
                                 local Frame3 = createInstance("Frame", {Parent = index3, AnchorPoint = vector2New(0.5, 0),
@@ -18241,22 +18236,54 @@ local function loadAllSections()
                         end
 
                         local state = {}
-                        state.Hud = {Color = scanTable3({{0, color3FromRGB(0, 118, 255)}, {1, color3FromRGB(72, 204, 255)}}),
-                                Rotation = -90, Stroke = color3FromRGB(0, 28, 76), Light = color3FromRGB(172, 226, 255)}
-                        state.Steal = {Color = scanTable3({{0, color3FromRGB(60, 255, 0)}, {1, color3FromRGB(136, 255, 0)}}),
-                                Rotation = -90, Stroke = color3FromRGB(11, 72, 0), Light = color3FromRGB(190, 255, 180)}
-                        state.Queued = {Color = scanTable3({{0, color3FromRGB(118, 118, 132)}, {1, color3FromRGB(172, 172, 186)}}),
-                                Rotation = -90, Stroke = color3FromRGB(28, 28, 34), Light = color3FromRGB(214, 214, 226)}
-                        state.PriorityOn = {Color = scanTable3({{0, color3FromRGB(255, 247, 0)}, {1, color3FromRGB(255, 136, 0)}}),
-                                Rotation = 90, Stroke = color3FromRGB(0, 0, 0), Light = color3FromRGB(132, 112, 0)}
-                        state.Cancel = {Color = scanTable3({{0, color3FromRGB(214, 17, 17)}, {1, color3FromRGB(253, 20, 20)}}),
-                                Rotation = -90, Stroke = color3FromRGB(72, 0, 0), Light = color3FromRGB(255, 103, 103)}
-                        state.Pilat = {Color = scanTable3({{0, color3FromRGB(132, 74, 255)}, {0.34, color3FromRGB(178, 74, 255)},
-                                {0.6, color3FromRGB(255, 104, 206)}, {0.78, color3FromRGB(255, 168, 232)}, {1, color3FromRGB(146, 66,
-                                255)}}), Rotation = -115, Stroke = color3FromRGB(44, 10, 80), Light = color3FromRGB(226, 178, 255)}
+                        state.Hud = {Color = scanTable3({{0, color3FromRGB(78, 112, 196)}, {1, color3FromRGB(112, 152, 226)}}),
+                                Rotation = -90, Stroke = color3FromRGB(20, 30, 64), Light = color3FromRGB(196, 212, 246)}
+                        state.Steal = {Color = scanTable3({{0, color3FromRGB(58, 158, 128)}, {1, color3FromRGB(86, 190, 156)}}),
+                                Rotation = -90, Stroke = color3FromRGB(14, 52, 42), Light = color3FromRGB(188, 232, 216)}
+                        state.Queued = {Color = scanTable3({{0, color3FromRGB(98, 106, 128)}, {1, color3FromRGB(142, 150, 172)}}),
+                                Rotation = -90, Stroke = color3FromRGB(24, 27, 38), Light = color3FromRGB(206, 211, 226)}
+                        state.PriorityOn = {Color = scanTable3({{0, color3FromRGB(224, 176, 84)}, {1, color3FromRGB(204, 140, 68)}}),
+                                Rotation = 90, Stroke = color3FromRGB(52, 36, 12), Light = color3FromRGB(120, 92, 36)}
+                        state.Cancel = {Color = scanTable3({{0, color3FromRGB(188, 84, 92)}, {1, color3FromRGB(214, 108, 114)}}),
+                                Rotation = -90, Stroke = color3FromRGB(58, 22, 28), Light = color3FromRGB(244, 186, 188)}
+                        state.Pilat = {Color = scanTable3({{0, color3FromRGB(104, 96, 200)}, {0.34, color3FromRGB(128, 110, 214)},
+                                {0.6, color3FromRGB(150, 126, 222)}, {0.78, color3FromRGB(176, 152, 232)}, {1, color3FromRGB(104, 96, 200)}}), Rotation = -115, Stroke = color3FromRGB(30, 26, 60), Light = color3FromRGB(210, 200, 244)}
                         local scanTable3Result, cache, rarityGradients = scanTable3({{0, color3FromRGB(255, 255, 255)}, {0.2,
                                 color3FromRGB(206, 212, 224)}, {0.42, color3FromRGB(74, 80, 94)}, {0.58, color3FromRGB(42, 46,
                                 56)}, {0.78, color3FromRGB(158, 166, 182)}, {1, color3FromRGB(250, 252, 255)}}), {}
+
+
+                        -- Pilat soft theme: calm down the neon chrome of the cloned panel (keeps whites/greys and rarity colors)
+                        function state.pilatSoft(c)
+                                local h, s, v = c:ToHSV()
+                                if s > 0.5 then
+                                        s = s * 0.6
+                                        v = math.min(v * 0.9, 0.94)
+                                        return Color3.fromHSV(h, s, v)
+                                end
+                                return c
+                        end
+
+                        function state.pilatSoftenTree(root)
+                                if not root then
+                                        return
+                                end
+                                pcall(function()
+                                        for _, d in ipairs(root:GetDescendants()) do
+                                                if d:IsA("UIGradient") then
+                                                        local out = {}
+                                                        for i, k in ipairs(d.Color.Keypoints) do
+                                                                out[i] = ColorSequenceKeypoint.new(k.Time, state.pilatSoft(k.Value))
+                                                        end
+                                                        d.Color = ColorSequence.new(out)
+                                                elseif d:IsA("UIStroke") then
+                                                        d.Color = state.pilatSoft(d.Color)
+                                                elseif d:IsA("Frame") or d:IsA("TextButton") or d:IsA("ImageLabel") or d:IsA("ImageButton") then
+                                                        d.BackgroundColor3 = state.pilatSoft(d.BackgroundColor3)
+                                                end
+                                        end
+                                end)
+                        end
 
                         local function checkState2(text)
                                 local directory = cache[text]
@@ -19988,6 +20015,7 @@ local function loadAllSections()
                                         end
                                 end
 
+                                checkState10(aspectRatio2, state.Hud)
                                 buildUIScale(aspectRatio2)
 
                                 local function handleEvent3()
@@ -20118,6 +20146,8 @@ local function loadAllSections()
                                 template, scrollingFrame, tempValue12 = template2, scrollingFrame2, descendants
                                 position = frame.Position
                                 descendants.Position = position
+                                state.pilatSoftenTree(descendants)
+                                state.pilatSoftenTree(template2)
                                 collectDescendants2(descendants, true)
                                 collectDescendantsHud(descendants)
                                 tempValue11 = createScreenGui(uiStrokeClr.ActivePets)
@@ -24272,8 +24302,8 @@ local function loadAllSections()
                 local C = {
                         bg = Color3.fromRGB(18, 20, 28), panel = Color3.fromRGB(26, 29, 40),
                         row = Color3.fromRGB(32, 36, 50), stroke = Color3.fromRGB(58, 64, 86),
-                        accent = Color3.fromRGB(110, 120, 255), text = Color3.fromRGB(235, 238, 248),
-                        muted = Color3.fromRGB(150, 158, 182), good = Color3.fromRGB(126, 224, 151),
+                        accent = Color3.fromRGB(100, 128, 210), text = Color3.fromRGB(235, 238, 248),
+                        muted = Color3.fromRGB(150, 158, 182), good = Color3.fromRGB(122, 200, 160),
                 }
 
                 local W, H = 420, 540
@@ -42834,6 +42864,72 @@ local function loadAllSections()
                         tryCall3(false)
                 end)
 
+                -- ==== Misc > Utility : No Knockback (silences the RigSync/Refresh client handlers) ====
+                local nkb = {conns = {}}
+
+                local function nkbApply(on)
+                        if on then
+                                local okRs, rs = pcall(game.GetService, game, "ReplicatedStorage")
+                                local packages = okRs and rs:FindFirstChild("Packages")
+                                local networking = packages and packages:FindFirstChild("Networking")
+                                local ev = networking and networking:FindFirstChild("RE/RigSync/Refresh")
+
+                                if not ev then
+                                        return
+                                end
+
+                                if not getconnections then
+                                        pcall(function()
+                                                mainWindow:Notify("No Knockback", "Your executor has no getconnections", 3)
+                                        end)
+                                        return
+                                end
+
+                                local okc, list = pcall(getconnections, ev.OnClientEvent)
+
+                                if not (okc and type(list) == "table") then
+                                        return
+                                end
+
+                                for _, c in ipairs(list) do
+                                        if not table.find(nkb.conns, c) then
+                                                if pcall(c.Disable, c) then
+                                                        nkb.conns[#nkb.conns + 1] = c
+                                                elseif pcall(c.Disconnect, c) then
+                                                        -- executor can't Disable: permanent until rejoin
+                                                end
+                                        end
+                                end
+
+                                return
+                        end
+
+                        for _, c in ipairs(nkb.conns) do
+                                pcall(c.Enable, c)
+                        end
+
+                        nkb.conns = {}
+                end
+
+                doStepCore(cacheCore.Utility, "No Knockback", "noKb", false, nkbApply,
+                        "Silences the game's RigSync/Refresh client handler so hits and guards can't throw you around. Turn off to restore it.")
+
+                trackConnection(ctx.localPlayer.CharacterAdded, function()
+                        local hubSettings = ctx.hubSettings
+
+                        if hubSettings.noKb then
+                                task.delay(1, nkbApply, true)
+                        end
+                end)
+
+                table.insert(ctx.state.cleanup, function()
+                        nkbApply(false)
+                end)
+
+                -- ==== Misc > Utility : Stop Priority (read by the task scheduler: halts all tasks while ON) ====
+                doStepCore(cacheCore.Utility, "Stop Priority", "stopPrio", false, nil,
+                        "ON: stops every running task and starts nothing new. OFF: the queue picks the highest-priority task again and carries on.")
+
                 local doStep9ResultMove = doStep9({name = "Afk", gap = 120, at = os.clock() + 60})
 
                 doStep9ResultMove.on = function()
@@ -49014,9 +49110,20 @@ local function loadAllSections()
 
                                 fieldValue, schedErr = xpcall(function()
                                         local now2, list3, list4, ipairsFn = os.clock(), {}, {}, ipairs
+                                        local hsStop = ctx.hubSettings
+                                        local stopAllTasks = (hsStop and hsStop.stopPrio) and true or false
+
+                                        if stopAllTasks then
+                                                -- Stop Priority ON: halt the running task and start nothing new
+                                                local curMV = ctx.lastMV
+
+                                                if curMV then
+                                                        doStep10(curMV)
+                                                end
+                                        end
 
                                         for index, item in ipairsFn(iMap) do
-                                                if item.mover then
+                                                if item.mover and not stopAllTasks then
                                                         if item ~= ctx.lastMV then
                                                                 if item.on then
                                                                         if tryCallRun(item) then
@@ -49408,13 +49515,13 @@ local function loadAllSections()
                 local C = {
                         bg = Color3.fromRGB(18, 20, 28), panel = Color3.fromRGB(26, 29, 40),
                         row = Color3.fromRGB(32, 36, 50), stroke = Color3.fromRGB(58, 64, 86),
-                        accent = Color3.fromRGB(110, 120, 255), text = Color3.fromRGB(235, 238, 248),
-                        muted = Color3.fromRGB(150, 158, 182), good = Color3.fromRGB(126, 224, 151),
-                        bad = Color3.fromRGB(235, 87, 87),
+                        accent = Color3.fromRGB(100, 128, 210), text = Color3.fromRGB(235, 238, 248),
+                        muted = Color3.fromRGB(150, 158, 182), good = Color3.fromRGB(122, 200, 160),
+                        bad = Color3.fromRGB(206, 100, 104),
                 }
-                local PALETTE = {"#2ECC71", "#3E8BFF", "#EB5757", "#FF9F43", "#9B59FF", "#FF69B4", "#00C8DC", "#FACC15", "#2A2E3F", "#10131C", "#EBEEF8"}
+                local PALETTE = {"#4FB894", "#5B86D6", "#CE6468", "#D9A25A", "#8A74D0", "#C97AA8", "#4AA7B8", "#CDB45A", "#2A2E3F", "#10131C", "#EBEEF8"}
                 local SHAPES = {"round", "pill", "square"}
-                local DEF = {w = 112, h = 46, ts = 14, op = 0.1, shape = "round", on = "#2ECC71", off = "#2A2E3F", tc = "#EBEEF8", st = true}
+                local DEF = {w = 112, h = 46, ts = 14, op = 0.1, shape = "round", on = "#4FB894", off = "#2A2E3F", tc = "#EBEEF8", st = true}
 
                 local Q = {recs = {}, reg = {}, list = {}, selected = nil, edit = false, page = "Buttons", dead = false,
                         syncers = {}, rep = 0}
