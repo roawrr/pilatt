@@ -10626,6 +10626,14 @@ local function loadAllSections()
                 end
 
                 function mainWindow.pre(input)
+                        -- Instant / Instant V2 were removed from Move To Egg -> map old saves to Teleport
+                        for _, grp in next, input, nil do
+                                local a = (type(grp) == "table") and grp["Auto Steal"]
+                                local m = (type(a) == "table") and a["Move To Egg"]
+                                if type(m) == "table" and (m.Value == "Instant" or m.Value == "Instant V2") then
+                                        m.Value = "Teleport"
+                                end
+                        end
                         local function scanTableSteal(keyName)
                                 for key, value in next, input, nil do
                                         key = (type(value) == "table") and value["Auto Steal"]
@@ -10728,9 +10736,9 @@ local function loadAllSections()
                         end
                 end
 
-                hubSettings3 = doStep7(hubSettings, "Move To Egg", "moveTo", {"Walk", "Teleport", "Instant", "Instant V2"}, "Walk")
+                hubSettings3 = doStep7(hubSettings, "Move To Egg", "moveTo", {"Walk", "Teleport"}, "Walk")
                 local doStep7Result, doStep7ResultSteal = doStep7(hubSettings, "Delivery", "insDel", {"Walk",
-                        "Instant Steps", "Fast Tween"}, "Walk"):When(hubSettings3, (getValue("Walk"))), doStep7(hubSettings, "Teleport Delivery", "tpDel", {"Walk", "Quick Steps", "Fast Tween"}, "Walk"):When(hubSettings3, (getValue("Teleport")))
+                        "Instant Steps", "Fast Tween"}, "Walk"):When(hubSettings3, (getValue("Walk"))), doStep7(hubSettings, "Teleport Delivery", "tpDel", {"Walk", "Quick Steps", "Fast Tween", "Swap"}, "Walk"):When(hubSettings3, (getValue("Teleport")))
 
                 pcall(function()
                         doStep7ResultSteal.row.lb.Text = "Delivery"
@@ -15586,14 +15594,12 @@ local function loadAllSections()
                         end
                 end, {}, {}, 0, {}, 0, false, {}, 0, ctx.state
 
-                -- Move To Egg = "Instant V2" (clone swap), no treadmill
-                -- area in state.TZ  -> teleport-mode reach (stage X + Relocate check + walk + carry replies)
-                -- other areas       -> direct tp + carry spam
-                -- flow: grab w/ real hum -> clone hops to forest edge + drop -> real hum parks in safe zone
-                --       -> swap to clone -> carry dropped egg -> bank at safe zone
+                -- Teleport Delivery = "Swap" (humanoid clone swap)
+                -- flow: clone planted at the forest drop spot -> teleport to the egg, clone planted there,
+                --       swap to the egg-side humanoid, grab -> teleport back to the forest humanoid, swap, drop
+                --       -> regrab -> return true, caller does the normal walk to the safe zone + bank
                 -- returns (ok, reason) like handlerSteal
-                -- simple=true ("Instant"): teleport-mode reach, then carry home on the clone, bank at safe zone (no drop dance)
-                ctx.instantV2 = function(egg, alive, simple)
+                ctx.swapSteal = function(egg, alive)
                         local HOP_STUDS, HOP_DT, SETTLE_DT, STAGE_WAIT = 500, 0.155, 0.2, 0.8 -- teleport-mode values, tune down if server accepts
                         local lp, st = ctx.localPlayer, ctx.state
                         local char, uid = lp.Character, egg.Uid
@@ -15967,47 +15973,56 @@ local function loadAllSections()
                                 return finish(false, "Stuck on treadmill")
                         end
 
-                        -- 1. real humanoid: reach egg like teleport mode, carry
+                        -- 1. plant a clone at the forest drop spot
+                        useClone()
+                        hold(cfn(DROP), 0.25)
+                        if not ok() then
+                                return finish(false, "Swap aborted")
+                        end
+
+                        -- 2. teleport to the egg area, plant a clone there, swap to the egg-side humanoid, grab
                         useReal()
-                        if not grabFirst() then
+                        local good
+                        if tz then
+                                prepare()
+                                good = (not gone) and reachTarget()
+                                if good then
+                                        useClone()
+                                        hold(cfn(target), 0.2)
+                                        useReal()
+                                        good = carryTZ()
+                                end
+                                if st.tpFails then
+                                        st.tpFails[uid] = ((not good) and not gone) and (attempt + 1) or nil
+                                end
+                        else
+                                eggAt()
+                                go(pos + v3(0, 3, 0))
+                                useClone()
+                                hold(cfn(pos + v3(0, 3, 0)), 0.2)
+                                useReal()
+                                good = grab()
+                        end
+                        if not good then
                                 hop(SAFE, false)
                                 return finish(false, gone and "Egg is gone" or "Could not grab")
                         end
 
-                        if simple then
-                                useClone()
-                                hop(SAFE, true)
-                                bankAtSafe(1.5)
-                                local done = redeemed or not ctx.isSelectedUid(uid)
-                                return finish(done, (not done) and "Dropped on the way" or nil)
-                        end
-
-                        -- 2. clone humanoid: hop to forest edge, drop (clone stays at the egg)
+                        -- 3. teleport to the forest humanoid, swap to it, drop
+                        hop(DROP, false)
                         useClone()
                         if not dropAtForest() then
-                                bankAtSafe(1.5)
-                                local done = redeemed or not ctx.isSelectedUid(uid)
-                                return finish(done, (not done) and "Dropped on the way" or nil)
+                                return finish(ctx.isSelectedUid(uid), "Dropped on the way")
                         end
                         settle()
 
-                        -- 3. real humanoid parked in safe zone
+                        -- 4. regrab the dropped egg, then hand over to the normal walking delivery
                         useReal()
-                        local hold2 = os.clock() + 0.1
-                        while ok() and os.clock() < hold2 do
-                                go(SAFE)
-                                wait()
-                        end
-
-                        -- 4. swap back to clone, carry the dropped egg, bank at safe zone
-                        useClone()
                         if not grab() then
                                 go(SAFE)
                                 return finish(false, "Dropped on the way")
                         end
-                        bankAtSafe(1.5)
-                        local done = redeemed or not ctx.isSelectedUid(uid)
-                                return finish(done, (not done) and "Dropped on the way" or nil)
+                        return finish(true)
                 end
 
                 state13.indexMissing = function()
@@ -17378,22 +17393,27 @@ local function loadAllSections()
                                         pos = adminSteal
                                 end
 
-                                if (ctx.hubSettings.moveTo == "Instant" or ctx.hubSettings.moveTo == "Instant V2") and ctx.instantV2 then
+                                if ctx.hubSettings.moveTo == "Teleport" and ctx.hubSettings.tpDel == "Swap" and ctx.swapSteal then
                                         local state4 = ctx.state
                                         isEnabled = true
                                         state4.tpKeep = input.Uid
-                                        local okc, res, why = pcall(ctx.instantV2, input, callback, ctx.hubSettings.moveTo == "Instant")
+                                        local okc, res, why = pcall(ctx.swapSteal, input, callback)
 
                                         if okc then
-                                                player2, tempValue6 = res, why
+                                                if res then
+                                                        -- swap done, egg regrabbed at the forest -> normal walk to the safe zone / bank
+                                                        player2, tempValue6 = doStep12(input.Uid, callback)
+                                                else
+                                                        player2, tempValue6 = res, why
+                                                end
                                         else
-                                                warn("[instant v2] " .. tostring(res))
+                                                warn("[swap] " .. tostring(res))
 
                                                 if state4.v2Cleanup then
                                                         pcall(state4.v2Cleanup)
                                                 end
 
-                                                player2, tempValue6 = false, "Instant V2 error"
+                                                player2, tempValue6 = false, "Swap error"
                                         end
                                 elseif pos then
                                         local state4 = ctx.state
@@ -25263,9 +25283,9 @@ local function loadAllSections()
                 end
 
                 -- ===== steal-setting bridge (movement / delivery / teleport delivery) =====
-                local MOVE_OPTS = {{"Teleport", "Teleport"}, {"Walk", "Tween"}, {"Instant", "Instant"}, {"Instant V2", "Instant V2"}}
+                local MOVE_OPTS = {{"Teleport", "Teleport"}, {"Walk", "Tween"}}
                 local DEL_OPTS = {{"Walk", "Walk"}, {"Instant Steps", "Instant Steps"}, {"Fast Tween", "Fast Tween"}}
-                local TPDEL_OPTS = {{"Walk", "Walk"}, {"Quick Steps", "Quick Steps"}, {"Fast Tween", "Fast Tween"}}
+                local TPDEL_OPTS = {{"Walk", "Walk"}, {"Quick Steps", "Quick Steps"}, {"Fast Tween", "Fast Tween"}, {"Swap", "Swap"}}
 
                 local function applySetting(ctl, key, value)
                         ctx.hubSettings[key] = value
@@ -25701,7 +25721,7 @@ local function loadAllSections()
                                 return
                         end
                         local hs = ctx.hubSettings
-                        local move = (hs.moveTo == "Teleport" and "Teleport") or (hs.moveTo == "Instant" and "Instant") or (hs.moveTo == "Instant V2" and "Instant V2") or "Walk"
+                        local move = (hs.moveTo == "Teleport" and "Teleport") or "Walk"
                         checker.moveSeg.set(move)
                         checker.delSeg.set(hs.insDel or "Walk")
                         checker.tpDelSeg.set(hs.tpDel or "Walk")
