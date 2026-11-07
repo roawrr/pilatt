@@ -1,3 +1,4 @@
+-- ==== 00_loader : loading HUD + resume marker (PilatHubLoadStep) ====
 print("[Pilat] === Pilat 7.0 starting ===")
 do
         local genv = ((typeof(getgenv) == "function") and getgenv()) or _G
@@ -138,17 +139,19 @@ do
         end
 end
 
+-- ==== 00_pilat_session : register this script as the Pilat session owner ====
 do
         local genv = (getgenv and getgenv()) or _G
         local session = {}
         genv.__PilatV7HubSession = session
         genv.__PilatFullSourceLoaded = true
         genv.__PilatFullSourceVersion = 1
-
+        -- RESET uu.lua's "already running" flag so the library does not exit early
+        -- on second execute (or after pilatv7sae.lua ran).
         genv.ChloeX_Running = nil
         genv.ChloeX_ReopenPrompt = nil
         genv.ChloeX_Instance = nil
-
+        -- Also destroy any leftover Chloeex GUI from a previous run
         pcall(function()
                 local parent = game:GetService("CoreGui")
                 pcall(function()
@@ -168,11 +171,13 @@ do
         end
 end
 
+-- ==== 01_uilib : Pilat UI library adapter (uses the real Pilat uu.lua API) ====
 print("[Pilat] 01_uilib: starting adapter load")
 local function createUiLibrary()
         local items = {}
         items.errs = {}
 
+        -- ─── Load the Pilat UI library (uu.lua) ─────────────────────────────────
         local genv = (getgenv and getgenv()) or _G
         local pilatLibUrl = genv.PilatLibUrl or "https://raw.githubusercontent.com/roawrr/pilatt/main/uu.lua"
         local lib = genv.PilatLibOverride
@@ -202,7 +207,7 @@ local function createUiLibrary()
                                 end
                                 return "http://127.0.0.1"
                         end)
-                        libSrc = libSrc:gsub("pilat_[%w]+", "")
+                        libSrc = libSrc:gsub("sena_[%w]+", "")
                         local loaded
                         local lsOk, lsErr = pcall(function()
                                 loaded = loadstring(libSrc)()
@@ -215,7 +220,8 @@ local function createUiLibrary()
                                 loadErr = "library did not return a table (got " .. type(loaded) .. ")"
                                 error(loadErr)
                         end
-
+                        -- uu.lua returns the Chloex library. Disable the backend chat/join/fuse features
+                        -- that come bundled with it — we only want the UI primitives.
                         local off = function() return nil, "disabled" end
                         pcall(function() loaded.ConnectBackend = function() return nil end end)
                         pcall(function() loaded.GetBackend = function() return nil end end)
@@ -248,7 +254,7 @@ local function createUiLibrary()
                 local errMsg = items._loadErr or "unknown reason"
                 print("[Pilat] UI library (uu.lua) failed to load: " .. errMsg)
                 print("[Pilat] URL attempted: " .. tostring(pilatLibUrl))
-
+                -- Show a visible error ScreenGui so the user knows the script ran but the UI lib failed.
                 pcall(function()
                         local parent = game:GetService("CoreGui")
                         pcall(function()
@@ -312,7 +318,7 @@ local function createUiLibrary()
                         close.Parent = f
                         close.MouseButton1Click:Connect(function() sg:Destroy() end)
                 end)
-
+                -- Return a minimal stub so the feature script does not crash on top of the error.
                 setmetatable(items, {__index = function(_, k)
                         if k == "Window" then return function() return setmetatable({}, {__index = function() return function() return {} end end}) end end
                         return function() return {} end
@@ -329,6 +335,7 @@ local function createUiLibrary()
 
         items._lib = lib
 
+        -- ─── Helpers ────────────────────────────────────────────────────────────
         local function tryCall(cb, ...)
                 if type(cb) == "function" then
                         local ok, err = pcall(cb, ...)
@@ -355,6 +362,8 @@ local function createUiLibrary()
         items.rd = function(p) local ok, r = pcall(readfile, p) return ok and r or nil end
         items.wr = function(p, c) pcall(writefile, p, c) end
 
+        -- ─── Notify (top-level, before Window is created) ─────────────────────────
+        -- Chloex:Notify({Title, Description, Content, Color, Delay, Duration}) -> handle
         items.Notify = function(title, body, duration)
                 pcall(function()
                         lib:Notify({
@@ -368,6 +377,13 @@ local function createUiLibrary()
         items.notify = items.Notify
         items.NotifyOn = function() end
 
+        -- ─── Window factory ──────────────────────────────────────────────────────
+        -- feature code calls:  uiLibrary.Window({Title=, Game=, Key=})
+        -- We forward to:  lib:Window({Title="Pilat 7.0 |", Footer="Steal An Egg", Folder="PilatSAEv7",
+        --                              Version=1, Color=RGB(232,232,238), ToggleImage=<pilat logo>, KeyGate=false,
+        --                              AutoConfigTab=true, LazyConfigTab=true})
+        -- lib:Window returns the `tabs` object (which has :AddTab, :SetQuickAccess, :SetHeaderChips,
+        -- :Notify, :Announce, :AddForum).
         items.Window = function(data)
                 data = data or {}
                 print("[Pilat] uiLibrary.Window() called — creating Pilat window")
@@ -393,7 +409,7 @@ local function createUiLibrary()
                 end)
                 if not ok or not tabs then
                         warn("[Pilat] lib:Window() failed — pcall ok=" .. tostring(ok) .. ", tabs=" .. tostring(tabs))
-
+                        -- Show a visible error ScreenGui so the user sees something
                         pcall(function()
                                 local parent = game:GetService("CoreGui")
                                 pcall(function()
@@ -462,14 +478,18 @@ local function createUiLibrary()
                 print("[Pilat] lib:Window() returned a valid tabs object — building UI")
                 items.W = tabs
 
+                -- Registry state (the feature script keeps a St table of named states; we mirror it)
                 local St = {}
                 local Opts = {}
                 local Tabs = {}
 
+                -- Maps a side argument ("Right" or nil) to a layout order hint.
                 local function sideToLayoutOrder(name, side)
                         return side == "Right" and 50 or 10
                 end
 
+                -- Map Pilat tab names to lucide icon names supported by uu.lua.
+                -- This makes the sidebar look identical to pilatv7sae.lua.
                 local tabIconMap = {
                         ["Farm"] = "sprout",
                         ["Event"] = "calendar",
@@ -492,11 +512,14 @@ local function createUiLibrary()
                         return tabIconMap[name] or nil
                 end
 
+                -- ─── Control wrapper ──────────────────────────────────────────────
+                -- Wraps a real Pilat control (togglefunc/sliderfunc/etc) so it exposes
+                -- the control API the feature script expects.
                 local function wrapControl(pilatCtrl, ctype, defaults)
                         local ctrl = defaults or {}
                         ctrl.Type = ctype
                         if type(ctrl.Title) == "string" then
-                                ctrl.QBName = ctrl.Title
+                                ctrl.QBName = ctrl.Title -- Quick Buttons: real feature name (ctrl.Title is replaced by a function below)
                         end
                         ctrl.Skip = ctrl.Skip
                         ctrl.ls = ctrl.ls or {}
@@ -539,7 +562,7 @@ local function createUiLibrary()
                         end
 
                         ctrl.Note = function(self, text)
-
+                                -- uu.lua paragraph: SetContent. uu.lua icon grid: SetNote.
                                 if pilatCtrl and type(pilatCtrl.SetNote) == "function" then
                                         pcall(pilatCtrl.SetNote, pilatCtrl, tostring(text or ""))
                                 elseif pilatCtrl and type(pilatCtrl.SetContent) == "function" then
@@ -588,6 +611,10 @@ local function createUiLibrary()
                         return ctrl
                 end
 
+                -- ─── Section wrapper ──────────────────────────────────────────────
+                -- feature code calls:  tab:Section(name, expanded, display)
+                -- We forward to:  sections:AddSection({Title=display or name, AlwaysOpen=expanded, Icon=nil})
+                -- sections:AddSection returns the `items` object (with :AddToggle, :AddSlider, etc.)
                 local function makeSection(sectionsObj, name, expanded, display)
                         local sec = {
                                 Name = name, Disp = display or name, open = expanded ~= false,
@@ -605,9 +632,7 @@ local function createUiLibrary()
                                 })
                         end)
                         if not ok or not itemsObj then
-                                if sectionsObj ~= nil then
-                                        warn("[Pilat] AddSection failed for " .. tostring(display or name))
-                                end
+                                warn("[Pilat] AddSection failed for " .. tostring(display or name))
                                 itemsObj = nil
                         end
                         sec._pilat = itemsObj
@@ -638,6 +663,7 @@ local function createUiLibrary()
                                 return wrapped
                         end
 
+                        -- feature code calls: section:Toggle(name, default, callback, note)
                         sec.Toggle = function(self, name, default, callback, note)
                                 local ctrlRef
                                 local ctrl = addControl("toggle", {
@@ -645,7 +671,7 @@ local function createUiLibrary()
                                         Content = (type(note) == "string") and note or "",
                                         Default = default == true,
                                         Callback = function(v)
-                                                if ctrlRef then ctrlRef.Value = (v == true) end
+                                                if ctrlRef then ctrlRef.Value = (v == true) end -- keep Value true to the real switch (Quick Buttons reads it)
                                                 tryCall(callback, v)
                                         end,
                                 })
@@ -656,11 +682,15 @@ local function createUiLibrary()
                                 return ctrl
                         end
 
+                        -- feature code calls: section:Slider(name, min, max, default, callback, unit, log, places, note)
+                        -- NOTE: Pilat often passes the note string as `places` and a table (doStepCoreResult) as `note`.
+                        -- We detect this: if `note` is not a string, use `places` as the description.
                         sec.Slider = function(self, name, min, max, default, callback, unit, log, places, note)
                                 min = tonumber(min) or 0
                                 max = tonumber(max) or 100
                                 default = tonumber(default) or min
 
+                                -- Determine the actual description string
                                 local desc = ""
                                 if type(note) == "string" then
                                         desc = note
@@ -669,8 +699,10 @@ local function createUiLibrary()
                                         places = nil
                                 end
 
+                                -- Determine if this is a log-scale slider
                                 local isLog = (log == true or unit == "log")
 
+                                -- LOG-SCALE SLIDER → use an Input box where user can type "1B", "100M", "5K" etc.
                                 if isLog then
                                         local suffixes = {["K"]=1000, ["M"]=1000000, ["B"]=1000000000, ["T"]=1000000000000, ["Qa"]=1000000000000000}
                                         local function parseValue(text)
@@ -720,6 +752,7 @@ local function createUiLibrary()
                                         return ctrl
                                 end
 
+                                -- REGULAR SLIDER
                                 if max <= min then max = min + 100 end
                                 default = math.clamp(default, min, max)
                                 local increment = 1
@@ -742,23 +775,24 @@ local function createUiLibrary()
                                 return ctrl
                         end
 
+                        -- feature code calls: section:Dropdown(name, options, default, callback, multi, note, ..., apply)
                         sec.Dropdown = function(self, name, options, default, callback, multi, note, _, applyData)
-
+                                -- Options can be a function (lazy) — call it to get the list
                                 if type(options) == "function" then
                                         local ok, result = pcall(options)
                                         options = (ok and type(result) == "table") and result or {}
                                 end
-
+                                -- Ensure options is a flat table of strings/numbers
                                 if type(options) ~= "table" then options = {} end
-
+                                -- For multi-dropdown, default must be a table
                                 if multi == true and type(default) ~= "table" then
                                         default = (default ~= nil) and {default} or {}
                                 end
-
+                                -- For single dropdown, default must be a single value (not table)
                                 if multi ~= true and type(default) == "table" then
                                         default = default[1]
                                 end
-
+                                -- Determine description: note can be a string or a table (doStepCoreResult)
                                 local desc = (type(note) == "string") and note or ""
                                 local ctrl = addControl(multi and "multidropdown" or "dropdown", {
                                         Title = tostring(name or "Dropdown"),
@@ -775,6 +809,7 @@ local function createUiLibrary()
                                 return ctrl
                         end
 
+                        -- feature code calls: section:Button(name, label, callback, note, pressLabel)
                         sec.Button = function(self, name, label, callback, note, pressLabel)
                                 local ctrl = addControl("button", {
                                         Title = tostring(label or name or "Button"),
@@ -788,6 +823,7 @@ local function createUiLibrary()
                                 return ctrl
                         end
 
+                        -- feature code calls: section:Input(name, placeholder, callback, note)
                         sec.Input = function(self, name, placeholder, callback, note)
                                 local ctrl = addControl("input", {
                                         Title = name,
@@ -801,6 +837,7 @@ local function createUiLibrary()
                                 return ctrl
                         end
 
+                        -- feature code calls: section:Text(name, value, note)
                         sec.Text = function(self, name, value, note)
                                 local ctrl = addControl("text", {
                                         Title = name,
@@ -820,6 +857,7 @@ local function createUiLibrary()
                         end
                         sec.Label = sec.Text
 
+                        -- feature code calls: section:Stats(name, items, note) — stub: render as a paragraph that lists the stats
                         sec.Stats = function(self, name, statItems, note)
                                 local parts = {}
                                 for _, it in ipairs(statItems or {}) do
@@ -855,6 +893,8 @@ local function createUiLibrary()
                                 return ctrl
                         end
 
+                        -- Canvas / Surface: rich canvas, not directly supported by uu.lua.
+                        -- Stub: return a fake canvas object so the calling code does not crash.
                         sec.Canvas = function(self, name, aspect)
                                 local cv = { Name = name, aspect = aspect, _draw = {} }
                                 cv.SetContentHeight = function() end
@@ -912,6 +952,7 @@ local function createUiLibrary()
                                 return surf
                         end
 
+                        -- Aliases the feature script uses
                         sec.CreateCanvas = sec.Surface
                         sec.CreateText = function(self, data) return sec:Text(data.Name, data.Text) end
                         sec.CreateToggle = function(self, data) return sec:Toggle(data.Name, data.Default, data.Callback, data.Note) end
@@ -928,6 +969,10 @@ local function createUiLibrary()
                         return sec
                 end
 
+                -- ─── Tab wrapper ──────────────────────────────────────────────────
+                -- feature code calls:  window:Tab(name, side, display)
+                -- We forward to:  tabs:AddTab({Name=display or name, Icon=nil, LayoutOrder=...})
+                -- tabs:AddTab returns the `sections` object (with :AddSection, :AddDashboard, :Select, :OnOpen, :SetBadge)
                 local function makeTab(name, side, display)
                         local tab = {
                                 Name = name, Disp = display or name, Sections = {}, q = "",
@@ -959,22 +1004,19 @@ local function createUiLibrary()
                                 return sec
                         end
 
-                        tab.HiddenSection = function(self, name, expanded, display)
-                                local sec = makeSection(nil, name, expanded, display)
-                                sec.Hidden = true
-                                return sec
-                        end
-
                         Tabs[#Tabs + 1] = tab
                         return tab
                 end
 
+                -- ─── Window methods (the feature script calls these on the returned window) ──────────
+                -- `tabs` (the real object returned by lib:Window) already has :AddTab, :SetQuickAccess,
+                -- :SetHeaderChips, :Notify, :Announce, :AddForum. We add the registry/config layer on top.
                 local window = tabs
                 window.Tabs = Tabs
                 window.Opts = Opts
                 window.ByPath = {}
                 window.St = St
-                window.open = true
+                window.open = true -- FIX: the real UI never calls Show/Select, so every getOpen()-gated status/preview task stayed off
                 window.cur = nil
                 window.gui = nil
                 window.par = nil
@@ -1017,10 +1059,12 @@ local function createUiLibrary()
                         end
                 end
 
+                -- window.Notify is already provided by the real tabs object (forwards to Chloex:Notify).
+                -- Override to also accept the (title, body, duration) 3-arg form.
                 local realNotify = window.Notify
                 window.Notify = function(self, title, body, duration)
                         if type(title) == "table" then
-
+                                -- Already a notify config table — pass through to the real Notify.
                                 if realNotify then pcall(realNotify, self, title) end
                         else
                                 pcall(function()
@@ -1142,11 +1186,14 @@ local function createUiLibrary()
                         if self.Tabs[1] then pcall(self.Select, self, self.Tabs[1]) end
                 end
                 window.Quick = function(self)
-
+                        -- Build the QuickAccess list.
+                        -- First try QuickDefaults.pins matched against window.Opts by name.
+                        -- Falls back to a curated static list when nothing resolves.
                         local qd = window.QuickDefaults or {}
                         local pins = type(qd.pins) == "table" and qd.pins or {}
                         local list = {}
 
+                        -- Build a name→opt lookup from Opts
                         local byName = {}
                         for _, opt in ipairs(window.Opts or {}) do
                                 local n = tostring(opt.Name or opt.Title or "")
@@ -1154,7 +1201,7 @@ local function createUiLibrary()
                         end
 
                         for _, path in ipairs(pins) do
-
+                                -- path like "Player > Movement > Speed Boost" → try leaf name
                                 local leaf = path:match("([^>]+)$")
                                 leaf = leaf and leaf:match("^%s*(.-)%s*$")
                                 local opt = byName[leaf or path]
@@ -1178,6 +1225,7 @@ local function createUiLibrary()
                                 end
                         end
 
+                        -- Fallback: static labels pointing to Opts by name
                         if #list == 0 then
                                 local staticPins = {
                                         { name = "Speed Boost",    icon = "zap" },
@@ -1224,7 +1272,7 @@ local function createUiLibrary()
                 window.Search = function() end
                 window.Reflow = function() end
                 window.Cross = function() end
-
+                -- DestroyGui is provided by the real tabs object — but the feature script calls :Destroy().
                 window.Destroy = function(self)
                         if type(self.DestroyGui) == "function" then
                                 pcall(self.DestroyGui, self)
@@ -1241,7 +1289,10 @@ pilatV4Config = pilatV4Config or {}
 local uiLibrary = createUiLibrary()
 pcall(getgenv().PilatHubLoadStep, 1)
 
-local function createPilatLibrary()
+-- ==== 01b_chilli_ui : Chilli UI toolkit embedded in Pilat (used by the Egg Predictor window) ====
+-- Same widget library Chilli Hub ships (window, tabs, sections, dropdown, toggle, rich canvas).
+-- Fully local: no HttpGet, no loadstring, nothing to run besides this file.
+local function createChilliLibrary()
         local items = {}
 
         do
@@ -1263,14 +1314,14 @@ local function createPilatLibrary()
                 local uDim2FromOffset = UDim2.fromOffset
                 local vector2New = Vector2.new
                 local uDimNew = UDim.new
-                local colorWhite = color3FromRGB(255, 255, 255)
-                local colorBlack = color3FromRGB(0, 0, 0)
-                local colorAccent, textValue = color3FromRGB(84, 184, 150), "rbxasset://fonts/families/GothamSSm.json"
+                local color3FromRGBResult = color3FromRGB(255, 255, 255)
+                local color3FromRGBResult2 = color3FromRGB(0, 0, 0)
+                local color3FromRGBResult3, textValue = color3FromRGB(84, 184, 150), "rbxasset://fonts/families/GothamSSm.json"
                 local font = Font.new(textValue, scrollingFrame.FontWeight.ExtraBold, scrollingFrame.FontStyle.Normal)
                 local font2 = Font.new(textValue, scrollingFrame.FontWeight.ExtraBold, scrollingFrame.FontStyle.Italic)
                 local font3 = Font.fromEnum(scrollingFrame.Font.FredokaOne)
 
-                local function buildColorSequence(...)
+                local function scanTable(...)
                         local iMap, items2 = {}, {...}
 
                         for index3, item in ipairs(items2) do
@@ -1280,12 +1331,12 @@ local function createPilatLibrary()
                         return ColorSequence.new(iMap)
                 end
 
-                local textShineGradient = buildColorSequence({0, colorWhite}, {0.486159176, colorWhite}, {0.519031167,
+                local scanTableResult = scanTable({0, color3FromRGBResult}, {0.486159176, color3FromRGBResult}, {0.519031167,
                         color3FromRGB(221, 221, 221)}, {1, color3FromRGB(236, 236, 236)})
-                local strokeShineGradient = buildColorSequence({0, color3FromRGB(30, 38, 62)}, {1, color3FromRGB(22, 28, 46)})
-                local accentColorSequence = buildColorSequence({0, colorAccent}, {1, color3FromRGB(34, 96, 78)})
-                local redGradientSequence = buildColorSequence({0, color3FromRGB(186, 200, 242)}, {0.0570934266, color3FromRGB(118, 144, 216)}, {1, color3FromRGB(64, 88, 172)})
-                local redGradientSequenceDim = buildColorSequence({0, color3FromRGB(186, 200, 242)}, {0.0155709349, color3FromRGB(118, 144, 216)}, {1, color3FromRGB(64, 88, 172)})
+                local scanTableResult2 = scanTable({0, color3FromRGB(30, 38, 62)}, {1, color3FromRGB(22, 28, 46)})
+                local scanTableResult3 = scanTable({0, color3FromRGBResult3}, {1, color3FromRGB(34, 96, 78)})
+                local scanTableResult4 = scanTable({0, color3FromRGB(186, 200, 242)}, {0.0570934266, color3FromRGB(118, 144, 216)}, {1, color3FromRGB(64, 88, 172)})
+                local scanTableResult5 = scanTable({0, color3FromRGB(186, 200, 242)}, {0.0155709349, color3FromRGB(118, 144, 216)}, {1, color3FromRGB(64, 88, 172)})
                 local touchEnabled = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
                         and not UserInputService.MouseEnabled
                 local left = scrollingFrame.TextXAlignment.Left
@@ -1294,7 +1345,7 @@ local function createPilatLibrary()
                 local quart = scrollingFrame.EasingStyle.Quart
                 local quint, connections = scrollingFrame.EasingStyle.Quint, {}
 
-                local function trackEventConnection(event, input)
+                local function trackConnection(event, input)
                         local connection = event:Connect(input)
                         connections[#connections + 1] = connection
                         return connection
@@ -1302,7 +1353,7 @@ local function createPilatLibrary()
 
                 local textValues = {TextLabel = 1, TextButton = 1, TextBox = 1}
 
-                local function newInstance(className, instance2)
+                local function createInstance(className, instance2)
                         local instance = Instance.new(className)
 
                         if textValues[className] then
@@ -1343,8 +1394,8 @@ local function createPilatLibrary()
                         return instance
                 end
 
-                local function makeStroke(firstValue, input, input2, input3)
-                        local UIStroke = newInstance("UIStroke", {Thickness = firstValue, Color = input or colorBlack,
+                local function tryCall(firstValue, input, input2, input3)
+                        local UIStroke = createInstance("UIStroke", {Thickness = firstValue, Color = input or color3FromRGBResult2,
                                 ApplyStrokeMode = (input2 and scrollingFrame.ApplyStrokeMode.Contextual)
                                 or scrollingFrame.ApplyStrokeMode.Border, LineJoinMode = scrollingFrame.LineJoinMode.Round, Transparency = input3 or 0})
 
@@ -1357,48 +1408,48 @@ local function createPilatLibrary()
                         return UIStroke
                 end
 
-                local function makeGradient(firstValue, input)
-                        return newInstance("UIGradient", {Color = firstValue, Rotation = 90, Name = input or "UIGradient"})
+                local function getUIGradient(firstValue, input)
+                        return createInstance("UIGradient", {Color = firstValue, Rotation = 90, Name = input or "UIGradient"})
                 end
 
-                local function makeAspectConstraint(input, input2)
-                        return newInstance("UIAspectRatioConstraint", {AspectRatio = input or 1,
+                local function getUIAspectRatioConstraint(input, input2)
+                        return createInstance("UIAspectRatioConstraint", {AspectRatio = input or 1,
                                 DominantAxis = (input2 and scrollingFrame.DominantAxis.Height) or scrollingFrame.DominantAxis.Width})
                 end
 
-                local function applyDefaultTextStyle(parent)
+                local function doStep(parent)
                         parent.FontFace = font
-                        parent.TextColor3 = colorWhite
+                        parent.TextColor3 = color3FromRGBResult
                         parent.TextScaled = true
                         parent.LineHeight = 1
-                        makeStroke(0.08, colorBlack, true).Parent = parent
+                        tryCall(0.08, color3FromRGBResult2, true).Parent = parent
                         return parent
                 end
 
-                local function applyStyledTextStyle(parent, fontFace)
+                local function checkState(parent, fontFace)
                         if fontFace then
                                 parent.FontFace = fontFace
                         end
 
-                        parent.TextColor3 = colorWhite
+                        parent.TextColor3 = color3FromRGBResult
                         parent.TextScaled = true
                         parent.LineHeight = 1
-                        makeGradient(textShineGradient, "TextStyleGradient").Parent = parent
-                        fontFace = makeStroke(0.065, colorWhite, true)
-                        makeGradient(strokeShineGradient, "StrokeStyleGradient").Parent = fontFace
+                        getUIGradient(scanTableResult, "TextStyleGradient").Parent = parent
+                        fontFace = tryCall(0.065, color3FromRGBResult, true)
+                        getUIGradient(scanTableResult2, "StrokeStyleGradient").Parent = fontFace
                         fontFace.Parent = parent
                         return parent
                 end
 
-                local function createStyledLabel(input, input2)
-                        local TextLabel = newInstance("TextLabel", input)
+                local function checkState2(input, input2)
+                        local TextLabel = createInstance("TextLabel", input)
                         if input2 then
-                                return applyStyledTextStyle(TextLabel, ((input2 == true) and font) or input2)
+                                return checkState(TextLabel, ((input2 == true) and font) or input2)
                         end
-                        return applyDefaultTextStyle(TextLabel)
+                        return doStep(TextLabel)
                 end
 
-                local function applyDimmedStyle(data)
+                local function doStep2(data)
                         data.TextTransparency = 0.32
                         local uiStroke = data:FindFirstChildOfClass("UIStroke")
                         uiStroke.Thickness = 0.06
@@ -1406,14 +1457,14 @@ local function createPilatLibrary()
                         return data
                 end
 
-                local function tweenInstance(input, input2, input3, input4, input5)
+                local function animate(input, input2, input3, input4, input5)
                         local tween = TweenService:Create(input, TweenInfo.new(input3 or 0.15,
                                 input4 or scrollingFrame.EasingStyle.Quad, input5 or scrollingFrame.EasingDirection.Out), input2)
                         tween:Play()
                         return tween
                 end
 
-                local function isClickInput(data)
+                local function doStep3(data)
                         local userInputType = data.UserInputType
                         return (userInputType == scrollingFrame.UserInputType.MouseButton1)
                                 or (userInputType == scrollingFrame.UserInputType.Touch)
@@ -1421,12 +1472,12 @@ local function createPilatLibrary()
 
                 items.errs = {}
 
-                local function safeCall(callback, ...)
+                local function tryCall2(callback, ...)
                         if callback then
                                 local callResult, text = pcall(callback, ...)
 
                                 if not (callResult) then
-                                        warn("[Pilat] " .. tostring(text))
+                                        warn("[Chilli] " .. tostring(text))
 
                                         if #items.errs < 50 then
                                                 items.errs[#items.errs + 1] = tostring(text)
@@ -1435,33 +1486,33 @@ local function createPilatLibrary()
                         end
                 end
 
-                local function attachHoverScale(firstValue, input, input2)
+                local function animate2(firstValue, input, input2)
                         local uiScale, tempValue, tempValue2 = firstValue:FindFirstChildOfClass("UIScale")
-                                or newInstance("UIScale", {Parent = firstValue, Name = "InteractionScale"}), false
+                                or createInstance("UIScale", {Parent = firstValue, Name = "InteractionScale"}), false
 
                         local function playTween(input3, input4)
                                 if tempValue2 then
                                         tempValue2:Cancel()
                                 end
 
-                                tempValue2 = tweenInstance(uiScale, {Scale = input3}, input4)
+                                tempValue2 = animate(uiScale, {Scale = input3}, input4)
                         end
 
-                        trackEventConnection(firstValue.MouseEnter, function()
+                        trackConnection(firstValue.MouseEnter, function()
                                 tempValue = true
                                 playTween(input, 0.1)
                         end)
 
-                        trackEventConnection(firstValue.MouseLeave, function()
+                        trackConnection(firstValue.MouseLeave, function()
                                 tempValue = false
                                 playTween(1, 0.1)
                         end)
 
-                        trackEventConnection(firstValue.MouseButton1Down, function()
+                        trackConnection(firstValue.MouseButton1Down, function()
                                 playTween(input2, 0.055)
                         end)
 
-                        trackEventConnection(firstValue.MouseButton1Up, function()
+                        trackConnection(firstValue.MouseButton1Up, function()
                                 playTween((tempValue and input) or 1, 0.08)
                         end)
 
@@ -1471,13 +1522,13 @@ local function createPilatLibrary()
                 local setmetatableFn, weakCache = setmetatable, {__mode = "k"}
                 local setmetatableFnResult = setmetatableFn({}, weakCache)
 
-                local function isPointInside(instance, input)
+                local function doStep4(instance, input)
                         local absolutePosition, absoluteSize = instance.AbsolutePosition, instance.AbsoluteSize
                         return ((((instance.Parent and instance.Visible) and (input.X >= absolutePosition.X)) and (input.X <= (absolutePosition.X + absoluteSize.X))) and (input.Y >= absolutePosition.Y))
                                 and (input.Y <= (absolutePosition.Y + absoluteSize.Y))
                 end
 
-                trackEventConnection(UserInputService.InputChanged, function(input)
+                trackConnection(UserInputService.InputChanged, function(input)
                         local entry = setmetatableFnResult[input]
 
                         if entry then
@@ -1489,10 +1540,10 @@ local function createPilatLibrary()
                         end
                 end)
 
-                local function onClick(firstValue, input2)
+                local function hit(firstValue, input2)
                         firstValue.Active = true
 
-                        trackEventConnection(firstValue.InputBegan, function(input)
+                        trackConnection(firstValue.InputBegan, function(input)
                                 if input.UserInputType == scrollingFrame.UserInputType.Touch then
                                         if input.UserInputState == scrollingFrame.UserInputState.Begin then
                                                 local vector2NewResult = vector2New(input.Position.X, input.Position.Y)
@@ -1501,7 +1552,7 @@ local function createPilatLibrary()
                                 end
                         end)
 
-                        return trackEventConnection(firstValue.Activated, function(inputObject)
+                        return trackConnection(firstValue.Activated, function(inputObject)
                                 if inputObject then
                                         if inputObject.UserInputType == scrollingFrame.UserInputType.Touch then
                                                 local lookupValue = setmetatableFnResult[inputObject]
@@ -1511,7 +1562,7 @@ local function createPilatLibrary()
                                                                 return
                                                         elseif lookupValue.x then
                                                                 return
-                                                        elseif not (isPointInside(firstValue, lookupValue.p)) then
+                                                        elseif not (doStep4(firstValue, lookupValue.p)) then
                                                                 return
                                                         end
                                                 else
@@ -1520,19 +1571,19 @@ local function createPilatLibrary()
                                         end
                                 end
 
-                                safeCall(input2)
+                                tryCall2(input2)
                         end)
                 end
 
                 local items3 = {}
 
-                trackEventConnection(RunService.Heartbeat, function()
+                trackConnection(RunService.Heartbeat, function()
                         if #items3 > 0 then
                                 local items3Ref = items3
                                 items3 = {}
 
                                 for _, item in ipairs(items3Ref) do
-                                        safeCall(item)
+                                        tryCall2(item)
                                 end
                         end
                 end)
@@ -1542,14 +1593,14 @@ local function createPilatLibrary()
                         items3Ref[#items3Ref + 1] = input
                 end
 
-                local function createChevron(firstValue, input, firstValue2, input2, input3, input4, input5)
-                        local Frame, items2 = newInstance("Frame", {Parent = firstValue, Name = "Caret",
+                local function chev(firstValue, input, firstValue2, input2, input3, input4, input5)
+                        local Frame, items2 = createInstance("Frame", {Parent = firstValue, Name = "Caret",
                                 AnchorPoint = vector2New(0.5,
                                 0.5), Position = firstValue2, Size = input2, BackgroundTransparency = 1, ZIndex = input3
-                                or 1, makeAspectConstraint(1, not input5)}), {{0.335355, 45}, {0.664645, -45}}
+                                or 1, getUIAspectRatioConstraint(1, not input5)}), {{0.335355, 45}, {0.664645, -45}}
 
                         for _, item in ipairs(items2) do
-                                newInstance("Frame", {Parent = Frame, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
+                                createInstance("Frame", {Parent = Frame, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
                                         Position = uDim2FromScale(item[1], 0.535355), Rotation = item[2], Size = uDim2FromScale(0.6657,
                                         input4 or 0.2), BackgroundColor3 = input, ZIndex = (input3 or 1) + 1})
                         end
@@ -1557,46 +1608,46 @@ local function createPilatLibrary()
                         return Frame
                 end
 
-                local function createStyledButton(instance)
-                        local TextButton = newInstance("TextButton", {Parent = instance.Parent,
+                local function doStep5(instance)
+                        local TextButton = createInstance("TextButton", {Parent = instance.Parent,
                                 Name = (instance.Name or instance.Text) or "Button", AnchorPoint = instance.AnchorPoint or vector2New(0.5,
                                 0.5), Position = instance.Position
                                 or uDim2FromScale(0.5,
                                 0.5), Size = instance.Size, LayoutOrder = instance.LayoutOrder or 0, ZIndex = instance.ZIndex or 99})
-                        local Frame = newInstance("Frame", {Parent = TextButton, Name = "Main", AnchorPoint = vector2New(0.5,
+                        local Frame = createInstance("Frame", {Parent = TextButton, Name = "Main", AnchorPoint = vector2New(0.5,
                                 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, (instance.full and 1)
-                                or 0.92), BackgroundColor3 = color3FromRGB(40, 52, 108), makeStroke((instance.full and 0.07) or 0.06)})
-                        local Frame2 = newInstance("Frame", {Parent = Frame, Name = "ColorFrame", AnchorPoint = vector2New(0.5,
-                                0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = colorWhite, makeGradient(redGradientSequence, "RedGradient")})
-                        local Frame3, checkState2Result = newInstance("Frame", {Parent = Frame2, Name = "Transparent",
+                                or 0.92), BackgroundColor3 = color3FromRGB(40, 52, 108), tryCall((instance.full and 0.07) or 0.06)})
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = "ColorFrame", AnchorPoint = vector2New(0.5,
+                                0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTableResult4, "RedGradient")})
+                        local Frame3, checkState2Result = createInstance("Frame", {Parent = Frame2, Name = "Transparent",
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.965,
-                                0.88), BackgroundColor3 = colorWhite, ZIndex = 2, makeGradient(redGradientSequenceDim, "RedGradient")}), createStyledLabel({Parent = Frame2, Name = "Label", AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = instance.LSize
+                                0.88), BackgroundColor3 = color3FromRGBResult, ZIndex = 2, getUIGradient(scanTableResult5, "RedGradient")}), checkState2({Parent = Frame2, Name = "Label", AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = instance.LSize
                                 or uDim2FromScale(0.94,
                                 0.72), Text = instance.Text or "", TextWrapped = instance.wrap == true, ZIndex = 6}, true)
-                        attachHoverScale(TextButton, instance.h or 1.035, instance.p or 0.96)
+                        animate2(TextButton, instance.h or 1.035, instance.p or 0.96)
                         return TextButton, Frame, checkState2Result, Frame2, Frame3
                 end
 
-                local function createToggleSwitch(firstValue, input, data, input2, input3, input4)
-                        local Frame = newInstance("Frame", {Parent = firstValue, Name = "Switch", AnchorPoint = vector2New(input,
-                                0.5), Position = uDim2FromScale(data, 0.5), Size = uDim2FromScale(input2, input3), BackgroundColor3 = colorWhite, ZIndex = input4
-                                or 3, makeStroke(0.06)})
-                        local UIGradient = newInstance("UIGradient", {Parent = Frame, Name = "OFF",
-                                Color = ColorSequence.new(colorBlack), Rotation = 90, Transparency = NumberSequence.new(0.6)})
-                        local uiGradient = makeGradient(accentColorSequence, "ON")
+                local function doStep6(firstValue, input, data, input2, input3, input4)
+                        local Frame = createInstance("Frame", {Parent = firstValue, Name = "Switch", AnchorPoint = vector2New(input,
+                                0.5), Position = uDim2FromScale(data, 0.5), Size = uDim2FromScale(input2, input3), BackgroundColor3 = color3FromRGBResult, ZIndex = input4
+                                or 3, tryCall(0.06)})
+                        local UIGradient = createInstance("UIGradient", {Parent = Frame, Name = "OFF",
+                                Color = ColorSequence.new(color3FromRGBResult2), Rotation = 90, Transparency = NumberSequence.new(0.6)})
+                        local uiGradient = getUIGradient(scanTableResult3, "ON")
                         uiGradient.Parent = Frame
                         input2, input3, firstValue, data = {Parent = Frame, Name = "Hold", AnchorPoint = vector2New(0.5, 0.5),
                                 Size = uDim2FromScale(0.72, 0.72), BackgroundColor3 = color3FromRGB(89, 89,
                                 89), ZIndex = (input4
-                                or 3) + 2}, makeStroke(0.09), makeAspectConstraint(1), {Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = colorWhite}
+                                or 3) + 2}, tryCall(0.09), getUIAspectRatioConstraint(1), {Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult}
                         data.ZIndex = (input4 or 3) + 3
 
                         do
-                                local packedValues = table.pack(input3, firstValue, newInstance("Frame", data))
+                                local packedValues = table.pack(input3, firstValue, createInstance("Frame", data))
                                 table.move(packedValues, 1, packedValues.n, 1, input2)
                         end
 
-                        local Frame2 = newInstance("Frame", input2)
+                        local Frame2 = createInstance("Frame", input2)
 
                         return Frame, function(enabled, input5)
                                 UIGradient.Enabled = not enabled
@@ -1606,27 +1657,27 @@ local function createPilatLibrary()
                                 if input5 == false then
                                         Frame2.Position = uDim2FromScaleResult
                                 else
-                                        tweenInstance(Frame2, {Position = uDim2FromScaleResult}, 0.12)
+                                        animate(Frame2, {Position = uDim2FromScaleResult}, 0.12)
                                 end
                         end
                 end
 
-                items.newInstance = newInstance
-                items.createStyledLabel = createStyledLabel
-                items.makeStroke = makeStroke
-                items.makeGradient = makeGradient
-                items.tweenInstance = tweenInstance
-                items.onClick = onClick
-                items.createChevron = createChevron
-                items.createStyledButton = createStyledButton
-                items.trackEventConnection = trackEventConnection
-                items.attachHoverScale = attachHoverScale
-                items.accentColorSequence = accentColorSequence
-                items.redGradientSequence = redGradientSequence
-                items.textShineGradient = textShineGradient
-                items.strokeShineGradient = strokeShineGradient
-                items.primaryFont = font
-                items.displayFont = font3
+                items.N = createInstance
+                items.L = checkState2
+                items.st = tryCall
+                items.gr = getUIGradient
+                items.tw = animate
+                items.hit = hit
+                items.chev = chev
+                items.rb = doStep5
+                items.cn = trackConnection
+                items.fb = animate2
+                items.ACC = scanTableResult3
+                items.RED1 = scanTableResult4
+                items.SHN = scanTableResult
+                items.SHS = scanTableResult2
+                items.FN = font
+                items.FR = font3
 
                 local function readCachedFile(input)
                         local callResult, result = pcall(readfile, input)
@@ -1664,7 +1715,7 @@ local function createPilatLibrary()
                 items.wr = saveFile
                 local amount, amount2, amount3 = 1000, 3, 12
 
-                local function roundSignificantFigures(amount4)
+                local function roundSigFigs(amount4)
                         if amount4 <= 0 then
                                 return 0
                         end
@@ -1672,13 +1723,13 @@ local function createPilatLibrary()
                         return math.floor((amount4 / factor) + 0.5) * factor
                 end
 
-                local function valueFromSliderPosition(threshold)
+                local function clampValue(threshold)
                         threshold = math.clamp(tonumber(threshold) or 0, 0, amount)
                         return ((threshold <= 0) and 0)
-                                or roundSignificantFigures(10 ^ (amount2 + (((amount3 - amount2) * threshold) / amount)))
+                                or roundSigFigs(10 ^ (amount2 + (((amount3 - amount2) * threshold) / amount)))
                 end
 
-                local function sliderPositionFromValue(threshold)
+                local function roundSigFigs2(threshold)
                         threshold = tonumber(threshold) or 0
                         if threshold <= 0 then
                                 return 0
@@ -1687,7 +1738,7 @@ local function createPilatLibrary()
                                 0, amount)
                 end
 
-                local function formatNumberAdaptive(threshold)
+                local function doStep7(threshold)
                         local stringFormat, isRecent = string.format, ((threshold >= 100) and "%.0f")
                                 or ((threshold >= 10) and "%.1f")
                         local stringFormatResult = stringFormat(isRecent or "%.2f", threshold)
@@ -1695,27 +1746,27 @@ local function createPilatLibrary()
                                 "") else stringFormatResult
                 end
 
-                local function formatRatePerSecond(input)
-                        local numVal = valueFromSliderPosition(input)
+                local function formatRate(input)
+                        local numVal = clampValue(input)
 
                         if numVal <= 0 then
                                 return "Off"
                         elseif numVal < 1000000 then
-                                return formatNumberAdaptive(numVal / 1000) .. " K/s"
+                                return doStep7(numVal / 1000) .. " K/s"
                         elseif numVal < 1000000000 then
-                                return formatNumberAdaptive(numVal / 1000000) .. " M/s"
+                                return doStep7(numVal / 1000000) .. " M/s"
                         end
 
-                        return formatNumberAdaptive(numVal / 1000000000) .. " B/s"
+                        return doStep7(numVal / 1000000000) .. " B/s"
                 end
 
-                local function formatCompactNumber(input)
-                        local numVal = valueFromSliderPosition(input)
+                local function formatCompact(input)
+                        local numVal = clampValue(input)
 
                         if numVal <= 0 then
                                 return "0"
                         elseif numVal < 1000000 then
-                                return formatNumberAdaptive(numVal / 1000) .. "k"
+                                return doStep7(numVal / 1000) .. "k"
                         end
 
                         return (string.format("%.3f", numVal / 1000000):gsub("0+$", ""):gsub("%.$", ""))
@@ -1723,7 +1774,7 @@ local function createPilatLibrary()
 
                 local unitMultipliers = {k = 1000, m = 1000000, b = 1000000000, t = 1000000000000}
 
-                local function parseRateString(input)
+                local function doStep8(input)
                         input = tostring(input or ""):gsub("[%s,/]", ""):lower():gsub("s$", "")
 
                         if input == "" then
@@ -1734,13 +1785,13 @@ local function createPilatLibrary()
 
                         local match, tempValue = input:match("^([%d%.]+)([kmbt]?)$")
                         match = tonumber(match)
-                        return (match and sliderPositionFromValue(match * (unitMultipliers[tempValue] or 1000000))) or nil
+                        return (match and roundSigFigs2(match * (unitMultipliers[tempValue] or 1000000))) or nil
                 end
 
-                items.valueFromSliderPosition = valueFromSliderPosition
-                items.sliderPositionFromValue = sliderPositionFromValue
+                items.s2v = clampValue
+                items.v2s = roundSigFigs2
 
-                local function wrapTextInColorTag(color, input)
+                local function colorizeText(color, input)
                         local computed, computed2, computed3, text = math.floor((color.R * 255) + 0.5), math.floor((color.G * 255) + 0.5), math.floor((color.B * 255) + 0.5), tostring(input):gsub("&",
                                 "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")
                         return ("<font color=\"rgb(%d,%d,%d)\">%s</font>"):format(computed, computed2, computed3, text)
@@ -1752,7 +1803,7 @@ local function createPilatLibrary()
                 widgetSpecs.__index = widgetSpecs
                 local amount5, amount6, list = 1, 1, {}
 
-                local function registerLayoutCallback(callback)
+                local function doStep9(callback)
                         list[#list + 1] = callback
                         callback()
                 end
@@ -1777,20 +1828,20 @@ local function createPilatLibrary()
 
                         for _, child in ipairs(hui:GetChildren()) do
                                 if child:IsA("ScreenGui") then
-                                        if child:GetAttribute("PilatRB") then
+                                        if child:GetAttribute("ChilliRB") then
                                                 child:Destroy()
-                                        elseif (child:GetAttribute("PilatLibraryOwned") or (child.Name == "Settings"))
-                                                or (child.Name == "PilatQuickBar") then
-                                                if child:GetAttribute("PilatScriptOwner") ~= "Joiner" then
+                                        elseif (child:GetAttribute("ChilliLibraryOwned") or (child.Name == "Settings"))
+                                                or (child.Name == "ChilliQuickBar") then
+                                                if child:GetAttribute("ChilliScriptOwner") ~= "Joiner" then
                                                         child:Destroy()
                                                 end
                                         end
                                 end
                         end
 
-                        registry.dirP = "PilatLibrary/Games/" .. tostring(data.Game or gameRef.GameId)
-                        ensureFolder("PilatLibrary")
-                        ensureFolder("PilatLibrary/Games")
+                        registry.dirP = "ChilliLibrary/Games/" .. tostring(data.Game or gameRef.GameId)
+                        ensureFolder("ChilliLibrary")
+                        ensureFolder("ChilliLibrary/Games")
                         ensureFolder(registry.dirP)
                         ensureFolder(registry.dirP .. "/configs")
                         local currentCamera = workspace.CurrentCamera
@@ -1823,34 +1874,34 @@ local function createPilatLibrary()
 
                         registry.base = uDim2FromScale(factor / computed, factor2 / computed2)
                         registry.size = registry.base
-                        local ScreenGui = newInstance("ScreenGui", {Name = HttpService:GenerateGUID(false):gsub("-", ""):sub(1,
+                        local ScreenGui = createInstance("ScreenGui", {Name = HttpService:GenerateGUID(false):gsub("-", ""):sub(1,
                                 12), ResetOnSpawn = false, IgnoreGuiInset = true, ZIndexBehavior = scrollingFrame.ZIndexBehavior.Sibling, DisplayOrder = 6, Enabled = false})
-                        ScreenGui:SetAttribute("PilatRB", true)
+                        ScreenGui:SetAttribute("ChilliRB", true)
                         registry.gui = ScreenGui
-                        local Frame = newInstance("Frame", {Parent = ScreenGui, Name = "Frame", AnchorPoint = vector2New(0.5,
-                                0.5), Position = uDim2New(0.5, 0, 1.55, 0), Size = registry.size, BackgroundColor3 = colorBlack, BackgroundTransparency = 0.4, makeStroke(0.008)})
+                        local Frame = createInstance("Frame", {Parent = ScreenGui, Name = "Frame", AnchorPoint = vector2New(0.5,
+                                0.5), Position = uDim2New(0.5, 0, 1.55, 0), Size = registry.size, BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.4, tryCall(0.008)})
                         registry.main = Frame
-                        local Frame2 = newInstance("Frame", {Parent = Frame, Name = "Top", AnchorPoint = vector2New(0.5, 0),
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = "Top", AnchorPoint = vector2New(0.5, 0),
                                 Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.125), BackgroundColor3 = color3FromRGB(2,
-                                0, 111), makeStroke(0.06, color3FromRGB(20, 26, 56))})
-                        computed = newInstance("Frame", {Parent = Frame2, Name = "Color", AnchorPoint = vector2New(0.5, 0),
+                                0, 111), tryCall(0.06, color3FromRGB(20, 26, 56))})
+                        computed = createInstance("Frame", {Parent = Frame2, Name = "Color", AnchorPoint = vector2New(0.5, 0),
                                 Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1,
-                                0.88), BackgroundColor3 = colorWhite, makeGradient(buildColorSequence({0, color3FromRGB(104, 128, 206)}, {1,
+                                0.88), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(104, 128, 206)}, {1,
                                 color3FromRGB(72, 98, 184)}))})
-                        newInstance("Frame", {Parent = computed, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
+                        createInstance("Frame", {Parent = computed, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
                                 Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.988,
-                                0.87), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.9})
-                        local checkState2Result = createStyledLabel({Parent = computed, Name = "Label", AnchorPoint = vector2New(0.5,
-                                0.5), Text = data.Title or "Pilat Hub", TextWrapped = true, TextXAlignment = left, ZIndex = 6}, font2)
-                        local TextButton = newInstance("TextButton", {Parent = Frame2, Name = "Close",
-                                AnchorPoint = vector2New(0.5, 0.5), LayoutOrder = 1, ZIndex = 99, makeAspectConstraint(1)})
-                        computed2 = newInstance("Frame", {Parent = newInstance("Frame", {Parent = TextButton, Name = "Main",
+                                0.87), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.9})
+                        local checkState2Result = checkState2({Parent = computed, Name = "Label", AnchorPoint = vector2New(0.5,
+                                0.5), Text = data.Title or "Chilli Hub", TextWrapped = true, TextXAlignment = left, ZIndex = 6}, font2)
+                        local TextButton = createInstance("TextButton", {Parent = Frame2, Name = "Close",
+                                AnchorPoint = vector2New(0.5, 0.5), LayoutOrder = 1, ZIndex = 99, getUIAspectRatioConstraint(1)})
+                        computed2 = createInstance("Frame", {Parent = createInstance("Frame", {Parent = TextButton, Name = "Main",
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1,
-                                1), BackgroundColor3 = color3FromRGB(34, 44, 92), makeStroke(0.09, color3FromRGB(24, 32, 68))}), Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = colorWhite, makeGradient(buildColorSequence({0, color3FromRGB(140, 160, 226)}, {1, color3FromRGB(64, 88, 172)}))})
-                        newInstance("Frame", {Parent = computed2, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
+                                1), BackgroundColor3 = color3FromRGB(34, 44, 92), tryCall(0.09, color3FromRGB(24, 32, 68))}), Name = "Color", AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 0.9), BackgroundColor3 = color3FromRGBResult, getUIGradient(scanTable({0, color3FromRGB(140, 160, 226)}, {1, color3FromRGB(64, 88, 172)}))})
+                        createInstance("Frame", {Parent = computed2, Name = "Transparent", AnchorPoint = vector2New(0.5, 0.5),
                                 Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.96,
-                                0.88), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.9})
-                        createStyledLabel({Parent = computed2, Name = "Label", AnchorPoint = vector2New(0.5, 0.5),
+                                0.88), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.9})
+                        checkState2({Parent = computed2, Name = "Label", AnchorPoint = vector2New(0.5, 0.5),
                                 Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1.14,
                                 0.98), Text = "X", TextWrapped = true, ZIndex = 6}, font3)
 
@@ -1869,73 +1920,73 @@ local function createPilatLibrary()
                                                 tempValue:Cancel()
                                         end
 
-                                        tempValue = tweenInstance(TextButton, {Size = uDim2New(uDim.X.Scale * input2, 0, uDim.Y.Scale * input2, 0)},
+                                        tempValue = animate(TextButton, {Size = uDim2New(uDim.X.Scale * input2, 0, uDim.Y.Scale * input2, 0)},
                                                 input3)
                                 end
 
-                                trackEventConnection(TextButton.MouseEnter, function()
+                                trackConnection(TextButton.MouseEnter, function()
                                         isEnabled = true
                                         playTween(1.04, 0.12)
                                 end)
 
-                                trackEventConnection(TextButton.MouseLeave, function()
+                                trackConnection(TextButton.MouseLeave, function()
                                         isEnabled = false
                                         playTween(1, 0.12)
                                 end)
 
-                                trackEventConnection(TextButton.MouseButton1Down, function()
+                                trackConnection(TextButton.MouseButton1Down, function()
                                         playTween(0.96, 0.06)
                                 end)
 
-                                trackEventConnection(TextButton.MouseButton1Up, function()
+                                trackConnection(TextButton.MouseButton1Up, function()
                                         playTween((isEnabled and 1.04) or 1, 0.09)
                                 end)
                         end
 
-                        onClick(TextButton, function()
+                        hit(TextButton, function()
                                 registry:Show(false)
                         end)
 
                         computed2 = {{"SideButtons", 1, -1}, {"SideButtonsRight", 0, 1}}
 
                         for index3, item in ipairs(computed2) do
-                                computed = newInstance("Frame", {Parent = Frame, Name = item[1], AnchorPoint = vector2New(item[2], 0.5),
+                                computed = createInstance("Frame", {Parent = Frame, Name = item[1], AnchorPoint = vector2New(item[2], 0.5),
                                         BackgroundTransparency = 1, ZIndex = 99})
-                                registry.cols[index3] = {f = computed, e = item[3], ly = newInstance("UIListLayout", {Parent = computed,
-                                        Name = "TabLayout", HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder}), pd = newInstance("UIPadding", {Parent = computed, Name = "TabPadding"})}
+                                registry.cols[index3] = {f = computed, e = item[3], ly = createInstance("UIListLayout", {Parent = computed,
+                                        Name = "TabLayout", HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder}), pd = createInstance("UIPadding", {Parent = computed, Name = "TabPadding"})}
                         end
 
-                        local TextButton2, Frames, items2 = newInstance("TextButton", {Parent = Frame, Name = "ResizeGrip",
+                        local TextButton2, Frames, items2 = createInstance("TextButton", {Parent = Frame, Name = "ResizeGrip",
                                 AnchorPoint = vector2New(1,
-                                1), Selectable = false, ZIndex = 120, makeAspectConstraint(1)}), {}, {{0.5, 0.9}, {0.68, 0.54}, {0.84, 0.22}}
+                                1), Selectable = false, ZIndex = 120, getUIAspectRatioConstraint(1)}), {}, {{0.5, 0.9}, {0.68, 0.54}, {0.84, 0.22}}
 
                         for _, item in ipairs(items2) do
-                                Frames[#Frames + 1] = newInstance("Frame", {Parent = TextButton2, Name = "GripBar",
+                                Frames[#Frames + 1] = createInstance("Frame", {Parent = TextButton2, Name = "GripBar",
                                         AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(item[1],
-                                        item[1]), Size = uDim2FromScale(item[2], 0.13), Rotation = -45, BackgroundColor3 = colorWhite, BackgroundTransparency = 0.35, ZIndex = 121})
+                                        item[1]), Size = uDim2FromScale(item[2], 0.13), Rotation = -45, BackgroundColor3 = color3FromRGBResult, BackgroundTransparency = 0.35, ZIndex = 121})
                         end
 
                         local tempValue2, input, tempValue4, absoluteSize
 
                         local function animate3(input2)
                                 for _, Frame3 in ipairs(Frames) do
-                                        tweenInstance(Frame3, {BackgroundTransparency = (input2 and 0.05) or 0.35}, 0.1)
+                                        animate(Frame3, {BackgroundTransparency = (input2 and 0.05) or 0.35}, 0.1)
                                 end
                         end
 
-                        trackEventConnection(TextButton2.MouseEnter, function()
+                        trackConnection(TextButton2.MouseEnter, function()
                                 animate3(true)
                         end)
 
-                        trackEventConnection(TextButton2.MouseLeave, function()
+                        trackConnection(TextButton2.MouseLeave, function()
                                 if not (tempValue2) then
                                         animate3(false)
                                 end
                         end)
 
-                        trackEventConnection(TextButton2.InputBegan, function(input2)
+                        trackConnection(TextButton2.InputBegan, function(input2)
                                 if not (tempValue2) then
-                                        if isClickInput(input2) then
+                                        if doStep3(input2) then
                                                 if input2.UserInputState == scrollingFrame.UserInputState.Begin then
                                                         local input3, vector2NewResult2, absoluteSize2 = ((input2.UserInputType == scrollingFrame.UserInputType.Touch) and input2)
                                                                 or nil, vector2New(input2.Position.X, input2.Position.Y), Frame.AbsoluteSize
@@ -1946,7 +1997,7 @@ local function createPilatLibrary()
                                 end
                         end)
 
-                        trackEventConnection(UserInputService.InputChanged, function(input2)
+                        trackConnection(UserInputService.InputChanged, function(input2)
                                 local input3 = tempValue2
                                         and ((input and (input2 == input)) or (if input then not input else input2.UserInputType == scrollingFrame.UserInputType.MouseMovement))
 
@@ -1956,7 +2007,7 @@ local function createPilatLibrary()
                                 end
                         end)
 
-                        trackEventConnection(UserInputService.InputEnded, function(input2)
+                        trackConnection(UserInputService.InputEnded, function(input2)
                                 local tempValue = tempValue2
                                         and ((input2.UserInputType == scrollingFrame.UserInputType.MouseButton1) or (input2 == input))
 
@@ -1969,10 +2020,10 @@ local function createPilatLibrary()
                         do
                                 local isEnabled, input2, tempValue, input3
 
-                                trackEventConnection(Frame2.InputBegan, function(input4)
+                                trackConnection(Frame2.InputBegan, function(input4)
                                         if isEnabled then
                                                 return
-                                        elseif isClickInput(input4) then
+                                        elseif doStep3(input4) then
                                                 if input4.UserInputState ~= scrollingFrame.UserInputState.Begin then
                                                         return
                                                 elseif registry.open then
@@ -1988,8 +2039,8 @@ local function createPilatLibrary()
 
                                         local vector2NewResult2 = vector2New(input4.Position.X, input4.Position.Y)
 
-                                        if isPointInside(Frame2, vector2NewResult2) then
-                                                if isPointInside(TextButton, vector2NewResult2) then
+                                        if doStep4(Frame2, vector2NewResult2) then
+                                                if doStep4(TextButton, vector2NewResult2) then
                                                         return
                                                 end
                                         else
@@ -2002,7 +2053,7 @@ local function createPilatLibrary()
                                         isEnabled, input2, tempValue, input3 = true, input5, vector2NewResult2, input4
                                 end)
 
-                                trackEventConnection(UserInputService.InputChanged, function(input4)
+                                trackConnection(UserInputService.InputChanged, function(input4)
                                         if isEnabled then
                                                 if not (input2 and (input4 == input2)) then
                                                         if input2 then
@@ -2025,7 +2076,7 @@ local function createPilatLibrary()
                                         registry.rest = Frame.Position
                                 end)
 
-                                trackEventConnection(UserInputService.InputEnded, function(input4)
+                                trackConnection(UserInputService.InputEnded, function(input4)
                                         if isEnabled then
                                                 if input4.UserInputType == scrollingFrame.UserInputType.MouseButton1 then
                                                         isEnabled = false
@@ -2040,32 +2091,32 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        local Frame3 = newInstance("Frame", {Parent = Frame, Name = "SearchBar", AnchorPoint = vector2New(0.5,
-                                0), Position = uDim2FromScale(0.5, 1.022), Size = uDim2FromScale(1, 0.0749), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.4, ZIndex = 6, makeStroke(0.05)})
-                        createStyledLabel({Parent = Frame3, Name = "Caption", AnchorPoint = vector2New(0, 0.5),
+                        local Frame3 = createInstance("Frame", {Parent = Frame, Name = "SearchBar", AnchorPoint = vector2New(0.5,
+                                0), Position = uDim2FromScale(0.5, 1.022), Size = uDim2FromScale(1, 0.0749), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.4, ZIndex = 6, tryCall(0.05)})
+                        checkState2({Parent = Frame3, Name = "Caption", AnchorPoint = vector2New(0, 0.5),
                                 Position = uDim2FromScale(0.02, 0.5), Size = uDim2FromScale(0.13,
                                 0.5), Text = "Search", TextXAlignment = left, ZIndex = 7})
-                        local Frame4 = newInstance("Frame", {Parent = Frame3, Name = "Field", AnchorPoint = vector2New(1, 0.5),
+                        local Frame4 = createInstance("Frame", {Parent = Frame3, Name = "Field", AnchorPoint = vector2New(1, 0.5),
                                 Position = uDim2FromScale(0.982, 0.5), Size = uDim2FromScale(0.82,
-                                0.6), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.6, ZIndex = 7, makeStroke(0.1)})
-                        local Frame5 = newInstance("Frame", {Parent = Frame4, Name = "Underline", AnchorPoint = vector2New(0.5,
-                                1), Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(0, 0.11), BackgroundColor3 = colorWhite, ZIndex = 9})
-                        local TextBox = newInstance("TextBox", {Parent = Frame4, Name = "Input", AnchorPoint = vector2New(0,
+                                0.6), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 7, tryCall(0.1)})
+                        local Frame5 = createInstance("Frame", {Parent = Frame4, Name = "Underline", AnchorPoint = vector2New(0.5,
+                                1), Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(0, 0.11), BackgroundColor3 = color3FromRGBResult, ZIndex = 9})
+                        local TextBox = createInstance("TextBox", {Parent = Frame4, Name = "Input", AnchorPoint = vector2New(0,
                                 0.5), Position = uDim2FromScale(0.025, 0.5), Size = uDim2FromScale(0.9, 0.62), PlaceholderText = "Filter features...", PlaceholderColor3 = color3FromRGB(198, 198, 198), TextXAlignment = left, ZIndex = 8})
-                        applyDefaultTextStyle(TextBox)
-                        local TextButton3, items4 = newInstance("TextButton", {Parent = Frame4, Name = "Clear",
+                        doStep(TextBox)
+                        local TextButton3, items4 = createInstance("TextButton", {Parent = Frame4, Name = "Clear",
                                 AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.985, 0.5), Size = uDim2FromScale(0.075,
-                                0.74), Visible = false, ZIndex = 9, makeAspectConstraint(1, true)}), {45, -45}
+                                0.74), Visible = false, ZIndex = 9, getUIAspectRatioConstraint(1, true)}), {45, -45}
 
                         for _, item in ipairs(items4) do
-                                newInstance("Frame", {Parent = TextButton3, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
+                                createInstance("Frame", {Parent = TextButton3, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
                                         Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.82,
                                         0.2), Rotation = item, BackgroundColor3 = color3FromRGB(96, 122, 204), ZIndex = 10})
                         end
 
-                        attachHoverScale(TextButton3, 1.12, 0.9)
+                        animate2(TextButton3, 1.12, 0.9)
 
-                        onClick(TextButton3, function()
+                        hit(TextButton3, function()
                                 if TextBox:IsFocused() then
                                         TextBox:ReleaseFocus()
                                 end
@@ -2073,17 +2124,17 @@ local function createPilatLibrary()
                                 TextBox.Text = ""
                         end)
 
-                        trackEventConnection(TextBox.Focused, function()
-                                tweenInstance(Frame4, {BackgroundTransparency = 0.42}, 0.16)
-                                tweenInstance(Frame5, {Size = uDim2FromScale(1, 0.11)}, 0.2, quint)
+                        trackConnection(TextBox.Focused, function()
+                                animate(Frame4, {BackgroundTransparency = 0.42}, 0.16)
+                                animate(Frame5, {Size = uDim2FromScale(1, 0.11)}, 0.2, quint)
                         end)
 
-                        trackEventConnection(TextBox.FocusLost, function()
-                                tweenInstance(Frame4, {BackgroundTransparency = 0.6}, 0.16)
-                                tweenInstance(Frame5, {Size = uDim2FromScale(0, 0.11)}, 0.2, quint)
+                        trackConnection(TextBox.FocusLost, function()
+                                animate(Frame4, {BackgroundTransparency = 0.6}, 0.16)
+                                animate(Frame5, {Size = uDim2FromScale(0, 0.11)}, 0.2, quint)
                         end)
 
-                        trackEventConnection(TextBox:GetPropertyChangedSignal("Text"), function()
+                        trackConnection(TextBox:GetPropertyChangedSignal("Text"), function()
                                 TextButton3.Visible = TextBox.Text ~= ""
 
                                 if not (registry.sbQuiet) then
@@ -2114,10 +2165,10 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        trackEventConnection(Frame:GetPropertyChangedSignal("AbsolutePosition"), handleEvent)
-                        trackEventConnection(Frame:GetPropertyChangedSignal("AbsoluteSize"), handleEvent)
+                        trackConnection(Frame:GetPropertyChangedSignal("AbsolutePosition"), handleEvent)
+                        trackConnection(Frame:GetPropertyChangedSignal("AbsoluteSize"), handleEvent)
 
-                        registerLayoutCallback(function()
+                        doStep9(function()
                                 Frame2.Size = uDim2New(1, 0, 0.125 / amount6, 0)
                                 checkState2Result.Position, checkState2Result.Size = uDim2New(0.5687711238861084 / amount5, 0, 0.5,
                                         0), uDim2New(0.8620089292526245 / amount5, 0, 0.7499999403953552, 0)
@@ -2168,7 +2219,7 @@ local function createPilatLibrary()
                         amount5, amount6 = absoluteSize, amount7
 
                         for _, item in ipairs(list) do
-                                safeCall(item)
+                                tryCall2(item)
                         end
                 end
 
@@ -2198,7 +2249,7 @@ local function createPilatLibrary()
                                 end
 
                                 main.Size = input.size
-                                input.wt = tweenInstance(main, {Position = rest}, 0.34, quart)
+                                input.wt = animate(main, {Position = rest}, 0.34, quart)
 
                                 if not (input.Cur) then
                                         if input.Tabs[1] then
@@ -2213,13 +2264,13 @@ local function createPilatLibrary()
                                 end
 
                                 main.Size = input.size
-                                input.wt = tweenInstance(main, {Position = uDim2New(rest.X.Scale, rest.X.Offset, 1.55, 0)}, 0.26, quart,
+                                input.wt = animate(main, {Position = uDim2New(rest.X.Scale, rest.X.Offset, 1.55, 0)}, 0.26, quart,
                                         scrollingFrame.EasingDirection.In)
                         end
 
                         local fieldValue = input.wt
 
-                        local function isItemSelected(playbackState)
+                        local function checkState3(playbackState)
                                 if input.wt == fieldValue then
                                         input.wt = nil
 
@@ -2229,10 +2280,10 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        fieldValue.Completed:Connect(isItemSelected)
+                        fieldValue.Completed:Connect(checkState3)
 
                         if input.onShow then
-                                safeCall(input.onShow, open)
+                                tryCall2(input.onShow, open)
                         end
                 end
 
@@ -2267,15 +2318,15 @@ local function createPilatLibrary()
                         local inputRef = input
                         local obj = setmetatable({W = inputRef, Name = text, Disp = input3 or text, Sections = {}, q = "",
                                 ci = ((input2 == "Right") and 2) or 1}, index2)
-                        obj.btn, obj.base = createStyledButton({Parent = inputRef.cols[obj.ci].f, Name = input3 or text, Size = uDim2New(1, 0,
+                        obj.btn, obj.base = doStep5({Parent = inputRef.cols[obj.ci].f, Name = input3 or text, Size = uDim2New(1, 0,
                                 0.13, 0), LayoutOrder = #inputRef.Tabs + 1, Text = input3 or text})
-                        local ScrollingFrame = newInstance("ScrollingFrame", {Parent = inputRef.main, Name = text .. "Page",
+                        local ScrollingFrame = createInstance("ScrollingFrame", {Parent = inputRef.main, Name = text .. "Page",
                                 Active = true, AnchorPoint = vector2New(0.5,
-                                0.5), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 5, CanvasSize = uDim2FromOffset(0, 0), ScrollBarImageColor3 = colorWhite, ScrollingDirection = scrollingFrame.ScrollingDirection.Y, VerticalScrollBarInset = scrollingFrame.ScrollBarInset.None, Visible = false})
+                                0.5), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 5, CanvasSize = uDim2FromOffset(0, 0), ScrollBarImageColor3 = color3FromRGBResult, ScrollingDirection = scrollingFrame.ScrollingDirection.Y, VerticalScrollBarInset = scrollingFrame.ScrollBarInset.None, Visible = false})
                         obj.page = ScrollingFrame
-                        obj.ly = newInstance("UIListLayout", {Parent = ScrollingFrame, Name = "ContentLayout",
+                        obj.ly = createInstance("UIListLayout", {Parent = ScrollingFrame, Name = "ContentLayout",
                                 HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder, Padding = uDimNew(0, 2)})
-                        newInstance("UIPadding", {Parent = ScrollingFrame, Name = "ContentPadding",
+                        createInstance("UIPadding", {Parent = ScrollingFrame, Name = "ContentPadding",
                                 PaddingLeft = uDimNew(0.014000000432133675, 0), PaddingRight = uDimNew(0.014000000432133675, 0)})
                         local amount4 = -1
 
@@ -2296,21 +2347,21 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        trackEventConnection(obj.ly:GetPropertyChangedSignal("AbsoluteContentSize"), obj.canvas)
+                        trackConnection(obj.ly:GetPropertyChangedSignal("AbsoluteContentSize"), obj.canvas)
 
-                        trackEventConnection(ScrollingFrame:GetPropertyChangedSignal("AbsoluteSize"), function()
+                        trackConnection(ScrollingFrame:GetPropertyChangedSignal("AbsoluteSize"), function()
                                 ScrollingFrame.ScrollBarThickness = math.max(2,
                                         math.floor(((ScrollingFrame.AbsoluteSize.X * 0.006) / amount5) + 0.5))
                                 obj.canvas()
                         end)
 
-                        registerLayoutCallback(function()
+                        doStep9(function()
                                 local factor, factor2 = 0.1454 / amount6, 1 - (0.01500005 / amount6)
                                 ScrollingFrame.Position, ScrollingFrame.Size = uDim2New(0.5000000596046448, 0, (factor + factor2) / 2,
                                         0), uDim2New(0.9900000095367432, 0, factor2 - factor, 0)
                         end)
 
-                        onClick(obj.btn, function()
+                        hit(obj.btn, function()
                                 inputRef:Select(obj)
                         end)
 
@@ -2346,7 +2397,7 @@ local function createPilatLibrary()
                                 tab.page.Visible = tab == cur
                                 local base, state = tab.base, {}
                                 state.BackgroundColor3 = ((tab == cur) and color3FromRGB(76, 102, 190)) or color3FromRGB(40, 52, 108)
-                                tweenInstance(base, state, 0.14)
+                                animate(base, state, 0.14)
                         end
 
                         data.Cur = cur
@@ -2366,7 +2417,7 @@ local function createPilatLibrary()
                         end)
 
                         if cur.onOpen then
-                                safeCall(cur.onOpen)
+                                tryCall2(cur.onOpen)
                         end
                 end
 
@@ -2376,34 +2427,34 @@ local function createPilatLibrary()
                         local fieldValue, items2Ref = items2.W, items2
                         local obj = setmetatable({W = fieldValue, t = items2, Name = text, Disp = input or text,
                                 open = firstValue ~= false, rows = {}, n = 0}, widgetSpecs)
-                        obj.f = newInstance("Frame", {Parent = items2.page, Name = text .. "Section", BackgroundTransparency = 1,
+                        obj.f = createInstance("Frame", {Parent = items2.page, Name = text .. "Section", BackgroundTransparency = 1,
                                 Size = uDim2New(1, 0, 0,
-                                0), AutomaticSize = scrollingFrame.AutomaticSize.Y, LayoutOrder = #items2.Sections + 1, ZIndex = 3, newInstance("UIListLayout", {Name = "SectionLayout",
+                                0), AutomaticSize = scrollingFrame.AutomaticSize.Y, LayoutOrder = #items2.Sections + 1, ZIndex = 3, createInstance("UIListLayout", {Name = "SectionLayout",
                                 HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder, Padding = uDimNew(0,
                                 2)})})
-                        local checkState2Result = createStyledLabel({Parent = obj.f, Name = input or text, AnchorPoint = vector2New(0.5,
+                        local checkState2Result = checkState2({Parent = obj.f, Name = input or text, AnchorPoint = vector2New(0.5,
                                 0.5), LayoutOrder = 1, Size = uDim2New(0.97, 0, 0, 36), Text = input
                                 or text, TextWrapped = true, ZIndex = 4}, true)
-                        local Frame = newInstance("Frame", {Parent = checkState2Result, Name = "ArrowClip",
+                        local Frame = createInstance("Frame", {Parent = checkState2Result, Name = "ArrowClip",
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.4, 0.5), Size = uDim2FromOffset(1,
                                 1), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 6})
-                        local Frame2, ipairsFn = newInstance("Frame", {Parent = Frame, Name = "Arrow",
+                        local Frame2, ipairsFn = createInstance("Frame", {Parent = Frame, Name = "Arrow",
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromOffset(1,
                                 1), BackgroundTransparency = 1, ZIndex = 6}), ipairs
-                        input = {{factor6 + (factor7 * 2), factor8 + (factor7 * 2), strokeShineGradient}, {factor6, factor8,
-                                textShineGradient}}
+                        input = {{factor6 + (factor7 * 2), factor8 + (factor7 * 2), scanTableResult2}, {factor6, factor8,
+                                scanTableResult}}
 
                         for index3, item in ipairsFn(input) do
                                 firstValue, text = ipairs, {{factor9, 45}, {1 - factor9, -45}}
 
                                 for _, item2 in firstValue(text) do
-                                        newInstance("Frame", {Parent = Frame2, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
+                                        createInstance("Frame", {Parent = Frame2, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
                                                 Position = uDim2FromScale(item2[1], factor10), Rotation = item2[2], Size = uDim2FromScale(item[2],
-                                                item[1]), BackgroundColor3 = colorWhite, ZIndex = 5 + index3, makeGradient(item[3])})
+                                                item[1]), BackgroundColor3 = color3FromRGBResult, ZIndex = 5 + index3, getUIGradient(item[3])})
                                 end
                         end
 
-                        local function clamp01()
+                        local function clampValue2()
                                 local tempValue, tempValue2 = checkState2Result.AbsoluteSize.X, checkState2Result.AbsoluteSize.Y
 
                                 if tempValue <= 0 then
@@ -2426,26 +2477,26 @@ local function createPilatLibrary()
                                         and (tempValue2 <= (page.AbsolutePosition.Y + page.AbsoluteSize.Y))
                         end
 
-                        trackEventConnection(checkState2Result:GetPropertyChangedSignal("TextBounds"), clamp01)
-                        trackEventConnection(checkState2Result:GetPropertyChangedSignal("AbsoluteSize"), clamp01)
-                        trackEventConnection(checkState2Result:GetPropertyChangedSignal("AbsolutePosition"), handleEvent)
-                        trackEventConnection(items2Ref.page:GetPropertyChangedSignal("CanvasPosition"), handleEvent)
+                        trackConnection(checkState2Result:GetPropertyChangedSignal("TextBounds"), clampValue2)
+                        trackConnection(checkState2Result:GetPropertyChangedSignal("AbsoluteSize"), clampValue2)
+                        trackConnection(checkState2Result:GetPropertyChangedSignal("AbsolutePosition"), handleEvent)
+                        trackConnection(items2Ref.page:GetPropertyChangedSignal("CanvasPosition"), handleEvent)
 
-                        onClick(newInstance("TextButton", {Parent = checkState2Result, Name = "SectionButton",
+                        hit(createInstance("TextButton", {Parent = checkState2Result, Name = "SectionButton",
                                 Size = uDim2FromScale(1, 1), ZIndex = 8}), function()
                                 obj:Expand(not obj.open)
                         end)
 
                         obj.hd = checkState2Result
                         obj.ar = Frame2
-                        obj.g = newInstance("Frame", {Parent = obj.f, Name = "CollapsibleContent", BackgroundTransparency = 1,
+                        obj.g = createInstance("Frame", {Parent = obj.f, Name = "CollapsibleContent", BackgroundTransparency = 1,
                                 ClipsDescendants = true, LayoutOrder = 2, Size = uDim2New(1, 0, 0, 0), ZIndex = 3})
-                        obj.b = newInstance("Frame", {Parent = obj.g, Name = "Content", BackgroundTransparency = 1,
+                        obj.b = createInstance("Frame", {Parent = obj.g, Name = "Content", BackgroundTransparency = 1,
                                 Size = uDim2New(1, 0, 0,
-                                0), AutomaticSize = scrollingFrame.AutomaticSize.Y, ZIndex = 3, newInstance("UIListLayout", {Name = "OptionLayout",
+                                0), AutomaticSize = scrollingFrame.AutomaticSize.Y, ZIndex = 3, createInstance("UIListLayout", {Name = "OptionLayout",
                                 HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder})})
 
-                        trackEventConnection(obj.b:GetPropertyChangedSignal("AbsoluteSize"), function()
+                        trackConnection(obj.b:GetPropertyChangedSignal("AbsoluteSize"), function()
                                 if not (obj.tw) then
                                         obj.g.Size = uDim2New(1, 0, 0, (obj.open and obj.b.AbsoluteSize.Y) or 0)
                                 end
@@ -2456,7 +2507,7 @@ local function createPilatLibrary()
                                 end
                         end)
 
-                        registerLayoutCallback(function()
+                        doStep9(function()
                                 obj:Fit()
                         end)
 
@@ -2465,7 +2516,7 @@ local function createPilatLibrary()
 
                         task.defer(function()
                                 obj:Fit()
-                                clamp01()
+                                clampValue2()
                                 handleEvent()
                         end)
 
@@ -2511,11 +2562,11 @@ local function createPilatLibrary()
                         end
                         local fieldValue2, state = input.ar, {}
                         state.Rotation = (open and 0) or -90
-                        tweenInstance(fieldValue2, state, 0.24)
-                        local animateResult = tweenInstance(fieldValue, {Size = uDim2New(1, 0, 0, currentCount)}, 0.28, quint)
+                        animate(fieldValue2, state, 0.24)
+                        local animateResult = animate(fieldValue, {Size = uDim2New(1, 0, 0, currentCount)}, 0.28, quint)
                         input.tw = animateResult
 
-                        local function isItemSelected()
+                        local function checkState3()
                                 if input.tw == animateResult then
                                         input.tw = nil
                                         fieldValue.Visible, fieldValue.ClipsDescendants = input.open, not input.open
@@ -2523,21 +2574,21 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        animateResult.Completed:Connect(isItemSelected)
+                        animateResult.Completed:Connect(checkState3)
                 end
 
                 widgetSpecs.Collapse = function(input, input2)
                         input:Expand(not input2)
                 end
 
-                local function createNoteLabel(input, input2)
-                        input.nt = applyDimmedStyle(createStyledLabel({Parent = input.m, Name = "Note", AnchorPoint = vector2New(0, 0.5),
+                local function doStep10(input, input2)
+                        input.nt = doStep2(checkState2({Parent = input.m, Name = "Note", AnchorPoint = vector2New(0, 0.5),
                                 Position = uDim2FromScale(0.025, 0.755), Size = uDim2FromScale(input2,
                                 0.3), TextXAlignment = left, Visible = false, ZIndex = 5}))
                         return input.nt
                 end
 
-                local function positionRowLabel(input, input2, input3)
+                local function doStep11(input, input2, input3)
                         input.lb.Position, input.lb.Size = uDim2FromScale(0.025, (input3 and 0.34) or 0.5), uDim2FromScale(input2,
                                 (input3 and 0.432) or 0.64)
                         input.ratio = (input3 and 7.5) or 10
@@ -2548,16 +2599,16 @@ local function createPilatLibrary()
                         local state = {sec = firstValue, name = text, sub = input}
                         state.ratio = ratio or 10
                         state.hw = (input and 0.9) or 1
-                        local Frame = newInstance("Frame", {Parent = firstValue.b, Name = text .. "CollapsibleContent",
+                        local Frame = createInstance("Frame", {Parent = firstValue.b, Name = text .. "CollapsibleContent",
                                 BackgroundTransparency = 1, ClipsDescendants = true, LayoutOrder = firstValue.n, Size = uDim2New(state.hw,
                                 0, 0, 1), ZIndex = 3})
-                        local Frame2 = newInstance("Frame", {Parent = Frame, Name = text, AnchorPoint = vector2New(0.5, 0),
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = text, AnchorPoint = vector2New(0.5, 0),
                                 Position = uDim2FromScale(0.5, 0), Size = uDim2New(factor5, 0, 0,
                                 1), BackgroundTransparency = 1, ZIndex = 3})
                         input = nil
 
                         if input2 then
-                                state.head = newInstance("Frame", {Parent = Frame2, Name = "Head", AnchorPoint = vector2New(0.5, 0),
+                                state.head = createInstance("Frame", {Parent = Frame2, Name = "Head", AnchorPoint = vector2New(0.5, 0),
                                         Position = uDim2FromScale(0.5, 0), Size = uDim2New(1, 0, 0, 1), BackgroundTransparency = 1, ZIndex = 3})
                                 input = state.head
                         else
@@ -2565,10 +2616,10 @@ local function createPilatLibrary()
                         end
 
                         if not (ratio) then
-                                state.m = newInstance("Frame", {Parent = input, Name = "Main", AnchorPoint = vector2New(0.5, 0.5),
+                                state.m = createInstance("Frame", {Parent = input, Name = "Main", AnchorPoint = vector2New(0.5, 0.5),
                                         Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1,
-                                        0.85), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.5, ZIndex = 3, makeStroke(0.05)})
-                                state.lb = createStyledLabel({Parent = state.m, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                        0.85), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.5, ZIndex = 3, tryCall(0.05)})
+                                state.lb = checkState2({Parent = state.m, Name = "Label", AnchorPoint = vector2New(0, 0.5),
                                         Position = uDim2FromScale(0.025, 0.5), Size = uDim2FromScale(0.65,
                                         0.64), Text = text, TextWrapped = true, TextXAlignment = left, ZIndex = 5})
                         end
@@ -2594,7 +2645,7 @@ local function createPilatLibrary()
                                         math.floor(((((tempValue * factor5) / amount5) / state.ratio) * (state.lines or 1)) + 0.5)))
                         end
 
-                        trackEventConnection(Frame2:GetPropertyChangedSignal("AbsoluteSize"), function()
+                        trackConnection(Frame2:GetPropertyChangedSignal("AbsoluteSize"), function()
                                 if state.shown ~= false then
                                         if not (state.ht) then
                                                 Frame.Size = uDim2New(state.hw, 0, 0, Frame2.AbsoluteSize.Y)
@@ -2660,10 +2711,10 @@ local function createPilatLibrary()
                                         Frame.Size = size
                                         Frame.Visible = size2
                                 else
-                                        local animateResult = tweenInstance(Frame, {Size = size}, 0.28, quint)
+                                        local animateResult = animate(Frame, {Size = size}, 0.28, quint)
                                         state.ht = animateResult
 
-                                        local function isItemSelected()
+                                        local function checkState3()
                                                 if state.ht == animateResult then
                                                         state.ht = nil
                                                         Frame.Visible = state.shown
@@ -2674,7 +2725,7 @@ local function createPilatLibrary()
                                                 end
                                         end
 
-                                        animateResult.Completed:Connect(isItemSelected)
+                                        animateResult.Completed:Connect(checkState3)
                                 end
 
                                 if state.o and state.o.kids then
@@ -2708,7 +2759,7 @@ local function createPilatLibrary()
                                 set(control, input, input2)
 
                                 for _, item in ipairs(control.ls) do
-                                        safeCall(item, control.Value)
+                                        tryCall2(item, control.Value)
                                 end
 
                                 if control.kids then
@@ -2771,14 +2822,14 @@ local function createPilatLibrary()
 
                 widgetSpecs.Toggle = function(input, input2, input3, input4, text, input5)
                         local tempValue = input:Row(input2, input5)
-                        positionRowLabel(tempValue, (text and 0.62) or 0.72, text ~= nil)
+                        doStep11(tempValue, (text and 0.62) or 0.72, text ~= nil)
 
                         if text then
-                                createNoteLabel(tempValue, 0.799)
+                                doStep10(tempValue, 0.799)
                                 tempValue.nt.Text, tempValue.nt.Visible = tostring(text), true
                         end
 
-                        local doStep6Result, tempValue2 = createToggleSwitch(tempValue.m, 0.5, 0.915, 0.142, (text and 0.5625) or 0.75, 3)
+                        local doStep6Result, tempValue2 = doStep6(tempValue.m, 0.5, 0.915, 0.142, (text and 0.5625) or 0.75, 3)
                         local control = {}
                         control.Value = input3 == true
 
@@ -2790,13 +2841,13 @@ local function createPilatLibrary()
 
                                 if input7 then
                                 elseif input6 then
-                                        safeCall(input4, value)
+                                        tryCall2(input4, value)
                                 elseif input7 == false then
-                                        safeCall(input4, value)
+                                        tryCall2(input4, value)
                                 end
                         end
 
-                        onClick(newInstance("TextButton", {Parent = doStep6Result, Name = "Button", AnchorPoint = vector2New(0.5,
+                        hit(createInstance("TextButton", {Parent = doStep6Result, Name = "Button", AnchorPoint = vector2New(0.5,
                                 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, 1), ZIndex = 99}), function()
                                 control:Set(not control.Value)
                         end)
@@ -2806,13 +2857,13 @@ local function createPilatLibrary()
                         input:Reg(tempValue, control, "toggle")
 
                         if control.Value then
-                                safeCall(input4, true)
+                                tryCall2(input4, true)
                         end
 
                         return control
                 end
 
-                local function decimalPlacesOf(amount4)
+                local function scanItems(amount4)
                         amount4 = tonumber(amount4)
                         if not (amount4) then
                                 return 0
@@ -2840,8 +2891,8 @@ local function createPilatLibrary()
                         end
 
                         local tempValue4 = input4:Row(items2, firstValue4)
-                        local computed = math.max(decimalPlacesOf(firstValue3), decimalPlacesOf(firstValue), decimalPlacesOf(firstValue2),
-                                decimalPlacesOf(input5))
+                        local computed = math.max(scanItems(firstValue3), scanItems(firstValue), scanItems(firstValue2),
+                                scanItems(input5))
                         local isRecent = tempValue or (computed > 0)
                         local currentCount = (isRecent and math.clamp(math.max(1, computed), 1, 6)) or 0
 
@@ -2859,27 +2910,27 @@ local function createPilatLibrary()
                                 roundValue(math.abs(tonumber(firstValue3)
                                 or (10 ^ (-currentCount)))))) or math.max(1, math.round(math.abs(tonumber(firstValue3) or 1)))
                         firstValue4 = tempValue4.m
-                        tempValue4.nt = createNoteLabel(tempValue4, 0.48)
-                        local TextBox = newInstance("TextBox", {Parent = firstValue4, Name = "Value", AnchorPoint = vector2New(0,
-                                0.5), Position = uDim2FromScale(0.525, 0.5), Size = uDim2FromScale(0.095, 0.56), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.6, ZIndex = 5, newInstance("UIPadding", {Name = "ValuePadding"})})
-                        applyDefaultTextStyle(TextBox)
-                        makeStroke(0.1).Parent = TextBox
-                        local Frame = newInstance("Frame", {Parent = firstValue4, Name = "Slider", Active = true,
+                        tempValue4.nt = doStep10(tempValue4, 0.48)
+                        local TextBox = createInstance("TextBox", {Parent = firstValue4, Name = "Value", AnchorPoint = vector2New(0,
+                                0.5), Position = uDim2FromScale(0.525, 0.5), Size = uDim2FromScale(0.095, 0.56), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 5, createInstance("UIPadding", {Name = "ValuePadding"})})
+                        doStep(TextBox)
+                        tryCall(0.1).Parent = TextBox
+                        local Frame = createInstance("Frame", {Parent = firstValue4, Name = "Slider", Active = true,
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.8075, 0.5), Size = uDim2FromScale(0.345,
-                                0.45), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.6, ZIndex = 3, makeStroke(0.1)})
-                        local Frame2 = newInstance("Frame", {Parent = Frame, Name = "Bar", Active = true,
+                                0.45), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 3, tryCall(0.1)})
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = "Bar", Active = true,
                                 AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(0.5,
-                                1), BackgroundColor3 = colorWhite, ZIndex = 4, makeGradient(accentColorSequence, "AccentGradient")})
-                        local Frame3, control = newInstance("Frame", {Parent = Frame, Name = "Hold", Active = true,
+                                1), BackgroundColor3 = color3FromRGBResult, ZIndex = 4, getUIGradient(scanTableResult3, "AccentGradient")})
+                        local Frame3, control = createInstance("Frame", {Parent = Frame, Name = "Hold", Active = true,
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.115,
-                                1.2), BackgroundColor3 = color3FromRGB(89, 89, 89), BackgroundTransparency = 1, ZIndex = 5, makeStroke(0.09, color3FromRGB(39,
-                                39, 39)), newInstance("Frame", {Name = "Color", AnchorPoint = vector2New(0.5,
-                                0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 1), BackgroundColor3 = colorWhite, ZIndex = 6})}), {Value = firstValue, Unit = tempValue2, Min = firstValue, Max = firstValue2}
+                                1.2), BackgroundColor3 = color3FromRGB(89, 89, 89), BackgroundTransparency = 1, ZIndex = 5, tryCall(0.09, color3FromRGB(39,
+                                39, 39)), createInstance("Frame", {Name = "Color", AnchorPoint = vector2New(0.5,
+                                0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1, 1), BackgroundColor3 = color3FromRGBResult, ZIndex = 6})}), {Value = firstValue, Unit = tempValue2, Min = firstValue, Max = firstValue2}
                         local text2 = tostring(input8 or "")
 
                         local function roundValue2(input2)
                                 if tempValue then
-                                        return formatRatePerSecond(input2)
+                                        return formatRate(input2)
                                 end
                                 return (isRecent and string.format("%." .. (currentCount .. "f"), input2)) or tostring(math.round(input2))
                         end
@@ -2893,7 +2944,7 @@ local function createPilatLibrary()
                                 nextIndex = (visible and 0.75) or 1
                                 TextBox.Position, TextBox.Size, Frame.Size = uDim2FromScale(factor, 0.5), uDim2FromScale(text,
                                         0.56 * nextIndex), uDim2FromScale(0.345, 0.45 * nextIndex)
-                                positionRowLabel(tempValue4, math.min((tempValue6 and 0.43) or 0.45, math.max(0.28, factor - 0.045)), visible)
+                                doStep11(tempValue4, math.min((tempValue6 and 0.43) or 0.45, math.max(0.28, factor - 0.045)), visible)
                                 local fieldValue, nt2, nt3, text2Ref, uDim2FromScaleResult = tempValue4.nt, tempValue4.nt, tempValue4.nt, text2, uDim2FromScale(math.max(0.2,
                                         factor - 0.045), 0.3)
                                 fieldValue.Text = text2Ref
@@ -2908,8 +2959,8 @@ local function createPilatLibrary()
                                 if TextBox:IsFocused() then
                                         return
                                 end
-                                local text = wrapTextInColorTag(colorWhite,
-                                        roundValue2(control.Value)) .. ((tempValue2 and wrapTextInColorTag(colorAccent, tempValue2)) or "")
+                                local text = colorizeText(color3FromRGBResult,
+                                        roundValue2(control.Value)) .. ((tempValue2 and colorizeText(color3FromRGBResult3, tempValue2)) or "")
                                 TextBox.RichText = true
                                 TextBox.Text = text
                                 clampValue3(text)
@@ -2931,7 +2982,7 @@ local function createPilatLibrary()
 
                                 if input3 then
                                 elseif input2 then
-                                        safeCall(input6, (tempValue and valueFromSliderPosition(value)) or value)
+                                        tryCall2(input6, (tempValue and clampValue(value)) or value)
                                 end
                         end
 
@@ -2941,7 +2992,7 @@ local function createPilatLibrary()
                         end
 
                         control.Real = function(unused)
-                                return (tempValue and valueFromSliderPosition(control.Value)) or control.Value
+                                return (tempValue and clampValue(control.Value)) or control.Value
                         end
 
                         control.Places = function(unused)
@@ -2955,12 +3006,12 @@ local function createPilatLibrary()
                                         1), 0, 1)))
                         end
 
-                        local function isItemSelected(input2)
+                        local function checkState3(input2)
                                 if tempValue7 then
                                         return
                                 elseif input2.UserInputState ~= scrollingFrame.UserInputState.Begin then
                                         return
-                                elseif not (isClickInput(input2)) then
+                                elseif not (doStep3(input2)) then
                                         return
                                 end
 
@@ -2974,10 +3025,10 @@ local function createPilatLibrary()
                         items2 = {Frame, Frame2, Frame3}
 
                         for _, item in ipairs(items2) do
-                                trackEventConnection(item.InputBegan, isItemSelected)
+                                trackConnection(item.InputBegan, checkState3)
                         end
 
-                        trackEventConnection(UserInputService.InputChanged, function(input2)
+                        trackConnection(UserInputService.InputChanged, function(input2)
                                 local input3 = tempValue7
                                         and ((input and (input2 == input)) or (if input then not input else input2.UserInputType == scrollingFrame.UserInputType.MouseMovement))
 
@@ -2986,7 +3037,7 @@ local function createPilatLibrary()
                                 end
                         end)
 
-                        trackEventConnection(UserInputService.InputEnded, function(input2)
+                        trackConnection(UserInputService.InputEnded, function(input2)
                                 if input2.UserInputType == scrollingFrame.UserInputType.MouseButton1 then
                                         tempValue7, input = false, nil
                                 elseif input2 == input then
@@ -2994,9 +3045,9 @@ local function createPilatLibrary()
                                 end
                         end)
 
-                        trackEventConnection(TextBox.Focused, function()
-                                tweenInstance(TextBox, {BackgroundTransparency = 0.42}, 0.16)
-                                TextBox.RichText, TextBox.Text = false, (tempValue and formatCompactNumber(control.Value))
+                        trackConnection(TextBox.Focused, function()
+                                animate(TextBox, {BackgroundTransparency = 0.42}, 0.16)
+                                TextBox.RichText, TextBox.Text = false, (tempValue and formatCompact(control.Value))
                                         or roundValue2(control.Value)
                                 clampValue3(TextBox.Text)
 
@@ -3007,15 +3058,15 @@ local function createPilatLibrary()
                                 end)
                         end)
 
-                        trackEventConnection(TextBox:GetPropertyChangedSignal("Text"), function()
+                        trackConnection(TextBox:GetPropertyChangedSignal("Text"), function()
                                 if TextBox:IsFocused() then
                                         clampValue3(TextBox.Text)
                                 end
                         end)
 
-                        trackEventConnection(TextBox.FocusLost, function()
-                                tweenInstance(TextBox, {BackgroundTransparency = 0.6}, 0.16)
-                                local tempValue6 = (tempValue and parseRateString(TextBox.Text)) or tonumber((TextBox.Text:gsub(",",
+                        trackConnection(TextBox.FocusLost, function()
+                                animate(TextBox, {BackgroundTransparency = 0.6}, 0.16)
+                                local tempValue6 = (tempValue and doStep8(TextBox.Text)) or tonumber((TextBox.Text:gsub(",",
                                         "."):gsub("[^%d%.%-]", "")))
 
                                 if tempValue6 then
@@ -3037,35 +3088,35 @@ local function createPilatLibrary()
                 widgetSpecs.Dropdown = function(input, firstValue, input2, text2, input3, input4, input5, value, input6)
                         local fieldValue = input.W
                         local tempValue = input:Row(firstValue, value, true)
-                        local TextButton = newInstance("TextButton", {Parent = tempValue.m, Name = "Dropdown",
+                        local TextButton = createInstance("TextButton", {Parent = tempValue.m, Name = "Dropdown",
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.845, 0.5), Size = uDim2FromScale(0.28,
-                                0.62), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.6, ZIndex = 6, makeStroke(0.1)})
-                        attachHoverScale(TextButton, 1.025, 0.975)
-                        createNoteLabel(tempValue, 0.66)
+                                0.62), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 6, tryCall(0.1)})
+                        animate2(TextButton, 1.025, 0.975)
+                        doStep10(tempValue, 0.66)
                         local text = tostring(input5 or "")
 
-                        local function layoutDropdownRow()
+                        local function doStep12()
                                 local visible = text ~= ""
                                 tempValue.nt.Text, tempValue.nt.Visible = text, visible
-                                positionRowLabel(tempValue, 0.65, visible)
+                                doStep11(tempValue, 0.65, visible)
                                 TextButton.Size = uDim2FromScale(0.28, (visible and 0.465) or 0.62)
                         end
 
-                        layoutDropdownRow()
-                        local checkState2Result = createStyledLabel({Parent = TextButton, Name = "Value", AnchorPoint = vector2New(0.5,
+                        doStep12()
+                        local checkState2Result = checkState2({Parent = TextButton, Name = "Value", AnchorPoint = vector2New(0.5,
                                 0.5), Position = uDim2FromScale(0.405, 0.5), Size = uDim2FromScale(0.7, 0.58), TextWrapped = true, ZIndex = 7})
-                        newInstance("Frame", {Parent = TextButton, Name = "Divider", AnchorPoint = vector2New(0.5, 0.5),
+                        createInstance("Frame", {Parent = TextButton, Name = "Divider", AnchorPoint = vector2New(0.5, 0.5),
                                 Position = uDim2FromScale(0.8, 0.5), Size = uDim2FromScale(0.014,
-                                0.66), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.3, ZIndex = 7})
-                        local chevResult = createChevron(TextButton, colorAccent, uDim2FromScale(0.888, 0.5), uDim2FromScale(0.16,
+                                0.66), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.3, ZIndex = 7})
+                        local chevResult = chev(TextButton, color3FromRGBResult3, uDim2FromScale(0.888, 0.5), uDim2FromScale(0.16,
                                 0.56), 7)
-                        local Frame, control, tempValue2, cache, textValue2, Frame2, tempValue4, tempValue5, tempValue6, tempValue7, tempValue8 = newInstance("Frame",
+                        local Frame, control, tempValue2, cache, textValue2, Frame2, tempValue4, tempValue5, tempValue6, tempValue7, tempValue8 = createInstance("Frame",
                                 {Parent = tempValue.r, Name = "Menu", AnchorPoint = vector2New(0.5, 0), Position = uDim2New(0.5, 0, 0, 0),
                                 Size = uDim2New(1, 0, 0,
                                 0), BackgroundTransparency = 1, ClipsDescendants = true, Visible = false, ZIndex = 6}), {Multi = input4, Options = input2, Empty = "None"}, false, {}, ""
                         local amount4, amount7, amount8, amount9 = 0, 0, 0, 0
 
-                        local function getOptionLabels()
+                        local function scanTable2()
                                 local options, iMap = ((type(control.Options) == "function") and control.Options()) or control.Options, {}
 
                                 for index3, item in ipairs(((type(options) == "table") and options) or {}) do
@@ -3075,18 +3126,18 @@ local function createPilatLibrary()
                                 return iMap
                         end
 
-                        local function isItemSelected(input7)
+                        local function checkState3(input7)
                                 if input4 then
                                         return table.find(control.Value, input7) ~= nil
                                 end
                                 return control.Value == input7
                         end
 
-                        local function selectedItemCount()
+                        local function getArg6()
                                 return (input4 and #control.Value) or (((control.Value ~= nil) and 1) or 0)
                         end
 
-                        local function updateDropdownDisplay(threshold)
+                        local function scanTable3(threshold)
                                 if input4 then
                                         local length = #control.Value
                                         checkState2Result.Text = (((length == 0) and control.Empty) or ((length == 1) and tostring(control.Value[1])))
@@ -3102,7 +3153,7 @@ local function createPilatLibrary()
                                 end
 
                                 if tempValue6 then
-                                        threshold = selectedItemCount()
+                                        threshold = getArg6()
                                         tempValue7.Text = ((input4 and (threshold > 0)) and (input6[2] .. (" (" .. (threshold .. ")"))))
                                                 or input6[2]
                                         cacheRef = ((threshold > 0) and 0) or 0.45
@@ -3115,8 +3166,8 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        local function filterVisibleOptions()
-                                local items2, ipairsFn, packedArgs = {}, ipairs, table.pack(getOptionLabels())
+                        local function scanItems2()
+                                local items2, ipairsFn, packedArgs = {}, ipairs, table.pack(scanTable2())
 
                                 for index3, item in ipairsFn(table.unpack(packedArgs, 1, packedArgs.n)) do
                                         index3 = cache[item]
@@ -3137,7 +3188,7 @@ local function createPilatLibrary()
                                 return items2
                         end
 
-                        local function animateDropdownMenu(input7)
+                        local function doStep13(input7)
                                 local amount4Ref = amount4
                                 local uDim2NewResult, size, tempValue2Ref, visible = uDim2New(1, 0, 0,
                                         amount4Ref + ((tempValue2 and (amount8 + amount7)) or 0)), amount9 * 2, tempValue2
@@ -3161,8 +3212,8 @@ local function createPilatLibrary()
                                 end
 
                                 if input7 then
-                                        tempValue.rt, tempValue.mt = tweenInstance(tempValue.r, {Size = uDim2New(factor5, 0, 0,
-                                                uDim2NewResult.Y.Offset)}, 0.26, quint), tweenInstance(Frame, {Size = amount4Ref}, 0.26, quint)
+                                        tempValue.rt, tempValue.mt = animate(tempValue.r, {Size = uDim2New(factor5, 0, 0,
+                                                uDim2NewResult.Y.Offset)}, 0.26, quint), animate(Frame, {Size = amount4Ref}, 0.26, quint)
 
                                         if not (tempValue2) then
                                                 tempValue.mt.Completed:Connect(function(playbackState)
@@ -3181,7 +3232,7 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        local function relayoutDropdown(input7)
+                        local function checkState4(input7)
                                 local tempValue9 = tempValue.r.AbsoluteSize.X
                                 if tempValue9 <= 0 then
                                         return
@@ -3199,7 +3250,7 @@ local function createPilatLibrary()
                                 if tempValue2 then
                                 elseif input7 then
                                 else
-                                        return animateDropdownMenu(false)
+                                        return doStep13(false)
                                 end
 
                                 tempValue11 = cache
@@ -3226,7 +3277,7 @@ local function createPilatLibrary()
                                 else
                                 end
 
-                                local tempValue14, scanItems2Result = (amount9 + tempValue12) + tempValue13, filterVisibleOptions()
+                                local tempValue14, scanItems2Result = (amount9 + tempValue12) + tempValue13, scanItems2()
 
                                 if #scanItems2Result == 0 then
                                         if control.empty then
@@ -3262,26 +3313,26 @@ local function createPilatLibrary()
                                         amount7 = tempValue14 + (amount8 + tempValue10)
                                 end
 
-                                updateDropdownDisplay(false)
-                                animateDropdownMenu(input7)
+                                scanTable3(false)
+                                doStep13(input7)
                         end
 
                         tempValue.dd = function()
-                                relayoutDropdown(false)
+                                checkState4(false)
                         end
 
                         local amount10 = 0
 
-                        trackEventConnection(tempValue.r:GetPropertyChangedSignal("AbsoluteSize"), function()
+                        trackConnection(tempValue.r:GetPropertyChangedSignal("AbsoluteSize"), function()
                                 local tempValue9 = tempValue.r.AbsoluteSize.X
 
                                 if math.abs(tempValue9 - amount10) >= 0.5 then
                                         amount10 = tempValue9
-                                        relayoutDropdown(false)
+                                        checkState4(false)
                                 end
                         end)
 
-                        local function rebuildOptionCells()
+                        local function destroyInstances()
                                 local cacheRef = cache
 
                                 for _, value2 in next, cacheRef, nil do
@@ -3289,61 +3340,61 @@ local function createPilatLibrary()
                                 end
 
                                 cache = {}
-                                cacheRef = getOptionLabels()
+                                cacheRef = scanTable2()
 
                                 if #cacheRef >= 5 then
                                         if not (Frame2) then
-                                                Frame2 = newInstance("Frame", {Parent = Frame, Name = "Search",
-                                                        BackgroundColor3 = colorBlack, BackgroundTransparency = 0.6, ZIndex = 7, makeStroke(0.07)})
-                                                tempValue4 = applyDefaultTextStyle(newInstance("TextBox", {Parent = Frame2, Name = "Input",
+                                                Frame2 = createInstance("Frame", {Parent = Frame, Name = "Search",
+                                                        BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 7, tryCall(0.07)})
+                                                tempValue4 = doStep(createInstance("TextBox", {Parent = Frame2, Name = "Input",
                                                         AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.94,
                                                         0.56), PlaceholderText = "Search...", PlaceholderColor3 = color3FromRGB(198, 198, 198), ZIndex = 9}))
 
-                                                trackEventConnection(tempValue4:GetPropertyChangedSignal("Text"), function()
+                                                trackConnection(tempValue4:GetPropertyChangedSignal("Text"), function()
                                                         textValue2 = (tempValue4.Text:match("^%s*(.-)%s*$") or ""):lower()
-                                                        relayoutDropdown(true)
+                                                        checkState4(true)
                                                 end)
                                         end
                                 end
 
                                 if not (control.empty) then
-                                        control.empty = createStyledLabel({Parent = Frame, Name = "Empty", Text = "No match", TextTransparency = 0.4,
+                                        control.empty = checkState2({Parent = Frame, Name = "Empty", Text = "No match", TextTransparency = 0.4,
                                                 Visible = false, ZIndex = 9})
                                 end
 
                                 for index3, item in ipairs(cacheRef) do
-                                        local TextButton2 = newInstance("TextButton", {Parent = Frame, Name = "Option" .. index3,
-                                                LayoutOrder = index3, BackgroundColor3 = colorBlack, BackgroundTransparency = 0.45, ZIndex = 7, makeStroke(0.07)})
+                                        local TextButton2 = createInstance("TextButton", {Parent = Frame, Name = "Option" .. index3,
+                                                LayoutOrder = index3, BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.45, ZIndex = 7, tryCall(0.07)})
                                         local state, tempValue9, Frame3, Frame4 = {b = TextButton2, aw = 0}, false
 
                                         if input4 then
-                                                Frame4 = newInstance("Frame", {Parent = newInstance("Frame", {Parent = TextButton2, Name = "Tick",
+                                                Frame4 = createInstance("Frame", {Parent = createInstance("Frame", {Parent = TextButton2, Name = "Tick",
                                                         AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0.055, 0.5), Size = uDim2FromScale(0.16,
-                                                        0.44), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.3, ZIndex = 8, makeStroke(0.12), makeAspectConstraint(1, true)}), Name = "Fill", AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0, 0), BackgroundColor3 = colorWhite, ZIndex = 9, makeGradient(accentColorSequence, "AccentGradient")})
+                                                        0.44), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.3, ZIndex = 8, tryCall(0.12), getUIAspectRatioConstraint(1, true)}), Name = "Fill", AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0, 0), BackgroundColor3 = color3FromRGBResult, ZIndex = 9, getUIGradient(scanTableResult3, "AccentGradient")})
                                         else
-                                                Frame3 = newInstance("Frame", {Parent = TextButton2, Name = "Accent", AnchorPoint = vector2New(0,
-                                                        0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(0, 1), BackgroundColor3 = colorWhite, ZIndex = 8, makeGradient(accentColorSequence, "AccentGradient")})
+                                                Frame3 = createInstance("Frame", {Parent = TextButton2, Name = "Accent", AnchorPoint = vector2New(0,
+                                                        0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(0, 1), BackgroundColor3 = color3FromRGBResult, ZIndex = 8, getUIGradient(scanTableResult3, "AccentGradient")})
                                         end
 
-                                        local checkState2Result2 = createStyledLabel({Parent = TextButton2, Name = "Label",
+                                        local checkState2Result2 = checkState2({Parent = TextButton2, Name = "Label",
                                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale((input4 and 0.56) or 0.5,
                                                 0.5), Size = uDim2FromScale((input4 and 0.62)
                                                 or 0.78, 0.56), Text = item, TextWrapped = true, ZIndex = 9})
 
                                         state.paint = function(input7)
-                                                local checkState3Result, state2 = isItemSelected(item), {}
+                                                local checkState3Result, state2 = checkState3(item), {}
                                                 local tempValue10 = (checkState3Result and 0.2) or ((tempValue9 and 0.3) or 0.45)
                                                 state2.BackgroundTransparency = tempValue10
 
                                                 if input7 then
-                                                        tweenInstance(TextButton2, state2, 0.12)
+                                                        animate(TextButton2, state2, 0.12)
 
                                                         if Frame3 then
-                                                                tweenInstance(Frame3, {Size = uDim2New(0, (checkState3Result and state.aw) or 0, 1, 0)}, 0.12)
+                                                                animate(Frame3, {Size = uDim2New(0, (checkState3Result and state.aw) or 0, 1, 0)}, 0.12)
                                                         end
 
                                                         if Frame4 then
-                                                                tweenInstance(Frame4, {Size = uDim2FromScale((checkState3Result and 0.85) or 0,
+                                                                animate(Frame4, {Size = uDim2FromScale((checkState3Result and 0.85) or 0,
                                                                         (checkState3Result and 0.85) or 0)}, 0.12)
                                                         end
                                                 else
@@ -3361,17 +3412,17 @@ local function createPilatLibrary()
                                                 checkState2Result2.TextTransparency = (checkState3Result and 0) or 0.15
                                         end
 
-                                        trackEventConnection(TextButton2.MouseEnter, function()
+                                        trackConnection(TextButton2.MouseEnter, function()
                                                 tempValue9 = true
                                                 state.paint(true)
                                         end)
 
-                                        trackEventConnection(TextButton2.MouseLeave, function()
+                                        trackConnection(TextButton2.MouseLeave, function()
                                                 tempValue9 = false
                                                 state.paint(true)
                                         end)
 
-                                        onClick(TextButton2, function()
+                                        hit(TextButton2, function()
                                                 if input4 then
                                                         local copy = table.clone(control.Value)
                                                         local pos = table.find(copy, item)
@@ -3384,13 +3435,13 @@ local function createPilatLibrary()
 
                                                         if input6 then
                                                                 control.Value = copy
-                                                                updateDropdownDisplay(true)
+                                                                scanTable3(true)
                                                         else
                                                                 control:Set(copy)
                                                         end
                                                 elseif input6 then
                                                         control.Value = item
-                                                        updateDropdownDisplay(true)
+                                                        scanTable3(true)
                                                 else
                                                         control:Set(item)
                                                         fieldValue.closeDD()
@@ -3402,23 +3453,23 @@ local function createPilatLibrary()
                         end
 
                         if input6 then
-                                tempValue5 = createStyledLabel({Parent = Frame, Name = "Hint", Text = input6[1], TextWrapped = true,
+                                tempValue5 = checkState2({Parent = Frame, Name = "Hint", Text = input6[1], TextWrapped = true,
                                         TextTransparency = 0.28, ZIndex = 9})
                                 input2, firstValue, value = nil
-                                tempValue6, input2, tempValue7, firstValue, value = createStyledButton({Parent = Frame, Name = "Apply",
+                                tempValue6, input2, tempValue7, firstValue, value = doStep5({Parent = Frame, Name = "Apply",
                                         AnchorPoint = vector2New(0.5, 0.5), Size = uDim2FromOffset(0,
                                         0), ZIndex = 9, full = true, Text = input6[2], LSize = uDim2FromScale(0.88, 0.56), wrap = true, h = 1.03})
                                 tempValue8 = {firstValue, value}
 
-                                onClick(tempValue6, function()
-                                        if selectedItemCount() == 0 then
+                                hit(tempValue6, function()
+                                        if getArg6() == 0 then
                                                 if input4 then
                                                         return
                                                 end
                                         end
 
                                         fieldValue.closeDD()
-                                        safeCall(input3, control.Value)
+                                        tryCall2(input3, control.Value)
                                 end)
                         else
                         end
@@ -3433,7 +3484,7 @@ local function createPilatLibrary()
                                                 fieldValue.closeDD()
                                         end
 
-                                        rebuildOptionCells()
+                                        destroyInstances()
                                         textValue2 = ""
 
                                         if tempValue4 then
@@ -3452,16 +3503,16 @@ local function createPilatLibrary()
                                 end
 
                                 tempValue2 = input7
-                                tweenInstance(chevResult, {Rotation = (input7 and 180) or 0}, 0.22)
-                                tweenInstance(TextButton, {BackgroundTransparency = (input7 and 0.42) or 0.6}, 0.16)
-                                relayoutDropdown(true)
+                                animate(chevResult, {Rotation = (input7 and 180) or 0}, 0.22)
+                                animate(TextButton, {BackgroundTransparency = (input7 and 0.42) or 0.6}, 0.16)
+                                checkState4(true)
                         end
 
                         tempValue.close = function()
                                 animate3(false)
                         end
 
-                        onClick(TextButton, function()
+                        hit(TextButton, function()
                                 animate3(not tempValue2)
                         end)
 
@@ -3471,7 +3522,7 @@ local function createPilatLibrary()
                                 if input4 then
                                         local items2, cache2 = {}, {}
 
-                                        for _, item in ipairs(getOptionLabels()) do
+                                        for _, item in ipairs(scanTable2()) do
                                                 cache2[item] = true
                                         end
 
@@ -3488,17 +3539,17 @@ local function createPilatLibrary()
 
                                         control.Value = items2
                                 else
-                                        local scanTable2Result, tempValue9 = getOptionLabels(), ((text3 ~= nil) and tostring(text3)) or nil
+                                        local scanTable2Result, tempValue9 = scanTable2(), ((text3 ~= nil) and tostring(text3)) or nil
                                         control.Value = ((((tempValue9 and (table.find(scanTable2Result,
                                                 tempValue9)
                                                 or (type(control.Options) == "function"))) and tempValue9) or control.Value) or control.Def) or scanTable2Result[1]
                                 end
 
-                                updateDropdownDisplay(false)
+                                scanTable3(false)
 
                                 if (if input8 then not input8 else not input6)
                                         and ((input4 and (enc(input7) ~= enc(control.Value))) or (if input4 then not input4 else input7 ~= control.Value)) then
-                                        safeCall(input3, control.Value)
+                                        tryCall2(input3, control.Value)
                                 end
                         end
 
@@ -3506,8 +3557,8 @@ local function createPilatLibrary()
                                 control.Options = options
 
                                 if tempValue2 then
-                                        rebuildOptionCells()
-                                        relayoutDropdown(false)
+                                        destroyInstances()
+                                        checkState4(false)
                                 end
 
                                 if not (input7) then
@@ -3517,8 +3568,8 @@ local function createPilatLibrary()
 
                         tempValue.setNote = function(input7)
                                 text = tostring(input7 or "")
-                                layoutDropdownRow()
-                                relayoutDropdown(false)
+                                doStep12()
+                                checkState4(false)
                         end
 
                         if input4 then
@@ -3530,10 +3581,10 @@ local function createPilatLibrary()
 
                                 control.Value = value
                         else
-                                control.Value = ((text2 ~= nil) and tostring(text2)) or getOptionLabels()[1]
+                                control.Value = ((text2 ~= nil) and tostring(text2)) or scanTable2()[1]
                         end
 
-                        updateDropdownDisplay(false)
+                        scanTable3(false)
                         tempValue.ctl = TextButton
                         input:Reg(tempValue, control, (input4 and "multidropdown") or "dropdown")
                         return control
@@ -3541,20 +3592,20 @@ local function createPilatLibrary()
 
                 widgetSpecs.Input = function(input, input2, input3, input4, input5, input6)
                         local tempValue = input:Row(input2, input6)
-                        local Frame = newInstance("Frame", {Parent = tempValue.m, Name = "Field", AnchorPoint = vector2New(0.5,
-                                0.5), Position = uDim2FromScale(0.845, 0.5), Size = uDim2FromScale(0.28, 0.62), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.6, ZIndex = 4, makeStroke(0.1)})
-                        local Frame2 = newInstance("Frame", {Parent = Frame, Name = "Underline", AnchorPoint = vector2New(0.5,
-                                1), Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(0, 0.11), BackgroundColor3 = colorWhite, ZIndex = 6})
-                        local doStepResult = applyDefaultTextStyle(newInstance("TextBox", {Parent = Frame, Name = "Input",
+                        local Frame = createInstance("Frame", {Parent = tempValue.m, Name = "Field", AnchorPoint = vector2New(0.5,
+                                0.5), Position = uDim2FromScale(0.845, 0.5), Size = uDim2FromScale(0.28, 0.62), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, ZIndex = 4, tryCall(0.1)})
+                        local Frame2 = createInstance("Frame", {Parent = Frame, Name = "Underline", AnchorPoint = vector2New(0.5,
+                                1), Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(0, 0.11), BackgroundColor3 = color3FromRGBResult, ZIndex = 6})
+                        local doStepResult = doStep(createInstance("TextBox", {Parent = Frame, Name = "Input",
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.9,
                                 0.56), PlaceholderText = input3
                                 or "Type...", PlaceholderColor3 = color3FromRGB(198, 198, 198), ZIndex = 5}))
-                        createNoteLabel(tempValue, 0.66)
+                        doStep10(tempValue, 0.66)
 
                         tempValue.setNote = function(input7)
                                 local visible = tostring(input7 or "") ~= ""
                                 tempValue.nt.Text, tempValue.nt.Visible = tostring(input7 or ""), visible
-                                positionRowLabel(tempValue, 0.65, visible)
+                                doStep11(tempValue, 0.65, visible)
                                 Frame.Size = uDim2FromScale(0.28, (visible and 0.465) or 0.62)
                                 tempValue.fit()
                         end
@@ -3570,18 +3621,18 @@ local function createPilatLibrary()
 
                                 if input8 then
                                 elseif input7 then
-                                        safeCall(input4, value)
+                                        tryCall2(input4, value)
                                 end
                         end
 
-                        trackEventConnection(doStepResult.Focused, function()
-                                tweenInstance(Frame, {BackgroundTransparency = 0.42}, 0.16)
-                                tweenInstance(Frame2, {Size = uDim2FromScale(1, 0.11)}, 0.2, quint)
+                        trackConnection(doStepResult.Focused, function()
+                                animate(Frame, {BackgroundTransparency = 0.42}, 0.16)
+                                animate(Frame2, {Size = uDim2FromScale(1, 0.11)}, 0.2, quint)
                         end)
 
-                        trackEventConnection(doStepResult.FocusLost, function()
-                                tweenInstance(Frame, {BackgroundTransparency = 0.6}, 0.16)
-                                tweenInstance(Frame2, {Size = uDim2FromScale(0, 0.11)}, 0.2, quint)
+                        trackConnection(doStepResult.FocusLost, function()
+                                animate(Frame, {BackgroundTransparency = 0.6}, 0.16)
+                                animate(Frame2, {Size = uDim2FromScale(0, 0.11)}, 0.2, quint)
                                 control:Set(doStepResult.Text)
                         end)
 
@@ -3594,13 +3645,13 @@ local function createPilatLibrary()
                 widgetSpecs.Button = function(input, input2, input3, input4, text2, input5, input6)
                         local tempValue, tempValue2 = input:Row(input2, input6), input3 or "Click"
                         local tempValue4 = input5 or "Clicked!"
-                        local doStep5Result, tempValue5, tempValue6 = createStyledButton({Parent = tempValue.m, Name = "Action",
+                        local doStep5Result, tempValue5, tempValue6 = doStep5({Parent = tempValue.m, Name = "Action",
                                 Position = uDim2FromScale(0.8846889218690012, 0.5), Size = uDim2FromScale(0.20062215626239777,
                                 (text2 and 0.51) or 0.68), ZIndex = 6, Text = tempValue2, LSize = uDim2FromScale(0.9, 0.62), wrap = true})
 
                         if text2 then
-                                positionRowLabel(tempValue, 0.62, true)
-                                createNoteLabel(tempValue, 0.7393778)
+                                doStep11(tempValue, 0.62, true)
+                                doStep10(tempValue, 0.7393778)
                                 tempValue.nt.Text, tempValue.nt.Visible = tostring(text2), true
                         end
 
@@ -3611,11 +3662,11 @@ local function createPilatLibrary()
 
                         state.Press = function(unused)
                                 local uiScale = doStep5Result:FindFirstChildOfClass("UIScale")
-                                tweenInstance(uiScale, {Scale = 0.96}, 0.055)
+                                animate(uiScale, {Scale = 0.96}, 0.055)
 
                                 task.delay(0.07, function()
                                         if uiScale.Parent then
-                                                tweenInstance(uiScale, {Scale = 1}, 0.09)
+                                                animate(uiScale, {Scale = 1}, 0.09)
                                         end
                                 end)
 
@@ -3631,7 +3682,7 @@ local function createPilatLibrary()
                                         end
                                 end
 
-                                safeCall(input4)
+                                tryCall2(input4)
                         end
 
                         state.Text = function(_, text)
@@ -3639,7 +3690,7 @@ local function createPilatLibrary()
                                 tempValue6.Text = text
                         end
 
-                        onClick(doStep5Result, function()
+                        hit(doStep5Result, function()
                                 state:Press()
                         end)
 
@@ -3651,12 +3702,12 @@ local function createPilatLibrary()
                 widgetSpecs.Text = function(input, input2, value, input3)
                         local tempValue = input:Row(input2, input3)
                         tempValue.lb.Size = uDim2FromScale(0.94, 0.64)
-                        createNoteLabel(tempValue, 0.94)
+                        doStep10(tempValue, 0.94)
 
                         tempValue.setNote = function(input4)
                                 local visible = tostring(input4 or "") ~= ""
                                 tempValue.nt.Text, tempValue.nt.Visible = tostring(input4 or ""), visible
-                                positionRowLabel(tempValue, 0.94, visible)
+                                doStep11(tempValue, 0.94, visible)
                                 tempValue.fit()
                         end
 
@@ -3702,7 +3753,7 @@ local function createPilatLibrary()
 
                         local state = {Skip = true}
 
-                        local function getOptionLabels()
+                        local function scanTable2()
                                 local parts = {}
 
                                 for _, item in ipairs(iMap) do
@@ -3715,20 +3766,20 @@ local function createPilatLibrary()
                         state.Set = function(_, keyName, input4)
                                 if iEntryMap[keyName] ~= input4 then
                                         iEntryMap[keyName] = input4
-                                        getOptionLabels()
+                                        scanTable2()
                                 end
                         end
 
                         state.Icon = function(unused)
                         end
 
-                        getOptionLabels()
+                        scanTable2()
                         return state
                 end
 
                 widgetSpecs.Canvas = function(items2, firstValue, input)
                         items2.n = items2.n + 1
-                        local Frame = newInstance("Frame", {Parent = items2.b, Name = firstValue, Size = uDim2New(factor5, 0, 0,
+                        local Frame = createInstance("Frame", {Parent = items2.b, Name = firstValue, Size = uDim2New(factor5, 0, 0,
                                 40), BackgroundTransparency = 1, LayoutOrder = items2.n, ZIndex = 3})
                         local state = {f = Frame, aspect = input}
 
@@ -3738,7 +3789,7 @@ local function createPilatLibrary()
                         end
 
                         if input then
-                                trackEventConnection(Frame:GetPropertyChangedSignal("AbsoluteSize"), function()
+                                trackConnection(Frame:GetPropertyChangedSignal("AbsoluteSize"), function()
                                         local tempValue = Frame.AbsoluteSize.X
 
                                         if math.abs(tempValue - (state.w or 0)) > 0.5 then
@@ -3746,7 +3797,7 @@ local function createPilatLibrary()
                                                 Frame.Size = uDim2New(factor5, 0, 0, tempValue / state.aspect)
 
                                                 if state.onResize then
-                                                        safeCall(state.onResize, tempValue, tempValue / state.aspect)
+                                                        tryCall2(state.onResize, tempValue, tempValue / state.aspect)
                                                 end
                                         end
                                 end)
@@ -3778,7 +3829,7 @@ local function createPilatLibrary()
                 weakCache, setmetatableFn = setmetatable, {__mode = "k"}
                 local weakCacheResult = weakCache({}, setmetatableFn)
 
-                local function highlightSearchMatch(data, input)
+                local function checkState5(data, input)
                         if not (data) then
                                 return
                         end
@@ -3829,7 +3880,7 @@ local function createPilatLibrary()
                         entry.p = data.Text
                 end
 
-                local function formatTabNameWithSuffix(data)
+                local function doStep14(data)
                         local text = tostring(data.Disp or data.Name)
 
                         if text:lower():sub(-4) == " tab" then
@@ -3852,7 +3903,7 @@ local function createPilatLibrary()
                                 if not (section.res) then
                                         index3 = (tempValue == "") or (section.Disp:lower():find(tempValue, 1, true) ~= nil)
                                         visible = if section.extra then (section.extra(tempValue) == true) or index3 else index3
-                                        highlightSearchMatch(section.hd, tempValue)
+                                        checkState5(section.hd, tempValue)
 
                                         for index4, row in ipairs(section.rows) do
                                                 index4 = row.o
@@ -3887,7 +3938,7 @@ local function createPilatLibrary()
                                                         end
 
                                                         if row.lb then
-                                                                highlightSearchMatch(row.lb, tempValue)
+                                                                checkState5(row.lb, tempValue)
                                                         end
 
                                                         visible = if tempValue4 then true else visible
@@ -3992,7 +4043,7 @@ local function createPilatLibrary()
 
                         if res then
                         else
-                                res = input:Section("__PilatSearchResults", true, "Other Tabs")
+                                res = input:Section("__ChilliSearchResults", true, "Other Tabs")
                                 res.res = true
                                 res.noReg = true
                                 res.hdr = {}
@@ -4010,36 +4061,36 @@ local function createPilatLibrary()
                                 if not headerEntry then
                                         index3 = res:Row("ResultGroup", nil, nil, 22)
                                         local fieldValue = index3.r
-                                        fieldValue.BackgroundColor3 = colorBlack
+                                        fieldValue.BackgroundColor3 = color3FromRGBResult2
                                         fieldValue.BackgroundTransparency = 0.58
-                                        local tryCallResult = makeStroke(0.045, colorAccent, false, 0.62)
+                                        local tryCallResult = tryCall(0.045, color3FromRGBResult3, false, 0.62)
                                         tryCallResult.Parent = fieldValue
-                                        data2 = createStyledLabel({Parent = fieldValue, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                        data2 = checkState2({Parent = fieldValue, Name = "Label", AnchorPoint = vector2New(0, 0.5),
                                                 Position = uDim2FromScale(0.025, 0.5), Size = uDim2FromScale(0.73,
                                                 0.8), TextTruncate = scrollingFrame.TextTruncate.AtEnd, TextXAlignment = left, ZIndex = 5})
-                                        data2.TextColor3 = colorAccent
-                                        newInstance("Frame", {Parent = fieldValue, Name = "Line", AnchorPoint = vector2New(1, 0.5),
+                                        data2.TextColor3 = color3FromRGBResult3
+                                        createInstance("Frame", {Parent = fieldValue, Name = "Line", AnchorPoint = vector2New(1, 0.5),
                                                 Position = uDim2FromScale(0.79, 0.5), Size = uDim2FromScale(0.055,
-                                                0.08), BackgroundColor3 = colorWhite, BackgroundTransparency = 0.75, ZIndex = 4})
-                                        createStyledLabel({Parent = fieldValue, Name = "OpenHint", AnchorPoint = vector2New(1, 0.5),
+                                                0.08), BackgroundColor3 = color3FromRGBResult, BackgroundTransparency = 0.75, ZIndex = 4})
+                                        checkState2({Parent = fieldValue, Name = "OpenHint", AnchorPoint = vector2New(1, 0.5),
                                                 Position = uDim2FromScale(0.975, 0.5), Size = uDim2FromScale(0.16,
-                                                0.72), Text = "OPEN  >", TextXAlignment = right, ZIndex = 5}).TextColor3 = colorAccent
-                                        local TextButton = newInstance("TextButton", {Parent = fieldValue, Name = "OpenTab",
+                                                0.72), Text = "OPEN  >", TextXAlignment = right, ZIndex = 5}).TextColor3 = color3FromRGBResult3
+                                        local TextButton = createInstance("TextButton", {Parent = fieldValue, Name = "OpenTab",
                                                 Size = uDim2FromScale(1, 1), ZIndex = 6})
 
-                                        trackEventConnection(TextButton.MouseEnter, function()
-                                                tweenInstance(fieldValue, {BackgroundTransparency = 0.38}, 0.12)
-                                                tweenInstance(tryCallResult, {Transparency = 0.22}, 0.12)
+                                        trackConnection(TextButton.MouseEnter, function()
+                                                animate(fieldValue, {BackgroundTransparency = 0.38}, 0.12)
+                                                animate(tryCallResult, {Transparency = 0.22}, 0.12)
                                         end)
 
-                                        trackEventConnection(TextButton.MouseLeave, function()
-                                                tweenInstance(fieldValue, {BackgroundTransparency = 0.58}, 0.12)
-                                                tweenInstance(tryCallResult, {Transparency = 0.62}, 0.12)
+                                        trackConnection(TextButton.MouseLeave, function()
+                                                animate(fieldValue, {BackgroundTransparency = 0.58}, 0.12)
+                                                animate(tryCallResult, {Transparency = 0.62}, 0.12)
                                         end)
 
                                         headerEntry = {x = index3, lb = data2}
 
-                                        onClick(TextButton, function()
+                                        hit(TextButton, function()
                                                 if headerEntry.go then
                                                         data:Goto(headerEntry.go)
                                                 end
@@ -4051,7 +4102,7 @@ local function createPilatLibrary()
 
                                 layoutOrder += 1
                                 headerEntry.x.h.LayoutOrder, headerEntry.x.h.Visible, headerEntry.go = layoutOrder, true, item.l[1]
-                                headerEntry.lb.Text = "GO TO  " .. (formatTabNameWithSuffix(item.t) .. ("  >  " .. item.s.Disp))
+                                headerEntry.lb.Text = "GO TO  " .. (doStep14(item.t) .. ("  >  " .. item.s.Disp))
                                 arg2Map[input] = true
                                 local ipairsFn, fieldValue2 = ipairs, item.l
 
@@ -4178,7 +4229,7 @@ local function createPilatLibrary()
                                 local canvasPosition = page.CanvasPosition
                                 local computed = math.clamp(((tempValue2.AbsolutePosition.Y - page.AbsolutePosition.Y) + canvasPosition.Y) - (page.AbsoluteSize.Y * 0.28),
                                         0, math.max(0, page.AbsoluteCanvasSize.Y - page.AbsoluteSize.Y))
-                                local animateResult = tweenInstance(page, {CanvasPosition = vector2New(canvasPosition.X, computed)}, 0.46,
+                                local animateResult = animate(page, {CanvasPosition = vector2New(canvasPosition.X, computed)}, 0.46,
                                         quint)
 
                                 pcall(function()
@@ -4195,24 +4246,24 @@ local function createPilatLibrary()
                                         return
                                 end
 
-                                canvasPosition = tempValue2:FindFirstChild("PilatSearchNavigationHighlight")
+                                canvasPosition = tempValue2:FindFirstChild("ChilliSearchNavigationHighlight")
 
                                 if canvasPosition then
                                         canvasPosition:Destroy()
                                 end
 
-                                local tryCallResult = makeStroke(0.065, colorAccent, false, 1)
-                                tryCallResult.Name = "PilatSearchNavigationHighlight"
+                                local tryCallResult = tryCall(0.065, color3FromRGBResult3, false, 1)
+                                tryCallResult.Name = "ChilliSearchNavigationHighlight"
                                 tryCallResult.Parent = tempValue2
-                                tweenInstance(tryCallResult, {Transparency = 0.04}, 0.16)
+                                animate(tryCallResult, {Transparency = 0.04}, 0.16)
 
                                 task.delay(0.5, function()
                                         if tryCallResult.Parent then
-                                                local animateResult2, applyCornerToParent = tweenInstance(tryCallResult, {Transparency = 1}, 0.28), function()
+                                                local animateResult2, destroyAll = animate(tryCallResult, {Transparency = 1}, 0.28), function()
                                                         tryCallResult:Destroy()
                                                 end
 
-                                                animateResult2.Completed:Connect(applyCornerToParent)
+                                                animateResult2.Completed:Connect(destroyAll)
                                         end
                                 end)
                         end)
@@ -4246,11 +4297,11 @@ local function createPilatLibrary()
                                 input.slot:Destroy()
                                 return
                         end
-                        tweenInstance(input.card, {Position = uDim2FromScale(2.1, 0.5)}, 0.22, quint, scrollingFrame.EasingDirection.In)
+                        animate(input.card, {Position = uDim2FromScale(2.1, 0.5)}, 0.22, quint, scrollingFrame.EasingDirection.In)
 
                         task.delay(0.08, function()
                                 if input.slot.Parent then
-                                        tweenInstance(input.slot, {Size = uDim2FromScale(1, 0)}, 0.22, quint, scrollingFrame.EasingDirection.In)
+                                        animate(input.slot, {Size = uDim2FromScale(1, 0)}, 0.22, quint, scrollingFrame.EasingDirection.In)
                                 end
                         end)
 
@@ -4279,9 +4330,9 @@ local function createPilatLibrary()
                         end
 
                         if not (Frame and Frame.Parent) then
-                                Frame = newInstance("Frame", {Parent = fieldValue.gui, Name = "PilatNotifyHolder",
+                                Frame = createInstance("Frame", {Parent = fieldValue.gui, Name = "ChilliNotifyHolder",
                                         AnchorPoint = vector2New(1, 1), Position = uDim2FromScale(0.988, 0.975), Size = uDim2FromScale(0.163,
-                                        0.74), BackgroundTransparency = 1, ZIndex = 100, newInstance("UIListLayout", {Name = "Layout",
+                                        0.74), BackgroundTransparency = 1, ZIndex = 100, createInstance("UIListLayout", {Name = "Layout",
                                         HorizontalAlignment = scrollingFrame.HorizontalAlignment.Right, VerticalAlignment = scrollingFrame.VerticalAlignment.Bottom, SortOrder = scrollingFrame.SortOrder.LayoutOrder, Padding = uDimNew(0.015, 0)})})
                         end
 
@@ -4291,29 +4342,29 @@ local function createPilatLibrary()
 
                         count += 1
                         threshold = math.max(0, tonumber(threshold) or 3)
-                        fieldValue = newInstance("Frame", {Parent = Frame, Name = "NotificationSlot", LayoutOrder = count,
+                        fieldValue = createInstance("Frame", {Parent = Frame, Name = "NotificationSlot", LayoutOrder = count,
                                 Size = uDim2FromScale(1, 0), BackgroundTransparency = 1, ZIndex = 100})
-                        local Frame2 = newInstance("Frame", {Parent = fieldValue, Name = "PilatNotify",
+                        local Frame2 = createInstance("Frame", {Parent = fieldValue, Name = "ChilliNotify",
                                 AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(2.1, 0.5), Size = uDim2FromScale(1,
-                                1), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.35, ClipsDescendants = true, ZIndex = 101, makeStroke(0.045), newInstance("Frame", {Name = "Accent",
+                                1), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.35, ClipsDescendants = true, ZIndex = 101, tryCall(0.045), createInstance("Frame", {Name = "Accent",
                                 Size = uDim2FromScale(0.026,
-                                1), BackgroundColor3 = colorWhite, ZIndex = 102, makeGradient(redGradientSequence, "RedGradient")})})
-                        createStyledLabel({Parent = Frame2, Name = "Title", Position = uDim2FromScale(0.07, 0.14),
+                                1), BackgroundColor3 = color3FromRGBResult, ZIndex = 102, getUIGradient(scanTableResult4, "RedGradient")})})
+                        checkState2({Parent = Frame2, Name = "Title", Position = uDim2FromScale(0.07, 0.14),
                                 Size = uDim2FromScale(0.88,
                                 0.28), Text = tostring(input or "Notification"), TextXAlignment = left, ZIndex = 103}, true)
-                        createStyledLabel({Parent = Frame2, Name = "Body", Position = uDim2FromScale(0.07, 0.48),
+                        checkState2({Parent = Frame2, Name = "Body", Position = uDim2FromScale(0.07, 0.48),
                                 Size = uDim2FromScale(0.86,
                                 0.3), Text = tostring(input2
                                 or ""), TextWrapped = true, TextXAlignment = left, TextYAlignment = scrollingFrame.TextYAlignment.Top, TextTransparency = 0.28, ZIndex = 103})
-                        local Frame3, state = newInstance("Frame", {Parent = newInstance("Frame", {Parent = Frame2,
+                        local Frame3, state = createInstance("Frame", {Parent = createInstance("Frame", {Parent = Frame2,
                                 Name = "Track", AnchorPoint = vector2New(0.5, 1), Position = uDim2FromScale(0.5,
-                                1), Size = uDim2FromScale(1, 0.055), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.45, Visible = threshold > 0, ZIndex = 102}), Name = "Fill", AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(1, 1), BackgroundColor3 = color3FromRGB(64, 88, 172), ZIndex = 103}), {slot = fieldValue, card = Frame2}
+                                1), Size = uDim2FromScale(1, 0.055), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.45, Visible = threshold > 0, ZIndex = 102}), Name = "Fill", AnchorPoint = vector2New(0, 0.5), Position = uDim2FromScale(0, 0.5), Size = uDim2FromScale(1, 1), BackgroundColor3 = color3FromRGB(64, 88, 172), ZIndex = 103}), {slot = fieldValue, card = Frame2}
                         list2[#list2 + 1] = state
-                        tweenInstance(fieldValue, {Size = uDim2FromScale(1, 0.115)}, 0.3, quint)
-                        tweenInstance(Frame2, {Position = uDim2FromScale(1, 0.5)}, 0.3, quint)
+                        animate(fieldValue, {Size = uDim2FromScale(1, 0.115)}, 0.3, quint)
+                        animate(Frame2, {Position = uDim2FromScale(1, 0.5)}, 0.3, quint)
 
                         if threshold > 0 then
-                                tweenInstance(Frame3, {Size = uDim2FromScale(0, 1)}, threshold, scrollingFrame.EasingStyle.Linear)
+                                animate(Frame3, {Size = uDim2FromScale(0, 1)}, threshold, scrollingFrame.EasingStyle.Linear)
 
                                 state.t = task.delay(threshold, function()
                                         state.t = nil
@@ -4346,7 +4397,7 @@ local function createPilatLibrary()
                                 dataRef:Dirty()
 
                                 for _, item in ipairs(control.ls) do
-                                        safeCall(item, value)
+                                        tryCall2(item, value)
                                 end
                         end
 
@@ -4460,7 +4511,7 @@ local function createPilatLibrary()
                         local values = ((type(value2.Values) == "table") and value2.Values) or {}
 
                         if data.pre then
-                                safeCall(data.pre, values)
+                                tryCall2(data.pre, values)
                         end
 
                         for index3, opt in ipairs(data.Opts) do
@@ -4488,7 +4539,7 @@ local function createPilatLibrary()
                                         values.Value = value.Value
 
                                         for _, item in ipairs(values.ls) do
-                                                safeCall(item, value.Value)
+                                                tryCall2(item, value.Value)
                                         end
                                 elseif type(value) == "table" then
                                         data:State(key, value.Value)
@@ -4498,7 +4549,7 @@ local function createPilatLibrary()
                         data.busy = false
 
                         if data.onLoad then
-                                safeCall(data.onLoad)
+                                tryCall2(data.onLoad)
                         end
 
                         return true
@@ -4587,10 +4638,10 @@ local function createPilatLibrary()
                                         StartupConfig = data.Startup}) or "{}")
                                 return
                         end
-                        local cachedFile, cachedFile2 = readCachedFile("PilatLibrary/config_state.json"), readCachedFile(tempValue)
+                        local cachedFile, cachedFile2 = readCachedFile("ChilliLibrary/config_state.json"), readCachedFile(tempValue)
 
                         if (if cachedFile2 then not cachedFile2 else cachedFile) and (cachedFile ~= "") then
-                                local callResult, result = pcall(listfiles, "PilatLibrary/configs")
+                                local callResult, result = pcall(listfiles, "ChilliLibrary/configs")
 
                                 for index3, item in ipairs((callResult and result) or {}) do
                                         index3 = tostring(item):gsub("\\", "/"):match("([^/]+)$")
@@ -4645,36 +4696,36 @@ local function createPilatLibrary()
 
                 index.Float = function(data)
                         local dataRef = data
-                        local ScreenGui = newInstance("ScreenGui", {Name = HttpService:GenerateGUID(false):gsub("-", ""):sub(1,
+                        local ScreenGui = createInstance("ScreenGui", {Name = HttpService:GenerateGUID(false):gsub("-", ""):sub(1,
                                 12), DisplayOrder = 59, IgnoreGuiInset = true, ResetOnSpawn = false, ZIndexBehavior = scrollingFrame.ZIndexBehavior.Sibling})
-                        ScreenGui:SetAttribute("PilatRB", true)
+                        ScreenGui:SetAttribute("ChilliRB", true)
                         dataRef.fgui = ScreenGui
-                        local Frame2 = newInstance("Frame", {Parent = ScreenGui, AnchorPoint = vector2New(0, 0.5),
+                        local Frame2 = createInstance("Frame", {Parent = ScreenGui, AnchorPoint = vector2New(0, 0.5),
                                 Position = uDim2New(0, 16, 0.3, 0), Size = uDim2FromOffset(56, 56), BackgroundTransparency = 1})
-                        local UIScale = newInstance("UIScale", {Parent = Frame2})
-                        data = newInstance("ImageButton", {Parent = Frame2, AnchorPoint = vector2New(0.5, 0.5),
+                        local UIScale = createInstance("UIScale", {Parent = Frame2})
+                        data = createInstance("ImageButton", {Parent = Frame2, AnchorPoint = vector2New(0.5, 0.5),
                                 Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1,
-                                1), BackgroundTransparency = 1, Image = "rbxassetid://128961717706452", ScaleType = scrollingFrame.ScaleType.Fit, newInstance("UICorner", {CornerRadius = uDimNew(0.28, 0)})})
-                        local UIScale2 = newInstance("UIScale", {Parent = data})
+                                1), BackgroundTransparency = 1, Image = "rbxassetid://128961717706452", ScaleType = scrollingFrame.ScaleType.Fit, createInstance("UICorner", {CornerRadius = uDimNew(0.28, 0)})})
+                        local UIScale2 = createInstance("UIScale", {Parent = data})
                         local tweenInfo = TweenInfo.new(0.08, scrollingFrame.EasingStyle.Quad, scrollingFrame.EasingDirection.Out)
                         local tweenInfo2 = TweenInfo.new(0.14, scrollingFrame.EasingStyle.Back, scrollingFrame.EasingDirection.Out)
 
-                        local function clamp01()
+                        local function clampValue2()
                                 local currentCamera = workspace.CurrentCamera
                                 local viewportSize = (currentCamera and currentCamera.ViewportSize) or vector2New(1280, 720)
                                 viewportSize = if viewportSize.X < 1 then vector2New(1280, 720) else viewportSize
                                 UIScale.Scale = math.clamp((viewportSize.X * 0.035) / 56, 0.7, 1.4)
                         end
 
-                        clamp01()
+                        clampValue2()
 
                         if workspace.CurrentCamera then
-                                trackEventConnection(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"), clamp01)
+                                trackConnection(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"), clampValue2)
                         end
 
                         local input, tempValue, position, tempValue2, isEnabled
 
-                        local function isItemSelected(data2, input2)
+                        local function checkState3(data2, input2)
                                 if input == "mouse" then
                                         return data2.UserInputType == ((input2
                                                 and scrollingFrame.UserInputType.MouseMovement) or scrollingFrame.UserInputType.MouseButton1)
@@ -4683,8 +4734,8 @@ local function createPilatLibrary()
                                 return data2 == input2
                         end
 
-                        trackEventConnection(data.InputBegan, function(input2)
-                                if isClickInput(input2) then
+                        trackConnection(data.InputBegan, function(input2)
+                                if doStep3(input2) then
                                         if input2.UserInputState ~= scrollingFrame.UserInputState.Begin then
                                                 return
                                         elseif input then
@@ -4700,9 +4751,9 @@ local function createPilatLibrary()
                                 TweenService:Create(UIScale2, tweenInfo, {Scale = 0.9}):Play()
                         end)
 
-                        trackEventConnection(UserInputService.InputChanged, function(input2)
+                        trackConnection(UserInputService.InputChanged, function(input2)
                                 if input then
-                                        if not (isItemSelected(input2, true)) then
+                                        if not (checkState3(input2, true)) then
                                                 return
                                         end
                                 else
@@ -4726,16 +4777,16 @@ local function createPilatLibrary()
                                         absoluteSize.Y - (absoluteSize2.Y * 0.5))))
                         end)
 
-                        trackEventConnection(UserInputService.InputEnded, function(input2)
+                        trackConnection(UserInputService.InputEnded, function(input2)
                                 if input then
-                                        if isItemSelected(input2, false) then
+                                        if checkState3(input2, false) then
                                                 input, tempValue2 = nil, false
                                                 TweenService:Create(UIScale2, tweenInfo2, {Scale = 1}):Play()
                                         end
                                 end
                         end)
 
-                        trackEventConnection(data.Activated, function()
+                        trackConnection(data.Activated, function()
                                 if isEnabled then
                                         isEnabled = false
                                         return
@@ -4787,7 +4838,7 @@ local function createPilatLibrary()
                                 return ((type(tempValue.Value) == "table") and tempValue.Value) or {}
                         end
 
-                        local function clamp01(keyName)
+                        local function clampValue2(keyName)
                                 return math.clamp(math.floor(tonumber((type(tempValue2.Value) == "table") and tempValue2.Value[keyName]) or 1), 1, 5)
                         end
 
@@ -4795,9 +4846,9 @@ local function createPilatLibrary()
                                 return table.find(isValue4(), input) ~= nil
                         end
 
-                        local ScreenGui = newInstance("ScreenGui", {Name = HttpService:GenerateGUID(false):gsub("-", ""):sub(1,
+                        local ScreenGui = createInstance("ScreenGui", {Name = HttpService:GenerateGUID(false):gsub("-", ""):sub(1,
                                 12), ResetOnSpawn = false, IgnoreGuiInset = true, ZIndexBehavior = scrollingFrame.ZIndexBehavior.Sibling, DisplayOrder = 5, Enabled = false})
-                        ScreenGui:SetAttribute("PilatRB", true)
+                        ScreenGui:SetAttribute("ChilliRB", true)
                         ScreenGui.Parent = setTab2.par
                         setTab2.qgui = ScreenGui
                         local tempValue8, iMap = ((touchEnabled and 150) or 120) / 100, {true, true, true, true, true}
@@ -4807,7 +4858,7 @@ local function createPilatLibrary()
                                 return clamp(input, 0, max(0, 0.998 - tempValue9))
                         end
 
-                        local function layoutDropdownRow(threshold)
+                        local function doStep12(threshold)
                                 local tempValue9, factor = ((touchEnabled and {0.023, 0.023, 0.42}) or {0.023, 0.303,
                                         0.7})[threshold], 0.078 * tempValue8
 
@@ -4832,7 +4883,7 @@ local function createPilatLibrary()
                         end
 
                         local function clampValue3(text)
-                                local doStep12Result, tempValue9 = layoutDropdownRow(text)
+                                local doStep12Result, tempValue9 = doStep12(text)
                                 local tempValue10 = (type(tempValue5.Value) == "table") and tempValue5.Value[tostring(text)]
 
                                 if type(tempValue10) == "table" then
@@ -4847,24 +4898,24 @@ local function createPilatLibrary()
                         local pathMap, iMap2 = {}, {}
 
                         for index3 = 1, 5, 1 do
-                                local Frame2 = newInstance("Frame", {Parent = ScreenGui, Name = "QuickBar" .. index3,
+                                local Frame2 = createInstance("Frame", {Parent = ScreenGui, Name = "QuickBar" .. index3,
                                         BackgroundTransparency = 1, Size = uDim2FromScale(0.078, 0.032), Visible = false, ZIndex = 2})
-                                local TextButton = newInstance("TextButton", {Parent = Frame2, Name = "Handle", Active = true,
+                                local TextButton = createInstance("TextButton", {Parent = Frame2, Name = "Handle", Active = true,
                                         AnchorPoint = vector2New(0.5, 0), Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(0.94,
-                                        1), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.35, ZIndex = 3, makeStroke(0.06), newInstance("Frame", {Name = "HeaderAccent",
+                                        1), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.35, ZIndex = 3, tryCall(0.06), createInstance("Frame", {Name = "HeaderAccent",
                                         AnchorPoint = vector2New(0.5, 1), Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(1,
-                                        0.07), BackgroundColor3 = colorWhite, BackgroundTransparency = 0.08, ZIndex = 4})})
-                                createStyledLabel({Parent = TextButton, Name = "Title", AnchorPoint = vector2New(0, 0.5),
+                                        0.07), BackgroundColor3 = color3FromRGBResult, BackgroundTransparency = 0.08, ZIndex = 4})})
+                                checkState2({Parent = TextButton, Name = "Title", AnchorPoint = vector2New(0, 0.5),
                                         Position = uDim2FromScale(0.07, 0.5), Size = uDim2FromScale(0.62,
                                         0.55), Text = "Quick Bar " .. index3, TextXAlignment = left, ZIndex = 4}, true)
-                                local Frame3 = newInstance("Frame", {Parent = Frame2, Name = "Body", AnchorPoint = vector2New(0.5, 0),
+                                local Frame3 = createInstance("Frame", {Parent = Frame2, Name = "Body", AnchorPoint = vector2New(0.5, 0),
                                         Position = uDim2FromScale(0.5, 1), Size = uDim2FromScale(1.32,
-                                        0), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 2, newInstance("UIPadding", {Name = "BodyPadding",
+                                        0), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 2, createInstance("UIPadding", {Name = "BodyPadding",
                                         PaddingLeft = uDimNew(0.03, 0), PaddingRight = uDimNew(0.03, 0)})})
-                                local UIListLayout, TextButton2 = newInstance("UIListLayout", {Parent = Frame3, Name = "BodyLayout",
-                                        HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder}), newInstance("TextButton", {Parent = TextButton, Name = "Collapse", Active = true, AnchorPoint = vector2New(1,
+                                local UIListLayout, TextButton2 = createInstance("UIListLayout", {Parent = Frame3, Name = "BodyLayout",
+                                        HorizontalAlignment = center, SortOrder = scrollingFrame.SortOrder.LayoutOrder}), createInstance("TextButton", {Parent = TextButton, Name = "Collapse", Active = true, AnchorPoint = vector2New(1,
                                         0.5), Position = uDim2FromScale(0.955, 0.5), Size = uDim2FromScale(0.17, 0.6), ZIndex = 4})
-                                local chevResult = createChevron(TextButton2, colorWhite, uDim2FromScale(0.5, 0.5), uDim2FromScale(0.85,
+                                local chevResult = chev(TextButton2, color3FromRGBResult, uDim2FromScale(0.5, 0.5), uDim2FromScale(0.85,
                                         0.85), 4)
                                 local sectionView = {pn = Frame2, hd = TextButton, body = Frame3, bl = UIListLayout, car = chevResult,
                                         items = {}, cons = {}, frac = 0}
@@ -4880,27 +4931,27 @@ local function createPilatLibrary()
                                                 sectionView.tw:Cancel()
                                         end
 
-                                        sectionView.tw = tweenInstance(Frame3, {Size = uDim2FromScale(1.32,
+                                        sectionView.tw = animate(Frame3, {Size = uDim2FromScale(1.32,
                                                 (sectionView.col and 0) or sectionView.frac)}, 0.26, quint)
-                                        tweenInstance(chevResult, {Rotation = (sectionView.col and 180) or 0}, 0.26, quint)
+                                        animate(chevResult, {Rotation = (sectionView.col and 180) or 0}, 0.26, quint)
                                 end
 
-                                onClick(TextButton2, toggleCol)
+                                hit(TextButton2, toggleCol)
                                 local isEnabled, input, tempValue9, tempValue10, isEnabled2
 
-                                trackEventConnection(TextButton.InputBegan, function(input2)
+                                trackConnection(TextButton.InputBegan, function(input2)
                                         if isEnabled then
                                                 return
                                         elseif input2.UserInputState ~= scrollingFrame.UserInputState.Begin then
                                                 return
-                                        elseif not (isClickInput(input2)) then
+                                        elseif not (doStep3(input2)) then
                                                 return
                                         end
 
                                         local vector2NewResult = vector2New(input2.Position.X, input2.Position.Y)
 
-                                        if isPointInside(TextButton, vector2NewResult) then
-                                                if isPointInside(TextButton2, vector2NewResult) then
+                                        if doStep4(TextButton, vector2NewResult) then
+                                                if doStep4(TextButton2, vector2NewResult) then
                                                         return
                                                 end
                                         else
@@ -4912,7 +4963,7 @@ local function createPilatLibrary()
                                         isEnabled, input, tempValue9, tempValue10, isEnabled2 = true, input3, vector2NewResult, vector2NewResult2, false
                                 end)
 
-                                trackEventConnection(UserInputService.InputChanged, function(input2)
+                                trackConnection(UserInputService.InputChanged, function(input2)
                                         if isEnabled then
                                                 if not (input and (input2 == input)) then
                                                         if input then
@@ -4942,7 +4993,7 @@ local function createPilatLibrary()
                                                 math.clamp(tempValue10.Y + (vector2NewResult.Y / absoluteSize.Y), 0, 0.98))
                                 end)
 
-                                trackEventConnection(UserInputService.InputEnded, function(input2)
+                                trackConnection(UserInputService.InputEnded, function(input2)
                                         if isEnabled then
                                                 if not (input2.UserInputType == scrollingFrame.UserInputType.MouseButton1) then
                                                         if input2 ~= input then
@@ -4974,17 +5025,17 @@ local function createPilatLibrary()
                                 iMap2[index3] = sectionView
                         end
 
-                        local function animateDropdownMenu(items2, firstValue, input, input2)
-                                local instance = newInstance((input2 and "TextButton") or "Frame", {Parent = items2.body,
+                        local function doStep13(items2, firstValue, input, input2)
+                                local instance = createInstance((input2 and "TextButton") or "Frame", {Parent = items2.body,
                                         Name = "Item" .. firstValue, Active = input2 == true, LayoutOrder = firstValue, Size = uDim2FromScale(0.7121,
-                                        input), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.4, ZIndex = 3, makeStroke(0.05)})
+                                        input), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.4, ZIndex = 3, tryCall(0.05)})
                                 items2.items[#items2.items + 1] = instance
                                 return instance
                         end
 
-                        local function isItemSelected(firstValue, input)
+                        local function checkState3(firstValue, input)
                                 if input then
-                                        createStyledLabel({Parent = firstValue, Name = "BarKeyChip", AnchorPoint = vector2New(0, 0.5),
+                                        checkState2({Parent = firstValue, Name = "BarKeyChip", AnchorPoint = vector2New(0, 0.5),
                                                 Position = uDim2FromScale(0.025, 0.485), Size = uDim2FromScale(0.153,
                                                 0.612), Text = "[" .. (input .. "]"), TextXAlignment = left, ZIndex = 6}).TextColor3 = color3FromRGB(190, 190, 190)
                                 end
@@ -4993,7 +5044,7 @@ local function createPilatLibrary()
                         local interfaceSection, weakCache2 = setmetatable, {__mode = "k"}
                         local interfaceSectionResult = interfaceSection({}, weakCache2)
 
-                        local function registerControlSync(items2, keyName, keyName2)
+                        local function doStep15(items2, keyName, keyName2)
                                 interfaceSectionResult[keyName] = interfaceSectionResult[keyName] or {}
                                 interfaceSectionResult[keyName][keyName2] = true
 
@@ -5004,45 +5055,45 @@ local function createPilatLibrary()
                                 end}
                         end
 
-                        local function relayoutDropdown(items2, control, input4, firstValue, input5)
+                        local function checkState4(items2, control, input4, firstValue, input5)
                                 local type_ = control.Type
 
                                 if type_ == "toggle" then
-                                        local doStep13Result = animateDropdownMenu(items2, firstValue, input5, true)
-                                        createStyledLabel({Parent = doStep13Result, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                        local doStep13Result = doStep13(items2, firstValue, input5, true)
+                                        checkState2({Parent = doStep13Result, Name = "Label", AnchorPoint = vector2New(0, 0.5),
                                                 Position = uDim2FromScale((input4 and 0.19) or 0.03,
                                                 0.5), Size = uDim2FromScale((input4 and 0.52)
                                                 or 0.68, 0.72), Text = control.Disp or control.Name, ZIndex = 4})
-                                        isItemSelected(doStep13Result, input4)
-                                        local doStep6Result, tempValue9 = createToggleSwitch(doStep13Result, 1, 0.955, 0.23, 0.56, 6)
+                                        checkState3(doStep13Result, input4)
+                                        local doStep6Result, tempValue9 = doStep6(doStep13Result, 1, 0.955, 0.23, 0.56, 6)
                                         tempValue9(control.Value == true, false)
 
-                                        registerControlSync(items2, control, function()
+                                        doStep15(items2, control, function()
                                                 tempValue9(control.Value == true)
                                         end)
 
-                                        onClick(doStep13Result, function()
+                                        hit(doStep13Result, function()
                                                 control:Set(not control.Value)
                                         end)
 
                                         pathMap[control.Path] = doStep13Result
                                 elseif type_ == "button" then
-                                        local doStep5Result, tempValue9, tempValue10 = createStyledButton({Parent = items2.body, Name = "Item" .. firstValue,
+                                        local doStep5Result, tempValue9, tempValue10 = doStep5({Parent = items2.body, Name = "Item" .. firstValue,
                                                 LayoutOrder = firstValue, Size = uDim2FromScale(0.7121,
                                                 input5), ZIndex = 3, Text = control.Disp or control.Name})
                                         tempValue10.Position, tempValue10.Size = uDim2FromScale((input4 and 0.58) or 0.5,
                                                 0.5), uDim2FromScale((input4 and 0.78) or 0.94, 0.68)
-                                        isItemSelected(doStep5Result, input4)
+                                        checkState3(doStep5Result, input4)
                                         items2.items[#items2.items + 1] = doStep5Result
 
-                                        onClick(doStep5Result, function()
+                                        hit(doStep5Result, function()
                                                 control:Press()
                                         end)
 
                                         pathMap[control.Path] = doStep5Result
                                 elseif type_ == "slider" then
-                                        local parent = animateDropdownMenu(items2, firstValue, input5)
-                                        createStyledLabel({Parent = parent, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                        local parent = doStep13(items2, firstValue, input5)
+                                        checkState2({Parent = parent, Name = "Label", AnchorPoint = vector2New(0, 0.5),
                                                 Position = uDim2FromScale(0.035, 0.255), Size = uDim2FromScale(0.67,
                                                 0.34), Text = control.Disp
                                                 or control.Name, TextXAlignment = left, TextYAlignment = scrollingFrame.TextYAlignment.Center, ZIndex = 4})
@@ -5064,7 +5115,7 @@ local function createPilatLibrary()
                                         end
 
                                         handleEvent()
-                                        items2.cons[#items2.cons + 1] = trackEventConnection(clone2:GetPropertyChangedSignal("AbsoluteSize"),
+                                        items2.cons[#items2.cons + 1] = trackConnection(clone2:GetPropertyChangedSignal("AbsoluteSize"),
                                                 handleEvent)
                                         local text, text2 = control:Places()
 
@@ -5081,9 +5132,9 @@ local function createPilatLibrary()
                                         end
 
                                         clampValue5()
-                                        registerControlSync(items2, control, clampValue5)
+                                        doStep15(items2, control, clampValue5)
 
-                                        trackEventConnection(clone.FocusLost, function()
+                                        trackConnection(clone.FocusLost, function()
                                                 local number = tonumber(clone.Text)
 
                                                 if number then
@@ -5104,10 +5155,10 @@ local function createPilatLibrary()
                                         parent = {clone2, bar, hold}
 
                                         for _, item in ipairs(parent) do
-                                                trackEventConnection(item.InputBegan, function(input2)
+                                                trackConnection(item.InputBegan, function(input2)
                                                         if not (tempValue9) then
                                                                 if input2.UserInputState == scrollingFrame.UserInputState.Begin then
-                                                                        if isClickInput(input2) then
+                                                                        if doStep3(input2) then
                                                                                 local input3
                                                                                 input3, tempValue9 = ((input2.UserInputType == scrollingFrame.UserInputType.Touch) and input2)
                                                                                         or nil, true
@@ -5119,7 +5170,7 @@ local function createPilatLibrary()
                                                 end)
                                         end
 
-                                        items2.cons[#items2.cons + 1] = trackEventConnection(UserInputService.InputChanged, function(input2)
+                                        items2.cons[#items2.cons + 1] = trackConnection(UserInputService.InputChanged, function(input2)
                                                 local input3 = tempValue9
                                                         and ((input and (input2 == input)) or (if input then not input else input2.UserInputType == scrollingFrame.UserInputType.MouseMovement))
 
@@ -5128,7 +5179,7 @@ local function createPilatLibrary()
                                                 end
                                         end)
 
-                                        items2.cons[#items2.cons + 1] = trackEventConnection(UserInputService.InputEnded, function(input2)
+                                        items2.cons[#items2.cons + 1] = trackConnection(UserInputService.InputEnded, function(input2)
                                                 if input2.UserInputType == scrollingFrame.UserInputType.MouseButton1 then
                                                         tempValue9, input = false, nil
                                                 elseif input2 == input then
@@ -5136,8 +5187,8 @@ local function createPilatLibrary()
                                                 end
                                         end)
                                 elseif type_ == "input" then
-                                        local doStep13Result = animateDropdownMenu(items2, firstValue, input5)
-                                        createStyledLabel({Parent = doStep13Result, Name = "Label", AnchorPoint = vector2New(0, 0.5),
+                                        local doStep13Result = doStep13(items2, firstValue, input5)
+                                        checkState2({Parent = doStep13Result, Name = "Label", AnchorPoint = vector2New(0, 0.5),
                                                 Position = uDim2FromScale(0.035, 0.5), Size = uDim2FromScale(0.43,
                                                 0.7), Text = control.Disp or control.Name, TextXAlignment = left, ZIndex = 4})
                                         local clone = control.row.fd:Clone()
@@ -5150,21 +5201,21 @@ local function createPilatLibrary()
                                         input.Text = tostring(control.Value or "")
 
                                         local function animate3(input2)
-                                                tweenInstance(clone, {BackgroundTransparency = (input2 and 0.42) or 0.6}, 0.16)
-                                                tweenInstance(underline, {Size = uDim2FromScale((input2 and 1) or 0, 0.11)}, 0.2, quint)
+                                                animate(clone, {BackgroundTransparency = (input2 and 0.42) or 0.6}, 0.16)
+                                                animate(underline, {Size = uDim2FromScale((input2 and 1) or 0, 0.11)}, 0.2, quint)
                                         end
 
-                                        trackEventConnection(input.Focused, function()
+                                        trackConnection(input.Focused, function()
                                                 animate3(true)
                                         end)
 
-                                        trackEventConnection(input.FocusLost, function()
+                                        trackConnection(input.FocusLost, function()
                                                 animate3(false)
                                                 control:Set(input.Text)
                                                 input.Text = tostring(control.Value or "")
                                         end)
 
-                                        registerControlSync(items2, control, function()
+                                        doStep15(items2, control, function()
                                                 if not (input:IsFocused()) then
                                                         input.Text = tostring(control.Value or "")
                                                 end
@@ -5172,7 +5223,7 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        local function getOptionLabels()
+                        local function scanTable2()
                                 table.clear(pathMap)
                                 local isValueResult, iMap3 = isValue(), {}
 
@@ -5185,7 +5236,7 @@ local function createPilatLibrary()
 
                                         if index3 then
                                                 if getEnabledFlag(index3) then
-                                                        local insert, iEntry, state = table.insert, iMap3[clamp01(item)], {o = index3}
+                                                        local insert, iEntry, state = table.insert, iMap3[clampValue2(item)], {o = index3}
                                                         state.k = (UserInputService.KeyboardEnabled and getEntry(isValueResult[item])) or nil
                                                         insert(iEntry, state)
                                                 end
@@ -5226,7 +5277,7 @@ local function createPilatLibrary()
                                                 item2.car.Rotation = (item2.col and 180) or 0
 
                                                 for index4, item in ipairs(iEntry) do
-                                                        relayoutDropdown(item2, item.o, item.k, index4, factor / isValueResult)
+                                                        checkState4(item2, item.o, item.k, index4, factor / isValueResult)
                                                 end
 
                                                 item2.pn.Position = uDim2FromScale(clampValue3(index3))
@@ -5240,23 +5291,23 @@ local function createPilatLibrary()
 
                                 if lookupValue then
                                         for value in next, lookupValue, nil do
-                                                safeCall(value)
+                                                tryCall2(value)
                                         end
                                 end
                         end
 
                         local function animate4(keyName)
                                 local pathEntry = pathMap[keyName]
-                                local uiScale = pathEntry and (pathEntry:FindFirstChildOfClass("UIScale") or newInstance("UIScale",
+                                local uiScale = pathEntry and (pathEntry:FindFirstChildOfClass("UIScale") or createInstance("UIScale",
                                         {Parent = pathEntry}))
                                 if not uiScale then
                                         return
                                 end
-                                tweenInstance(uiScale, {Scale = 0.94}, 0.055)
+                                animate(uiScale, {Scale = 0.94}, 0.055)
 
                                 task.delay(0.07, function()
                                         if uiScale.Parent then
-                                                tweenInstance(uiScale, {Scale = 1}, 0.09)
+                                                animate(uiScale, {Scale = 1}, 0.09)
                                         end
                                 end)
                         end
@@ -5310,11 +5361,11 @@ local function createPilatLibrary()
                                         end
                                 end
 
-                                getOptionLabels()
+                                scanTable2()
                         end, true, nil, helper), pinPadSection:Slider("Pad Size", 60, 200, (touchEnabled and 150)
                                 or 120, function(amount4)
                                 tempValue8 = amount4 / 100
-                                getOptionLabels()
+                                scanTable2()
                         end, "%", 1)
 
                         tempValue13:Title("Quick Bar Size")
@@ -5376,75 +5427,75 @@ local function createPilatLibrary()
 
                         local rows, tempValue17 = {}, false
 
-                        local function createQuickBarToggle(firstValue)
-                                local TextButton = newInstance("TextButton", {Parent = firstValue, Name = "QuickAccessToggle",
+                        local function doStep16(firstValue)
+                                local TextButton = createInstance("TextButton", {Parent = firstValue, Name = "QuickAccessToggle",
                                         AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.985, 0.5), Size = uDim2FromScale(0.115,
                                         0.74), ZIndex = 6})
-                                local doStep6Result, tempValue9 = createToggleSwitch(TextButton, 0.5, 0.5, 0.95, 0.78, 6)
+                                local doStep6Result, tempValue9 = doStep6(TextButton, 0.5, 0.5, 0.95, 0.78, 6)
                                 return TextButton, tempValue9
                         end
 
                         local tempValue19
 
-                        local function createQuickBarRow(data, input)
+                        local function doStep17(data, input)
                                 local path = data.Path
                                 local enabledFlag, QuickRow = UserInputService.KeyboardEnabled
                                         and enabledFlags2[data.Type], section:Row("QuickRow", nil)
                                 QuickRow.lb.Text = data.Disp or data.Name
                                 QuickRow.lb.Size = uDim2FromScale((enabledFlag and 0.47) or 0.63, 0.64)
                                 local fieldValue = QuickRow.m
-                                local TextButton = newInstance("TextButton", {Parent = fieldValue, Name = "BarPicker",
+                                local TextButton = createInstance("TextButton", {Parent = fieldValue, Name = "BarPicker",
                                         AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.858, 0.5), Size = uDim2FromScale(0.062,
-                                        0.55), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.5, ZIndex = 6, makeStroke(0.1)})
-                                applyDefaultTextStyle(TextButton)
-                                attachHoverScale(TextButton, 1.04, 0.96)
-                                local Frame2, items2 = newInstance("Frame", {Parent = TextButton, Name = "Caret",
+                                        0.55), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.5, ZIndex = 6, tryCall(0.1)})
+                                doStep(TextButton)
+                                animate2(TextButton, 1.04, 0.96)
+                                local Frame2, items2 = createInstance("Frame", {Parent = TextButton, Name = "Caret",
                                         AnchorPoint = vector2New(1, 0), Position = uDim2FromScale(0.99, 0.01), Size = uDim2FromScale(0.44,
-                                        0.44), BackgroundTransparency = 1, ZIndex = 8, makeAspectConstraint(1, true)}), {{0.335355, 45}, {0.664645, -45}}
+                                        0.44), BackgroundTransparency = 1, ZIndex = 8, getUIAspectRatioConstraint(1, true)}), {{0.335355, 45}, {0.664645, -45}}
 
                                 for _, item in ipairs(items2) do
-                                        newInstance("Frame", {Parent = Frame2, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
+                                        createInstance("Frame", {Parent = Frame2, Name = "Arm", AnchorPoint = vector2New(0.5, 0.5),
                                                 Position = uDim2FromScale(item[1], 0.535355), Rotation = item[2], Size = uDim2FromScale(0.6657,
-                                                0.22), BackgroundColor3 = colorWhite, ZIndex = 9})
+                                                0.22), BackgroundColor3 = color3FromRGBResult, ZIndex = 9})
                                 end
 
                                 local TextButton2, TextButton3
 
                                 if enabledFlag then
-                                        TextButton2 = newInstance("TextButton", {Parent = fieldValue, Name = "KeyChip",
+                                        TextButton2 = createInstance("TextButton", {Parent = fieldValue, Name = "KeyChip",
                                                 AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.775, 0.5), Size = uDim2FromScale(0.125,
-                                                0.5), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.35, ZIndex = 6, makeStroke(0.1)})
-                                        applyDefaultTextStyle(TextButton2)
-                                        attachHoverScale(TextButton2, 1.04, 0.96)
+                                                0.5), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.35, ZIndex = 6, tryCall(0.1)})
+                                        doStep(TextButton2)
+                                        animate2(TextButton2, 1.04, 0.96)
                                         TextButton3 = TextButton2
                                 else
                                         TextButton3 = TextButton2
                                 end
 
-                                local doStep16Result, tempValue9 = createQuickBarToggle(fieldValue)
-                                local Frame3, iMap3 = newInstance("Frame", {Parent = QuickRow.r, Name = "BarMenu",
+                                local doStep16Result, tempValue9 = doStep16(fieldValue)
+                                local Frame3, iMap3 = createInstance("Frame", {Parent = QuickRow.r, Name = "BarMenu",
                                         AnchorPoint = vector2New(1, 0.5), Position = uDim2FromScale(0.985, 0.755), Size = uDim2FromScale(0.4,
-                                        0), BackgroundTransparency = 1, Visible = false, ZIndex = 5, newInstance("UIListLayout", {Name = "MenuLayout",
+                                        0), BackgroundTransparency = 1, Visible = false, ZIndex = 5, createInstance("UIListLayout", {Name = "MenuLayout",
                                         FillDirection = scrollingFrame.FillDirection.Horizontal, HorizontalAlignment = scrollingFrame.HorizontalAlignment.Right, VerticalAlignment = scrollingFrame.VerticalAlignment.Center, SortOrder = scrollingFrame.SortOrder.LayoutOrder, Padding = uDimNew(0.024, 0)})}), {}
 
                                 for index3 = 1, 5, 1 do
-                                        enabledFlag = newInstance("TextButton", {Parent = Frame3, Name = "Bar" .. index3, LayoutOrder = index3,
+                                        enabledFlag = createInstance("TextButton", {Parent = Frame3, Name = "Bar" .. index3, LayoutOrder = index3,
                                                 Size = uDim2FromScale(0.176,
-                                                1), Text = tostring(index3), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.4, ZIndex = 6, makeStroke(0.09)})
-                                        applyDefaultTextStyle(enabledFlag)
-                                        attachHoverScale(enabledFlag, 1.06, 0.94)
+                                                1), Text = tostring(index3), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.4, ZIndex = 6, tryCall(0.09)})
+                                        doStep(enabledFlag)
+                                        animate2(enabledFlag, 1.06, 0.94)
                                         iMap3[index3] = enabledFlag
                                 end
 
-                                local function updateDropdownDisplay()
+                                local function scanTable3()
                                         local tableValueResult = tableValue(path)
                                         tempValue9(tableValueResult, false)
-                                        TextButton.Text, TextButton.TextTransparency = tostring(clamp01(path)), (tableValueResult and 0)
+                                        TextButton.Text, TextButton.TextTransparency = tostring(clampValue2(path)), (tableValueResult and 0)
                                                 or 0.5
 
                                         for index3, item in ipairs(iMap3) do
-                                                item.BackgroundTransparency, item.TextTransparency = ((index3 == clamp01(path)) and 0.15)
-                                                        or 0.4, ((index3 == clamp01(path)) and 0) or 0.2
+                                                item.BackgroundTransparency, item.TextTransparency = ((index3 == clampValue2(path)) and 0.15)
+                                                        or 0.4, ((index3 == clampValue2(path)) and 0) or 0.2
                                         end
 
                                         if TextButton3 then
@@ -5452,7 +5503,7 @@ local function createPilatLibrary()
                                         end
                                 end
 
-                                local NumberValue, tempValue10, tempValue20 = newInstance("NumberValue", {Parent = QuickRow.r,
+                                local NumberValue, tempValue10, tempValue20 = createInstance("NumberValue", {Parent = QuickRow.r,
                                         Name = "BarMenuAlpha"}), false
 
                                 local function handleEvent(input2)
@@ -5469,7 +5520,7 @@ local function createPilatLibrary()
                                         QuickRow.fit()
                                 end
 
-                                trackEventConnection(NumberValue.Changed, handleEvent)
+                                trackConnection(NumberValue.Changed, handleEvent)
 
                                 local function checkState6(input2)
                                         if tempValue10 == input2 then
@@ -5501,24 +5552,24 @@ local function createPilatLibrary()
                                                 tempValue20:Cancel()
                                         end
 
-                                        tempValue20 = tweenInstance(NumberValue, {Value = (input2 and 1) or 0}, 0.26, quint)
+                                        tempValue20 = animate(NumberValue, {Value = (input2 and 1) or 0}, 0.26, quint)
                                 end
 
                                 for index3, item in ipairs(iMap3) do
-                                        onClick(item, function()
+                                        hit(item, function()
                                                 local isValue3Result = isValue3(tempValue2.Value)
                                                 isValue3Result[path] = index3
                                                 tempValue2:Set(isValue3Result)
                                                 checkState6(false)
-                                                updateDropdownDisplay()
+                                                scanTable3()
                                         end)
                                 end
 
-                                onClick(TextButton, function()
+                                hit(TextButton, function()
                                         checkState6(not tempValue10)
                                 end)
 
-                                onClick(doStep16Result, function()
+                                hit(doStep16Result, function()
                                         local isValue3Result = isValue3(tempValue.Value)
                                         local pos = table.find(isValue3Result, path)
 
@@ -5529,11 +5580,11 @@ local function createPilatLibrary()
                                         end
 
                                         tempValue:Set(isValue3Result)
-                                        updateDropdownDisplay()
+                                        scanTable3()
                                 end)
 
                                 if TextButton3 then
-                                        onClick(TextButton3, function()
+                                        hit(TextButton3, function()
                                                 setTab2.cap = path
 
                                                 for _, row in ipairs(rows) do
@@ -5544,19 +5595,19 @@ local function createPilatLibrary()
                                         end)
                                 end
 
-                                QuickRow.pt, QuickRow.s = updateDropdownDisplay, ((data.Disp or data.Name) .. (" " .. input)):lower()
-                                updateDropdownDisplay()
+                                QuickRow.pt, QuickRow.s = scanTable3, ((data.Disp or data.Name) .. (" " .. input)):lower()
+                                scanTable3()
                                 return QuickRow
                         end
 
-                        local function createQuickBarGroupHeader(input)
+                        local function doStep18(input)
                                 local QuickGroup = section:Row("QuickGroup", nil, nil, 22)
-                                local checkState2Result = createStyledLabel({Parent = QuickGroup.r, Name = "Label", AnchorPoint = vector2New(0,
+                                local checkState2Result = checkState2({Parent = QuickGroup.r, Name = "Label", AnchorPoint = vector2New(0,
                                         0.5), Position = uDim2FromScale(0.025, 0.5), Size = uDim2FromScale(0.6, 0.8), Text = input, TextXAlignment = left, ZIndex = 5})
-                                checkState2Result.TextColor3 = colorAccent
-                                newInstance("Frame", {Parent = QuickGroup.r, Name = "Line", AnchorPoint = vector2New(1, 0.5),
+                                checkState2Result.TextColor3 = color3FromRGBResult3
+                                createInstance("Frame", {Parent = QuickGroup.r, Name = "Line", AnchorPoint = vector2New(1, 0.5),
                                         Position = uDim2FromScale(0.985, 0.5), Size = uDim2FromScale(0.34,
-                                        0.08), BackgroundColor3 = colorWhite, BackgroundTransparency = 0.75, ZIndex = 4})
+                                        0.08), BackgroundColor3 = color3FromRGBResult, BackgroundTransparency = 0.75, ZIndex = 4})
                                 QuickGroup.lb2 = checkState2Result
                                 QuickGroup.hdr = true
                                 return QuickGroup
@@ -5578,17 +5629,17 @@ local function createPilatLibrary()
                                                                 if section2.noReg then
                                                                 else
                                                                         if getEnabledFlag(index3) then
-                                                                                index5, row2 = formatTabNameWithSuffix(index3.Section.t) .. ("  >  " .. index3.Section.Disp)
+                                                                                index5, row2 = doStep14(index3.Section.t) .. ("  >  " .. index3.Section.Disp)
 
                                                                                 if index5 ~= tempValue9 then
-                                                                                        row2 = createQuickBarGroupHeader(index5)
+                                                                                        row2 = doStep18(index5)
                                                                                         rows[#rows + 1] = row2
                                                                                         tempValue9 = index5
                                                                                 else
                                                                                         row2 = row
                                                                                 end
 
-                                                                                index4 = createQuickBarRow(index3, index5)
+                                                                                index4 = doStep17(index3, index5)
                                                                                 index4.hx = row2
                                                                                 rows[#rows + 1] = index4
                                                                                 row = row2
@@ -5612,7 +5663,7 @@ local function createPilatLibrary()
                                         else
                                                 index3 = (input == "") or (row.s:find(input, 1, true) ~= nil)
                                                 row.h.Visible = index3
-                                                highlightSearchMatch(row.lb, input)
+                                                checkState5(row.lb, input)
 
                                                 if index3 then
                                                         hxMap[row.hx] = true
@@ -5625,7 +5676,7 @@ local function createPilatLibrary()
                                 for _, row in ipairs(rows) do
                                         if row.hdr then
                                                 row.h.Visible = (input == "") or (hxMap[row] == true)
-                                                highlightSearchMatch(row.lb2, input)
+                                                checkState5(row.lb2, input)
                                         end
                                 end
 
@@ -5657,13 +5708,13 @@ local function createPilatLibrary()
                                                                 and index3.nt.Visible
 
                                                         if not optionKeyChip then
-                                                                optionKeyChip = newInstance("TextButton", {Parent = index3.m, Name = "OptionKeyChip", Active = true,
+                                                                optionKeyChip = createInstance("TextButton", {Parent = index3.m, Name = "OptionKeyChip", Active = true,
                                                                         AnchorPoint = vector2New(1,
-                                                                        0.5), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.35, ZIndex = 7, makeStroke(0.1)})
-                                                                applyDefaultTextStyle(optionKeyChip)
-                                                                attachHoverScale(optionKeyChip, 1.06, 0.94)
+                                                                        0.5), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.35, ZIndex = 7, tryCall(0.1)})
+                                                                doStep(optionKeyChip)
+                                                                animate2(optionKeyChip, 1.06, 0.94)
 
-                                                                onClick(optionKeyChip, function()
+                                                                hit(optionKeyChip, function()
                                                                         setTab2.cap = mirrorOf.Path
                                                                         optionKeyChip.Text = "?"
                                                                 end)
@@ -5706,7 +5757,7 @@ local function createPilatLibrary()
 
                         setTab2.qChips = qChips
 
-                        trackEventConnection(UserInputService.InputBegan, function(input, gameProcessed)
+                        trackConnection(UserInputService.InputBegan, function(input, gameProcessed)
                                 if input.UserInputType ~= scrollingFrame.UserInputType.Keyboard then
                                         return
                                 elseif UserInputService:GetFocusedTextBox() then
@@ -5762,17 +5813,17 @@ local function createPilatLibrary()
                         end)
 
                         tempValue.ls[#tempValue.ls + 1] = function()
-                                getOptionLabels()
+                                scanTable2()
                                 scanTable5()
                         end
 
                         tempValue2.ls[#tempValue2.ls + 1] = function()
-                                getOptionLabels()
+                                scanTable2()
                                 scanTable5()
                         end
 
                         tempValue4.ls[#tempValue4.ls + 1] = function()
-                                getOptionLabels()
+                                scanTable2()
                                 qChips()
                                 scanTable5()
                         end
@@ -5794,7 +5845,7 @@ local function createPilatLibrary()
                                         item.col = (type(tempValue6.Value) == "table") and (tempValue6.Value[tostring(index3)] == true)
                                 end
 
-                                getOptionLabels()
+                                scanTable2()
                                 qChips()
                                 scanTable5()
                                 tempValue16:Note("Current: " .. tostring(getEntry(tempValue7.Value)))
@@ -5880,7 +5931,7 @@ local function createPilatLibrary()
 
                         inputRef.cfgNotes = cfgNotes
 
-                        local function getOptionLabels()
+                        local function scanTable2()
                                 for _, item in ipairs(items2) do
                                         if item.Refresh then
                                                 item:Refresh(inputRef:List(), true)
@@ -5890,7 +5941,7 @@ local function createPilatLibrary()
                                 cfgNotes()
                         end
 
-                        local function filterVisibleOptions(input2)
+                        local function scanItems2(input2)
                                 for index3 = 2, #items2, 1 do
                                         if items2[index3] then
                                                 items2[index3]:Set(input2, true)
@@ -5898,7 +5949,7 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        local function isItemSelected(items4)
+                        local function checkState3(items4)
                                 items4 = tostring(items4 or ""):match("^%s*(.-)%s*$") or ""
 
                                 if items4 == "" then
@@ -5945,7 +5996,7 @@ local function createPilatLibrary()
                                                 tempValue7 = "Default " .. count2
                                         end
                                 else
-                                        tempValue7 = isItemSelected(text)
+                                        tempValue7 = checkState3(text)
 
                                         if tempValue7 then
                                                 if inputRef:Find(tempValue7) then
@@ -5960,12 +6011,12 @@ local function createPilatLibrary()
 
                                 if inputRef:Save(tempValue7, table.unpack(text, 1, text.n)) then
                                         tempValue5:Set("", true)
-                                        getOptionLabels()
-                                        filterVisibleOptions(tempValue7)
+                                        scanTable2()
+                                        scanItems2(tempValue7)
                                 end
                         end, "New config copies current settings", "")
 
-                        local tempValue8, updateDropdownDisplay, deleteList = inputRef:List(), function(value)
+                        local tempValue8, scanTable3, deleteList = inputRef:List(), function(value)
                                 local tempValue7 = false
 
                                 for index3, item in ipairs(((type(value) == "table") and value) or {value}) do
@@ -5994,17 +6045,17 @@ local function createPilatLibrary()
                                 end
 
                                 inputRef:Mgr(true)
-                                getOptionLabels()
+                                scanTable2()
                                 items2[1]:Set({}, true)
                         end, {"Tick the configs to remove, then press Delete", "Delete"}
 
-                        items2[2] = configSection:Dropdown("Delete Config", tempValue8, {}, updateDropdownDisplay, true, nil, nil, deleteList)
+                        items2[2] = configSection:Dropdown("Delete Config", tempValue8, {}, scanTable3, true, nil, nil, deleteList)
 
                         items2[3] = configSection:Dropdown("Set Startup Config", inputRef:List(), inputRef.Startup,
                                 function(input2)
                                 local tempValue7 = inputRef:Find(input2)
                                 if not (tempValue7) then
-                                        return getOptionLabels()
+                                        return scanTable2()
                                 end
                                 inputRef.Startup = tempValue7
                                 inputRef:Mgr(true)
@@ -6019,9 +6070,9 @@ local function createPilatLibrary()
                                 inputRef:Save()
                         end, "Save: " .. inputRef.Active, "")
 
-                        updateDropdownDisplay = input:Section("Import / Export", true)
+                        scanTable3 = input:Section("Import / Export", true)
 
-                        items2[5] = updateDropdownDisplay:Dropdown("Export Config", inputRef:List(),
+                        items2[5] = scanTable3:Dropdown("Export Config", inputRef:List(),
                                 inputRef:Find(inputRef.Active) or "Default", function(profile)
                                 profile = (inputRef:Find(profile) or inputRef:Find(inputRef.Active)) or "Default"
                                 local decResult = dec(readCachedFile(isValue2(inputRef, profile)))
@@ -6029,7 +6080,7 @@ local function createPilatLibrary()
                                         return items.Notify("Export Failed", "Selected config does not exist.")
                                 end
                                 decResult.Profile = profile
-                                local encResult = enc({Format = "PilatLibraryConfig", ExportVersion = 1, Name = profile,
+                                local encResult = enc({Format = "ChilliLibraryConfig", ExportVersion = 1, Name = profile,
                                         Config = decResult})
 
                                 if encResult and pcall(setclipboard, encResult) then
@@ -6039,17 +6090,17 @@ local function createPilatLibrary()
                                 end
                         end, false, nil, nil, {"Pick a config, then press Export to copy its text", "Export"})
 
-                        local tempValue9 = updateDropdownDisplay:Input("Import Config Text", "Paste exported config JSON...")
+                        local tempValue9 = scanTable3:Input("Import Config Text", "Paste exported config JSON...")
                         tempValue9.Skip = true
 
-                        updateDropdownDisplay:Button("Import Config", "Import", function()
+                        scanTable3:Button("Import Config", "Import", function()
                                 local match = tostring(tempValue9.Value or ""):match("^%s*(.-)%s*$") or ""
                                 local isRecent = (#match < 1048576) and dec(match)
-                                if ((type(isRecent) ~= "table") or (isRecent.Format ~= "PilatLibraryConfig"))
+                                if ((type(isRecent) ~= "table") or (isRecent.Format ~= "ChilliLibraryConfig"))
                                         or (type(isRecent.Config) ~= "table") then
                                         return items.Notify("Import Failed", "Paste exported config JSON first.")
                                 end
-                                match = isItemSelected(tostring(isRecent.Name or "Imported"):sub(1, 40)) or "Imported"
+                                match = checkState3(tostring(isRecent.Name or "Imported"):sub(1, 40)) or "Imported"
                                 local match2, count2 = match, 1
 
                                 while inputRef:Find(match2) do
@@ -6060,13 +6111,13 @@ local function createPilatLibrary()
                                 isRecent.Config.Profile = match2
                                 inputRef:Save(match2, isRecent.Config)
                                 tempValue9:Set("", true)
-                                getOptionLabels()
-                                filterVisibleOptions(match2)
+                                scanTable2()
+                                scanItems2(match2)
                                 items.Notify("Config Imported", "Imported: " .. (match2 .. ". Open Load Config to apply, or Set Startup Config for Auto Load."), 5)
                         end, "Creates a config only; use Load Config or Set Startup after", "").Quick = false
 
-                        updateDropdownDisplay = items2
-                        items2 = {updateDropdownDisplay[2], updateDropdownDisplay[3], updateDropdownDisplay[4], updateDropdownDisplay[5]}
+                        scanTable3 = items2
+                        items2 = {scanTable3[2], scanTable3[3], scanTable3[4], scanTable3[5]}
 
                         for _, item in ipairs(items2) do
                                 item.Skip = true
@@ -6080,7 +6131,7 @@ local function createPilatLibrary()
                         local inputRef = input
                         inputRef.ready = true
 
-                        safeCall(function()
+                        tryCall2(function()
                                 if not (isfile and isfile(isValue2(inputRef, "Default"))) then
                                         inputRef:Save("Default", inputRef:Collect())
                                 end
@@ -6095,7 +6146,7 @@ local function createPilatLibrary()
                         end)
 
                         if inputRef.AutoLoad then
-                                safeCall(function()
+                                tryCall2(function()
                                         for index3 = 1, 6, 1 do
                                                 index3 = inputRef.Startup
                                                 if inputRef:Load(index3) then
@@ -6107,10 +6158,10 @@ local function createPilatLibrary()
                         end
 
                         inputRef.busy = false
-                        safeCall(inputRef.qSync)
-                        safeCall(inputRef.cfgNotes)
+                        tryCall2(inputRef.qSync)
+                        tryCall2(inputRef.cfgNotes)
 
-                        safeCall(function()
+                        tryCall2(function()
                                 if inputRef.sizeOpt then
                                         if inputRef.sizeOpt.Value ~= 100 then
                                                 inputRef:Scale(inputRef.sizeOpt.Value / 100)
@@ -6118,7 +6169,7 @@ local function createPilatLibrary()
                                 end
                         end)
 
-                        safeCall(function()
+                        tryCall2(function()
                                 inputRef:Select(inputRef.Tabs[1])
                         end)
 
@@ -6158,7 +6209,7 @@ local function createPilatLibrary()
 
                 index.Dialog = function(input, data)
                         local inputRef = input
-                        input = buildColorSequence({0, color3FromRGB(92, 94, 106)}, {0.057, color3FromRGB(70, 71, 82)}, {1, color3FromRGB(38,
+                        input = scanTable({0, color3FromRGB(92, 94, 106)}, {0.057, color3FromRGB(70, 71, 82)}, {1, color3FromRGB(38,
                                 39, 46)})
 
                         if inputRef.dlg then
@@ -6166,18 +6217,18 @@ local function createPilatLibrary()
                         end
 
                         local function getUIStroke(firstValue, input2, input3)
-                                return newInstance("UIStroke", {Parent = firstValue,
+                                return createInstance("UIStroke", {Parent = firstValue,
                                         ApplyStrokeMode = (input3 and scrollingFrame.ApplyStrokeMode.Contextual)
-                                        or scrollingFrame.ApplyStrokeMode.Border, Color = colorBlack, LineJoinMode = scrollingFrame.LineJoinMode.Round, Thickness = input2})
+                                        or scrollingFrame.ApplyStrokeMode.Border, Color = color3FromRGBResult2, LineJoinMode = scrollingFrame.LineJoinMode.Round, Thickness = input2})
                         end
 
                         local function getUIGradient2(firstValue, firstValue2)
-                                return newInstance("UIGradient", {Parent = firstValue, Color = firstValue2, Rotation = 90})
+                                return createInstance("UIGradient", {Parent = firstValue, Color = firstValue2, Rotation = 90})
                         end
 
-                        local function getOptionLabels(firstValue, amount4, input2, input3, input4, input5, input6, input7, input8)
-                                local TextLabel = newInstance("TextLabel", {Parent = firstValue, Position = uDim2FromOffset(input2,
-                                        input3), Size = uDim2FromOffset(input4, input5), FontFace = font, TextColor3 = colorWhite, TextSize = amount4, TextXAlignment = left, Text = input6
+                        local function scanTable2(firstValue, amount4, input2, input3, input4, input5, input6, input7, input8)
+                                local TextLabel = createInstance("TextLabel", {Parent = firstValue, Position = uDim2FromOffset(input2,
+                                        input3), Size = uDim2FromOffset(input4, input5), FontFace = font, TextColor3 = color3FromRGBResult, TextSize = amount4, TextXAlignment = left, Text = input6
                                         or "", ZIndex = 12})
 
                                 for key, value in next, input8 or {}, nil do
@@ -6187,32 +6238,32 @@ local function createPilatLibrary()
                                 input8 = getUIStroke(TextLabel, math.max(1, amount4 * ((input7 and 0.065) or 0.08)), true)
 
                                 if input7 then
-                                        getUIGradient2(input8, strokeShineGradient)
-                                        getUIGradient2(TextLabel, textShineGradient)
+                                        getUIGradient2(input8, scanTableResult2)
+                                        getUIGradient2(TextLabel, scanTableResult)
                                 end
 
                                 return TextLabel
                         end
 
-                        local ScreenGui = newInstance("ScreenGui", {Parent = (gethui and gethui()) or getService("CoreGui"),
+                        local ScreenGui = createInstance("ScreenGui", {Parent = (gethui and gethui()) or getService("CoreGui"),
                                 DisplayOrder = 2000000000, IgnoreGuiInset = true, ResetOnSpawn = false, ZIndexBehavior = scrollingFrame.ZIndexBehavior.Sibling})
                         inputRef.dlg = ScreenGui
-                        newInstance("TextButton", {Parent = ScreenGui, BackgroundColor3 = colorBlack,
+                        createInstance("TextButton", {Parent = ScreenGui, BackgroundColor3 = color3FromRGBResult2,
                                 BackgroundTransparency = 0.45, Modal = true, Size = uDim2FromScale(1, 1), ZIndex = 1})
-                        local Frame2 = newInstance("Frame", {Parent = ScreenGui, Active = true, AnchorPoint = vector2New(0.5,
-                                0.5), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.18, Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromOffset(430, 316), ZIndex = 10})
-                        local UIScale = newInstance("UIScale", {Parent = Frame2})
+                        local Frame2 = createInstance("Frame", {Parent = ScreenGui, Active = true, AnchorPoint = vector2New(0.5,
+                                0.5), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.18, Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromOffset(430, 316), ZIndex = 10})
+                        local UIScale = createInstance("UIScale", {Parent = Frame2})
 
-                        local function clamp01()
+                        local function clampValue2()
                                 local viewportSize = (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize) or vector2New(1280, 720)
                                 viewportSize = if viewportSize.X < 1 then vector2New(1280, 720) else viewportSize
                                 UIScale.Scale = math.clamp(math.min(viewportSize.X / 1280, viewportSize.Y / 720), 0.72, 1.35)
                         end
 
-                        clamp01()
+                        clampValue2()
 
                         if workspace.CurrentCamera then
-                                local connection = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(clamp01)
+                                local connection = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(clampValue2)
 
                                 local function handleEvent()
                                         connection:Disconnect()
@@ -6222,56 +6273,56 @@ local function createPilatLibrary()
                         end
 
                         getUIStroke(Frame2, 2)
-                        clamp01 = newInstance("Frame", {Parent = Frame2, BackgroundColor3 = colorWhite,
+                        clampValue2 = createInstance("Frame", {Parent = Frame2, BackgroundColor3 = color3FromRGBResult,
                                 Position = uDim2FromOffset(22, 22), Size = uDim2FromOffset(5, 26), ZIndex = 12})
-                        getUIGradient2(clamp01, redGradientSequence)
-                        getUIStroke(clamp01, 1.4)
-                        getOptionLabels(Frame2, 21, 38, 20, 370, 30, data.Title, true)
-                        newInstance("Frame", {Parent = Frame2, BackgroundColor3 = colorWhite,
+                        getUIGradient2(clampValue2, scanTableResult4)
+                        getUIStroke(clampValue2, 1.4)
+                        scanTable2(Frame2, 21, 38, 20, 370, 30, data.Title, true)
+                        createInstance("Frame", {Parent = Frame2, BackgroundColor3 = color3FromRGBResult,
                                 BackgroundTransparency = 0.82, Position = uDim2FromOffset(22, 58), Size = uDim2FromOffset(386,
                                 1), ZIndex = 12})
-                        getUIGradient2(getOptionLabels(Frame2, 17, 22, 68, 386, 24, data.Warn, false, {TextColor3 = color3FromRGB(96, 122, 204)}), ColorSequence.new(color3FromRGB(118, 144, 216), color3FromRGB(64, 88, 172)))
+                        getUIGradient2(scanTable2(Frame2, 17, 22, 68, 386, 24, data.Warn, false, {TextColor3 = color3FromRGB(96, 122, 204)}), ColorSequence.new(color3FromRGB(118, 144, 216), color3FromRGB(64, 88, 172)))
                         local body, state = data.Body, {TextWrapped = true}
                         state.TextYAlignment, state.LineHeight, state.TextTransparency = scrollingFrame.TextYAlignment.Top, 1.14, 0.12
-                        getOptionLabels(Frame2, 15, 22, 98, 386, 74, body, false, state)
-                        getOptionLabels(Frame2, 14, 22, 176, 386, 46, data.Tip, false, {TextWrapped = true,
+                        scanTable2(Frame2, 15, 22, 98, 386, 74, body, false, state)
+                        scanTable2(Frame2, 14, 22, 176, 386, 46, data.Tip, false, {TextWrapped = true,
                                 TextYAlignment = scrollingFrame.TextYAlignment.Top, LineHeight = 1.12, TextColor3 = color3FromRGB(120, 176,
                                 255), RichText = true})
 
-                        local function applyCornerToParent(input2)
+                        local function destroyAll(input2)
                                 ScreenGui:Destroy()
 
                                 if inputRef.dlg == ScreenGui then
                                         inputRef.dlg = nil
                                 end
 
-                                safeCall(input2)
+                                tryCall2(input2)
                         end
 
                         state, body = ipairs, {{22, data.Cancel or "Cancel", data.no}, {224, data.Accept or "OK", data.ok}}
 
                         for index3, item in state(body) do
-                                clamp01, data = index3 == 2, newInstance("TextButton", {Parent = Frame2, Active = true,
+                                clampValue2, data = index3 == 2, createInstance("TextButton", {Parent = Frame2, Active = true,
                                         BackgroundTransparency = 1, Position = uDim2FromOffset(item[1], 244), Size = uDim2FromOffset(184,
                                         46), ZIndex = 14})
-                                index3 = newInstance("Frame", {Parent = data, AnchorPoint = vector2New(0.5, 0.5),
-                                        BackgroundColor3 = (clamp01 and color3FromRGB(40, 52, 108)) or color3FromRGB(24, 25,
+                                index3 = createInstance("Frame", {Parent = data, AnchorPoint = vector2New(0.5, 0.5),
+                                        BackgroundColor3 = (clampValue2 and color3FromRGB(40, 52, 108)) or color3FromRGB(24, 25,
                                         30), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(1, 0.92), ZIndex = 12})
                                 getUIStroke(index3, 1.6)
-                                local Frame3 = newInstance("Frame", {Parent = index3, AnchorPoint = vector2New(0.5, 0),
-                                        BackgroundColor3 = colorWhite, Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1,
+                                local Frame3 = createInstance("Frame", {Parent = index3, AnchorPoint = vector2New(0.5, 0),
+                                        BackgroundColor3 = color3FromRGBResult, Position = uDim2FromScale(0.5, 0), Size = uDim2FromScale(1,
                                         0.9), ZIndex = 12})
-                                getUIGradient2(Frame3, (clamp01 and redGradientSequence) or input)
-                                getUIGradient2(newInstance("Frame", {Parent = Frame3, AnchorPoint = vector2New(0.5, 0.5),
-                                        BackgroundColor3 = colorWhite, Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.965,
-                                        0.88), ZIndex = 13}), (clamp01 and redGradientSequenceDim) or input)
+                                getUIGradient2(Frame3, (clampValue2 and scanTableResult4) or input)
+                                getUIGradient2(createInstance("Frame", {Parent = Frame3, AnchorPoint = vector2New(0.5, 0.5),
+                                        BackgroundColor3 = color3FromRGBResult, Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.965,
+                                        0.88), ZIndex = 13}), (clampValue2 and scanTableResult5) or input)
                                 Frame3, index3 = item[2], {AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5),
                                         Size = uDim2FromScale(0.9, 0.6), TextWrapped = true}
                                 index3.TextXAlignment, index3.ZIndex = scrollingFrame.TextXAlignment.Center, 15
-                                getOptionLabels(data, 17, 0, 0, 0, 0, Frame3, true, index3)
+                                scanTable2(data, 17, 0, 0, 0, 0, Frame3, true, index3)
 
                                 local function destroyValue()
-                                        applyCornerToParent(item[3])
+                                        destroyAll(item[3])
                                 end
 
                                 data.MouseButton1Click:Connect(destroyValue)
@@ -6279,7 +6330,7 @@ local function createPilatLibrary()
                 end
 
                 local state3 = {TextScale = 1, TitleScale = 1, Font = "Gotham", LineHeight = 1.16, Padding = 1,
-                        Alignment = "Left", BackgroundColor = colorBlack, BackgroundTransparency = 0.5, StrokeColor = colorBlack, StrokeTransparency = 0, StrokeScale = 0.05, CornerScale = 0.35, ScrollBarColor = colorWhite, ScrollBarTransparency = 0}
+                        Alignment = "Left", BackgroundColor = color3FromRGBResult2, BackgroundTransparency = 0.5, StrokeColor = color3FromRGBResult2, StrokeTransparency = 0, StrokeScale = 0.05, CornerScale = 0.35, ScrollBarColor = color3FromRGBResult, ScrollBarTransparency = 0}
                 state3.TextColor = color3FromRGB(235, 235, 235)
                 state3.TextStrokeTransparency = 0.7
                 state3.MinLines = 4
@@ -6294,7 +6345,7 @@ local function createPilatLibrary()
                 alignments.center = scrollingFrame.TextXAlignment.Center
                 alignments.right = right
 
-                local function resolveFont(value)
+                local function tryCall3(value)
                         if typeof(value) == "Font" then
                                 return value
                         end
@@ -6311,7 +6362,7 @@ local function createPilatLibrary()
                         end
                 end
 
-                local function resolveColor(value, input)
+                local function tryCall4(value, input)
                         if typeof(value) == "Color3" then
                                 return value
                         end
@@ -6326,7 +6377,7 @@ local function createPilatLibrary()
                         return input
                 end
 
-                local function numberOrFallback(input, input2)
+                local function toNumberOrDefault(input, input2)
                         local number = tonumber(input)
                         if number == nil then
                                 return input2
@@ -6334,16 +6385,16 @@ local function createPilatLibrary()
                         return number
                 end
 
-                local function clamp01(input, input2)
-                        return math.clamp(numberOrFallback(input, input2), 0, 1)
+                local function clampValue2(input, input2)
+                        return math.clamp(toNumberOrDefault(input, input2), 0, 1)
                 end
 
-                local function applyGradientToParent(parent, color, rotation)
-                        local pilatCanvasGradient = parent:FindFirstChild("PilatCanvasGradient")
+                local function destroyInstances2(parent, color, rotation)
+                        local chilliCanvasGradient = parent:FindFirstChild("ChilliCanvasGradient")
 
                         if color == nil then
-                                if pilatCanvasGradient then
-                                        pilatCanvasGradient:Destroy()
+                                if chilliCanvasGradient then
+                                        chilliCanvasGradient:Destroy()
                                 end
 
                                 return
@@ -6351,15 +6402,15 @@ local function createPilatLibrary()
 
                         if typeof(color) == "Instance" then
                                 if color:IsA("UIGradient") then
-                                        if pilatCanvasGradient then
-                                                pilatCanvasGradient:Destroy()
+                                        if chilliCanvasGradient then
+                                                chilliCanvasGradient:Destroy()
                                         end
 
                                         local callResult, result = pcall(color.Clone, color)
 
                                         if callResult then
                                                 if result then
-                                                        result.Name = "PilatCanvasGradient"
+                                                        result.Name = "ChilliCanvasGradient"
 
                                                         if rotation ~= nil then
                                                                 result.Rotation = rotation
@@ -6374,17 +6425,17 @@ local function createPilatLibrary()
                         end
 
                         if typeof(color) == "ColorSequence" then
-                                local pilatCanvasGradient2 = pilatCanvasGradient or newInstance("UIGradient",
-                                        {Name = "PilatCanvasGradient", Parent = parent})
-                                pilatCanvasGradient2.Color = color
+                                local chilliCanvasGradient2 = chilliCanvasGradient or createInstance("UIGradient",
+                                        {Name = "ChilliCanvasGradient", Parent = parent})
+                                chilliCanvasGradient2.Color = color
 
                                 if rotation ~= nil then
-                                        pilatCanvasGradient2.Rotation = rotation
+                                        chilliCanvasGradient2.Rotation = rotation
                                 end
                         end
                 end
 
-                local function applyCornerToParent(input, amount4)
+                local function destroyAll(input, amount4)
                         local uiCorner = input:FindFirstChildOfClass("UICorner")
 
                         if amount4 == nil then
@@ -6401,11 +6452,11 @@ local function createPilatLibrary()
                                 return
                         end;
 
-                        (uiCorner or newInstance("UICorner", {Parent = input})).CornerRadius = uDimNew(0,
+                        (uiCorner or createInstance("UICorner", {Parent = input})).CornerRadius = uDimNew(0,
                                 math.floor(amount4 + 0.5))
                 end
 
-                local function applyStrokeToParent(input, color, threshold, input2, applyStrokeMode)
+                local function destroyAll2(input, color, threshold, input2, applyStrokeMode)
                         local uiStroke = input:FindFirstChildOfClass("UIStroke")
 
                         if threshold == nil then
@@ -6422,14 +6473,14 @@ local function createPilatLibrary()
                                 return
                         end
 
-                        uiStroke = uiStroke or newInstance("UIStroke", {LineJoinMode = scrollingFrame.LineJoinMode.Round,
+                        uiStroke = uiStroke or createInstance("UIStroke", {LineJoinMode = scrollingFrame.LineJoinMode.Round,
                                 Parent = input})
                         uiStroke.ApplyStrokeMode, uiStroke.Color, uiStroke.Thickness, uiStroke.Transparency = applyStrokeMode
-                                or scrollingFrame.ApplyStrokeMode.Contextual, color or colorBlack, math.max(0.01,
-                                threshold), clamp01(input2, 0)
+                                or scrollingFrame.ApplyStrokeMode.Contextual, color or color3FromRGBResult2, math.max(0.01,
+                                threshold), clampValue2(input2, 0)
                 end
 
-                local function cloneInstanceStripped(value)
+                local function collectDescendants(value)
                         if typeof(value) ~= "Instance" then
                                 return
                         end
@@ -6471,7 +6522,7 @@ local function createPilatLibrary()
                         return result
                 end
 
-                local function isInstanceVisibleInHierarchy(value)
+                local function checkState7(value)
                         if typeof(value) ~= "Instance" then
                                 return false
                         else
@@ -6499,7 +6550,7 @@ local function createPilatLibrary()
                         return false
                 end
 
-                local function resolveSize(data, data2)
+                local function toNumberOrDefault2(data, data2)
                         if typeof(data.Size) == "UDim2" then
                                 return data.Size
                         end
@@ -6511,15 +6562,15 @@ local function createPilatLibrary()
                         return uDim2New(tempValue.Scale, tempValue.Offset, tempValue2.Scale, tempValue2.Offset)
                 end
 
-                local function resolvePosition(data, data2)
+                local function clampValue7(data, data2)
                         if typeof(data.Position) == "UDim2" then
                                 return data.Position
                         end
-                        return uDim2FromOffset(math.floor((numberOrFallback(data.X, 0) * data2.Unit) + 0.5),
-                                math.floor((numberOrFallback(data.Y, 0) * data2.Unit) + 0.5))
+                        return uDim2FromOffset(math.floor((toNumberOrDefault(data.X, 0) * data2.Unit) + 0.5),
+                                math.floor((toNumberOrDefault(data.Y, 0) * data2.Unit) + 0.5))
                 end
 
-                local function resolveParentInstance(input, value)
+                local function checkState8(input, value)
                         value = if type(value) == "table" then if type(value.Get) == "function" then value.Get() else value else value
                         if typeof(value) == "Instance" then
                                 return value
@@ -6527,14 +6578,14 @@ local function createPilatLibrary()
                         return input.root
                 end
 
-                local function queueParentAssignment(items2, input, input2)
+                local function doStep19(items2, input, input2)
                         items2.pp[#items2.pp + 1] = {input, input2}
                         items2.dirty = true
                 end
 
-                local function applyLayoutPosition(backgroundColor3, data, data2)
+                local function doStep20(backgroundColor3, data, data2)
                         local fieldValue = backgroundColor3.m
-                        data.Size, data.Position = resolveSize(data2, fieldValue), resolvePosition(data2, fieldValue)
+                        data.Size, data.Position = toNumberOrDefault2(data2, fieldValue), clampValue7(data2, fieldValue)
 
                         if typeof(data2.AnchorPoint) == "Vector2" then
                                 data.AnchorPoint = data2.AnchorPoint
@@ -6552,16 +6603,16 @@ local function createPilatLibrary()
                                 data.Visible = data2.Visible ~= false
                         end
 
-                        backgroundColor3 = resolveColor(data2.Background, nil)
+                        backgroundColor3 = tryCall4(data2.Background, nil)
 
                         if backgroundColor3 then
-                                data.BackgroundColor3, data.BackgroundTransparency = backgroundColor3, clamp01(data2.BackgroundTransparency, 0)
+                                data.BackgroundColor3, data.BackgroundTransparency = backgroundColor3, clampValue2(data2.BackgroundTransparency, 0)
                         elseif data2.BackgroundTransparency ~= nil then
-                                data.BackgroundTransparency = clamp01(data2.BackgroundTransparency, 1)
+                                data.BackgroundTransparency = clampValue2(data2.BackgroundTransparency, 1)
                         end
 
                         if data2.Corner ~= nil then
-                                applyCornerToParent(data, numberOrFallback(data2.Corner, 0) * fieldValue.Unit)
+                                destroyAll(data, toNumberOrDefault(data2.Corner, 0) * fieldValue.Unit)
                         end
 
                         if data2.Clip ~= nil then
@@ -6569,7 +6620,7 @@ local function createPilatLibrary()
                         end
                 end
 
-                local function registerCanvasElement(items2, instance, firstValue, firstValue2, callback)
+                local function scanTable6(items2, instance, firstValue, firstValue2, callback)
                         local state = {Kind = firstValue, Spec = firstValue2, Get = function()
                                 return instance
                         end}
@@ -6613,40 +6664,40 @@ local function createPilatLibrary()
                 end
 
                 local handlers = {Frame = function(input, instance)
-                        local scrollingFrame2 = newInstance(((instance.Scrolling == true) and "ScrollingFrame") or "Frame",
-                                {Name = tostring(instance.Name or "Panel"), BackgroundColor3 = resolveColor(instance.Background,
-                                colorBlack), BackgroundTransparency = clamp01(instance.BackgroundTransparency, 1), ZIndex = tonumber(instance.ZIndex) or 6})
+                        local scrollingFrame2 = createInstance(((instance.Scrolling == true) and "ScrollingFrame") or "Frame",
+                                {Name = tostring(instance.Name or "Panel"), BackgroundColor3 = tryCall4(instance.Background,
+                                color3FromRGBResult2), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 1), ZIndex = tonumber(instance.ZIndex) or 6})
 
                         if scrollingFrame2:IsA("ScrollingFrame") then
-                                scrollingFrame2.Active, scrollingFrame2.AutomaticCanvasSize, scrollingFrame2.CanvasSize, scrollingFrame2.ElasticBehavior, scrollingFrame2.ScrollBarImageColor3, scrollingFrame2.ScrollingDirection = true, scrollingFrame.AutomaticSize.Y, uDim2New(), scrollingFrame.ElasticBehavior.Never, resolveColor(instance.ScrollBarColor,
+                                scrollingFrame2.Active, scrollingFrame2.AutomaticCanvasSize, scrollingFrame2.CanvasSize, scrollingFrame2.ElasticBehavior, scrollingFrame2.ScrollBarImageColor3, scrollingFrame2.ScrollingDirection = true, scrollingFrame.AutomaticSize.Y, uDim2New(), scrollingFrame.ElasticBehavior.Never, tryCall4(instance.ScrollBarColor,
                                         input.sty.ScrollBarColor), scrollingFrame.ScrollingDirection.Y
                         end
 
                         if instance.Layout ~= nil then
-                                newInstance("UIListLayout", {Parent = scrollingFrame2,
+                                createInstance("UIListLayout", {Parent = scrollingFrame2,
                                         FillDirection = ((tostring(instance.Layout):lower() == "row") and scrollingFrame.FillDirection.Horizontal)
                                         or scrollingFrame.FillDirection.Vertical, SortOrder = scrollingFrame.SortOrder.LayoutOrder})
                         end
 
-                        queueParentAssignment(input, scrollingFrame2, resolveParentInstance(input, instance.Parent))
+                        doStep19(input, scrollingFrame2, checkState8(input, instance.Parent))
 
-                        return registerCanvasElement(input, scrollingFrame2, "Frame", instance, function()
-                                applyLayoutPosition(input, scrollingFrame2, instance)
+                        return scanTable6(input, scrollingFrame2, "Frame", instance, function()
+                                doStep20(input, scrollingFrame2, instance)
 
                                 if (instance.StrokeColor ~= nil) or (instance.StrokeThickness ~= nil) then
-                                        applyStrokeToParent(scrollingFrame2, resolveColor(instance.StrokeColor, colorBlack),
-                                                numberOrFallback(instance.StrokeThickness,
+                                        destroyAll2(scrollingFrame2, tryCall4(instance.StrokeColor, color3FromRGBResult2),
+                                                toNumberOrDefault(instance.StrokeThickness,
                                                 0.06) * input.m.Unit, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Border)
                                 end
 
                                 if instance.Gradient ~= nil then
-                                        applyGradientToParent(scrollingFrame2, instance.Gradient, instance.GradientRotation)
+                                        destroyInstances2(scrollingFrame2, instance.Gradient, instance.GradientRotation)
                                 end
 
                                 local uiListLayout = scrollingFrame2:FindFirstChildOfClass("UIListLayout")
 
                                 if uiListLayout then
-                                        uiListLayout.Padding = uDimNew(0, math.floor((numberOrFallback(instance.Spacing,
+                                        uiListLayout.Padding = uDimNew(0, math.floor((toNumberOrDefault(instance.Spacing,
                                                 0.2) * input.m.Unit) + 0.5))
                                 end
 
@@ -6659,34 +6710,34 @@ local function createPilatLibrary()
                                 end
                         end)
                 end, Text = function(input, instance)
-                        local TextLabel = newInstance("TextLabel", {Name = tostring(instance.Name or "Text"),
+                        local TextLabel = createInstance("TextLabel", {Name = tostring(instance.Name or "Text"),
                                 RichText = instance.Rich ~= false, TextScaled = false, TextStrokeTransparency = 1, TextWrapped = instance.Wrap ~= false, TextYAlignment = scrollingFrame.TextYAlignment.Top, ZIndex = tonumber(instance.ZIndex) or 7})
-                        queueParentAssignment(input, TextLabel, resolveParentInstance(input, instance.Parent))
+                        doStep19(input, TextLabel, checkState8(input, instance.Parent))
 
-                        return registerCanvasElement(input, TextLabel, "Text", instance, function()
+                        return scanTable6(input, TextLabel, "Text", instance, function()
                                 local fieldValue, sty = input.m, input.sty
                                 TextLabel.Text, TextLabel.RichText, TextLabel.TextWrapped = tostring(instance.Text
                                         or ""), instance.Rich ~= false, instance.Wrap ~= false
-                                TextLabel.FontFace = resolveFont(instance.Font) or fieldValue.Font
-                                TextLabel.TextSize = math.max(6, math.floor((fieldValue.TextSize * numberOrFallback(instance.Scale,
+                                TextLabel.FontFace = tryCall3(instance.Font) or fieldValue.Font
+                                TextLabel.TextSize = math.max(6, math.floor((fieldValue.TextSize * toNumberOrDefault(instance.Scale,
                                         1)) + 0.5))
-                                TextLabel.LineHeight, TextLabel.TextColor3, TextLabel.TextTransparency = numberOrFallback(instance.LineHeight,
-                                        fieldValue.LineHeight), resolveColor(instance.Color, sty.TextColor), clamp01(instance.Transparency, 0)
-                                TextLabel.TextStrokeColor3, TextLabel.TextStrokeTransparency = resolveColor(instance.TextStrokeColor,
-                                        colorBlack), clamp01(instance.TextStrokeTransparency, sty.TextStrokeTransparency)
+                                TextLabel.LineHeight, TextLabel.TextColor3, TextLabel.TextTransparency = toNumberOrDefault(instance.LineHeight,
+                                        fieldValue.LineHeight), tryCall4(instance.Color, sty.TextColor), clampValue2(instance.Transparency, 0)
+                                TextLabel.TextStrokeColor3, TextLabel.TextStrokeTransparency = tryCall4(instance.TextStrokeColor,
+                                        color3FromRGBResult2), clampValue2(instance.TextStrokeTransparency, sty.TextStrokeTransparency)
                                 TextLabel.TextXAlignment = alignments[tostring(instance.Align or ""):lower()] or fieldValue.Align
                                 sty = tostring(instance.VAlign or "top"):lower()
                                 TextLabel.TextYAlignment = (((sty == "center") and scrollingFrame.TextYAlignment.Center) or ((sty == "bottom") and scrollingFrame.TextYAlignment.Bottom))
                                         or scrollingFrame.TextYAlignment.Top
-                                applyGradientToParent(TextLabel, instance.Gradient, instance.GradientRotation)
+                                destroyInstances2(TextLabel, instance.Gradient, instance.GradientRotation)
 
                                 if (instance.StrokeThickness ~= nil) or (instance.StrokeColor ~= nil) then
-                                        applyStrokeToParent(TextLabel, resolveColor(instance.StrokeColor, colorBlack),
-                                                numberOrFallback(instance.StrokeThickness,
+                                        destroyAll2(TextLabel, tryCall4(instance.StrokeColor, color3FromRGBResult2),
+                                                toNumberOrDefault(instance.StrokeThickness,
                                                 0.1) * TextLabel.TextSize, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Contextual)
                                 end
 
-                                applyLayoutPosition(input, TextLabel, instance)
+                                doStep20(input, TextLabel, instance)
 
                                 if typeof(instance.Size) ~= "UDim2" then
                                         if instance.Height == nil then
@@ -6700,40 +6751,40 @@ local function createPilatLibrary()
                                 end
                         end)
                 end, Button = function(input, instance)
-                        local TextButton = newInstance("TextButton", {Name = tostring(instance.Name or "Button"),
-                                BackgroundColor3 = resolveColor(instance.Background,
-                                colorBlack), BackgroundTransparency = clamp01(instance.BackgroundTransparency, 0.35), RichText = instance.Rich ~= false, TextScaled = false, TextStrokeTransparency = 1, ZIndex = tonumber(instance.ZIndex) or 8})
-                        queueParentAssignment(input, TextButton, resolveParentInstance(input, instance.Parent))
+                        local TextButton = createInstance("TextButton", {Name = tostring(instance.Name or "Button"),
+                                BackgroundColor3 = tryCall4(instance.Background,
+                                color3FromRGBResult2), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 0.35), RichText = instance.Rich ~= false, TextScaled = false, TextStrokeTransparency = 1, ZIndex = tonumber(instance.ZIndex) or 8})
+                        doStep19(input, TextButton, checkState8(input, instance.Parent))
                         local tempValue, tempValue2, tempValue4 = false, false, true
 
                         local function clampValue3()
-                                local numVal = clamp01(instance.BackgroundTransparency, 0.35)
+                                local numVal = clampValue2(instance.BackgroundTransparency, 0.35)
                                 local numVal2 = (if tempValue4 then not tempValue4 else math.clamp(numVal + 0.25, 0,
-                                        1)) or (tempValue2 and clamp01(instance.PressTransparency, numVal - 0.18))
-                                local numVal3 = numVal2 or (tempValue and clamp01(instance.HoverTransparency, numVal - 0.12))
+                                        1)) or (tempValue2 and clampValue2(instance.PressTransparency, numVal - 0.18))
+                                local numVal3 = numVal2 or (tempValue and clampValue2(instance.HoverTransparency, numVal - 0.12))
                                 numVal2 = numVal3 or numVal
-                                TextButton.BackgroundTransparency, TextButton.TextTransparency = numVal2, (tempValue4 and clamp01(instance.Transparency,
+                                TextButton.BackgroundTransparency, TextButton.TextTransparency = numVal2, (tempValue4 and clampValue2(instance.Transparency,
                                         0)) or 0.4
                         end
 
-                        local button = registerCanvasElement(input, TextButton, "Button", instance, function()
+                        local button = scanTable6(input, TextButton, "Button", instance, function()
                                 local fieldValue = input.m
-                                TextButton.Text, TextButton.RichText, TextButton.FontFace = tostring(instance.Text or ""), instance.Rich ~= false, resolveFont(instance.Font)
+                                TextButton.Text, TextButton.RichText, TextButton.FontFace = tostring(instance.Text or ""), instance.Rich ~= false, tryCall3(instance.Font)
                                         or fieldValue.Font
                                 TextButton.TextSize, TextButton.TextColor3 = math.max(6,
-                                        math.floor((fieldValue.TextSize * numberOrFallback(instance.Scale,
-                                        1)) + 0.5)), resolveColor(instance.Color, colorWhite)
+                                        math.floor((fieldValue.TextSize * toNumberOrDefault(instance.Scale,
+                                        1)) + 0.5)), tryCall4(instance.Color, color3FromRGBResult)
                                 TextButton.TextXAlignment = alignments[tostring(instance.Align or "center"):lower()]
                                         or scrollingFrame.TextXAlignment.Center
-                                applyGradientToParent(TextButton, instance.Gradient, instance.GradientRotation)
-                                applyStrokeToParent(TextButton, resolveColor(instance.StrokeColor, colorBlack),
-                                        numberOrFallback(instance.StrokeThickness,
+                                destroyInstances2(TextButton, instance.Gradient, instance.GradientRotation)
+                                destroyAll2(TextButton, tryCall4(instance.StrokeColor, color3FromRGBResult2),
+                                        toNumberOrDefault(instance.StrokeThickness,
                                         0.05) * fieldValue.Unit, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Border)
-                                applyCornerToParent(TextButton, numberOrFallback(instance.Corner, 0.3) * fieldValue.Unit)
-                                local numVal = resolveSize(instance, fieldValue)
+                                destroyAll(TextButton, toNumberOrDefault(instance.Corner, 0.3) * fieldValue.Unit)
+                                local numVal = toNumberOrDefault2(instance, fieldValue)
                                 numVal = if typeof(instance.Size) ~= "UDim2" then if instance.Width == nil then if instance.WidthScale == nil then uDim2New(0,
                                         math.floor(TextButton.TextBounds.X + fieldValue.Unit), numVal.Y.Scale, numVal.Y.Offset) else numVal else numVal else numVal
-                                TextButton.Size, TextButton.Position = numVal, resolvePosition(instance, fieldValue)
+                                TextButton.Size, TextButton.Position = numVal, clampValue7(instance, fieldValue)
 
                                 if instance.LayoutOrder ~= nil then
                                         TextButton.LayoutOrder = tonumber(instance.LayoutOrder) or 0
@@ -6789,15 +6840,15 @@ local function createPilatLibrary()
 
                         return button
                 end, Image = function(input, instance)
-                        local ImageLabel = newInstance("ImageLabel", {Name = tostring(instance.Name or "Image"),
-                                BackgroundColor3 = resolveColor(instance.Background,
-                                colorBlack), BackgroundTransparency = clamp01(instance.BackgroundTransparency, 1), ScaleType = scrollingFrame.ScaleType.Fit, ZIndex = tonumber(instance.ZIndex) or 7})
-                        queueParentAssignment(input, ImageLabel, resolveParentInstance(input, instance.Parent))
+                        local ImageLabel = createInstance("ImageLabel", {Name = tostring(instance.Name or "Image"),
+                                BackgroundColor3 = tryCall4(instance.Background,
+                                color3FromRGBResult2), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 1), ScaleType = scrollingFrame.ScaleType.Fit, ZIndex = tonumber(instance.ZIndex) or 7})
+                        doStep19(input, ImageLabel, checkState8(input, instance.Parent))
 
-                        local image = registerCanvasElement(input, ImageLabel, "Image", instance, function()
+                        local image = scanTable6(input, ImageLabel, "Image", instance, function()
                                 local fieldValue = input.m
-                                ImageLabel.Image, ImageLabel.ImageColor3, ImageLabel.ImageTransparency = tostring(instance.Image or ""), resolveColor(instance.ImageColor,
-                                        colorWhite), clamp01(instance.Transparency, 0)
+                                ImageLabel.Image, ImageLabel.ImageColor3, ImageLabel.ImageTransparency = tostring(instance.Image or ""), tryCall4(instance.ImageColor,
+                                        color3FromRGBResult), clampValue2(instance.Transparency, 0)
 
                                 if instance.ScaleType ~= nil then
                                         local text = tostring(instance.ScaleType):lower()
@@ -6805,7 +6856,7 @@ local function createPilatLibrary()
                                                 or scrollingFrame.ScaleType.Fit
                                 end
 
-                                applyLayoutPosition(input, ImageLabel, instance)
+                                doStep20(input, ImageLabel, instance)
 
                                 if typeof(instance.Size) ~= "UDim2" then
                                         if instance.Width == nil then
@@ -6817,12 +6868,12 @@ local function createPilatLibrary()
                                 end
 
                                 if (instance.StrokeColor ~= nil) or (instance.StrokeThickness ~= nil) then
-                                        applyStrokeToParent(ImageLabel, resolveColor(instance.StrokeColor, colorWhite),
-                                                numberOrFallback(instance.StrokeThickness,
+                                        destroyAll2(ImageLabel, tryCall4(instance.StrokeColor, color3FromRGBResult),
+                                                toNumberOrDefault(instance.StrokeThickness,
                                                 0.08) * fieldValue.Unit, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Border)
                                 end
 
-                                applyCornerToParent(ImageLabel, numberOrFallback(instance.Corner, 0.3) * fieldValue.Unit)
+                                destroyAll(ImageLabel, toNumberOrDefault(instance.Corner, 0.3) * fieldValue.Unit)
                         end)
 
                         image.SetImage = function(image2)
@@ -6833,17 +6884,17 @@ local function createPilatLibrary()
 
                         return image
                 end, Bar = function(input, instance)
-                        local Frame2 = newInstance("Frame", {Name = tostring(instance.Name or "Bar"),
-                                BackgroundColor3 = resolveColor(instance.Background, color3FromRGB(40, 40,
-                                55)), BackgroundTransparency = clamp01(instance.BackgroundTransparency, 0.25), ClipsDescendants = true, ZIndex = tonumber(instance.ZIndex) or 7})
-                        queueParentAssignment(input, Frame2, resolveParentInstance(input, instance.Parent))
-                        local Frame3 = newInstance("Frame", {Parent = Frame2, Name = "Fill",
-                                BackgroundColor3 = resolveColor(instance.FillColor,
-                                colorAccent), BackgroundTransparency = clamp01(instance.FillTransparency, 0), Size = uDim2FromScale(0, 1), ZIndex = Frame2.ZIndex + 1})
+                        local Frame2 = createInstance("Frame", {Name = tostring(instance.Name or "Bar"),
+                                BackgroundColor3 = tryCall4(instance.Background, color3FromRGB(40, 40,
+                                55)), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 0.25), ClipsDescendants = true, ZIndex = tonumber(instance.ZIndex) or 7})
+                        doStep19(input, Frame2, checkState8(input, instance.Parent))
+                        local Frame3 = createInstance("Frame", {Parent = Frame2, Name = "Fill",
+                                BackgroundColor3 = tryCall4(instance.FillColor,
+                                color3FromRGBResult3), BackgroundTransparency = clampValue2(instance.FillTransparency, 0), Size = uDim2FromScale(0, 1), ZIndex = Frame2.ZIndex + 1})
 
-                        local bar = registerCanvasElement(input, Frame2, "Bar", instance, function()
+                        local bar = scanTable6(input, Frame2, "Bar", instance, function()
                                 local fieldValue = input.m
-                                applyLayoutPosition(input, Frame2, instance)
+                                doStep20(input, Frame2, instance)
 
                                 if typeof(instance.Size) ~= "UDim2" then
                                         if instance.Height == nil then
@@ -6854,39 +6905,39 @@ local function createPilatLibrary()
                                         end
                                 end
 
-                                Frame2.BackgroundColor3, Frame3.BackgroundColor3 = resolveColor(instance.Background, color3FromRGB(40, 40,
-                                        55)), resolveColor(instance.FillColor, colorAccent)
-                                Frame3.Size = uDim2FromScale(clamp01(instance.Alpha, 0), 1)
-                                applyCornerToParent(Frame2, numberOrFallback(instance.Corner, 0.16) * fieldValue.Unit)
-                                applyCornerToParent(Frame3, numberOrFallback(instance.Corner, 0.16) * fieldValue.Unit)
-                                applyGradientToParent(Frame3, instance.FillGradient, instance.GradientRotation)
+                                Frame2.BackgroundColor3, Frame3.BackgroundColor3 = tryCall4(instance.Background, color3FromRGB(40, 40,
+                                        55)), tryCall4(instance.FillColor, color3FromRGBResult3)
+                                Frame3.Size = uDim2FromScale(clampValue2(instance.Alpha, 0), 1)
+                                destroyAll(Frame2, toNumberOrDefault(instance.Corner, 0.16) * fieldValue.Unit)
+                                destroyAll(Frame3, toNumberOrDefault(instance.Corner, 0.16) * fieldValue.Unit)
+                                destroyInstances2(Frame3, instance.FillGradient, instance.GradientRotation)
                         end)
 
                         bar.SetAlpha = function(alpha)
                                 instance.Alpha = alpha
-                                Frame3.Size = uDim2FromScale(clamp01(alpha, 0), 1)
+                                Frame3.Size = uDim2FromScale(clampValue2(alpha, 0), 1)
                                 return bar
                         end
 
                         return bar
                 end, Model = function(input, instance)
-                        local ViewportFrame = newInstance("ViewportFrame", {Name = tostring(instance.Name or "Model"),
-                                Ambient = resolveColor(instance.Ambient, color3FromRGB(170, 170,
-                                180)), BackgroundColor3 = resolveColor(instance.Background, colorBlack), BackgroundTransparency = clamp01(instance.BackgroundTransparency, 1), LightColor = resolveColor(instance.LightColor, colorWhite), LightDirection = ((typeof(instance.LightDirection) == "Vector3")
+                        local ViewportFrame = createInstance("ViewportFrame", {Name = tostring(instance.Name or "Model"),
+                                Ambient = tryCall4(instance.Ambient, color3FromRGB(170, 170,
+                                180)), BackgroundColor3 = tryCall4(instance.Background, color3FromRGBResult2), BackgroundTransparency = clampValue2(instance.BackgroundTransparency, 1), LightColor = tryCall4(instance.LightColor, color3FromRGBResult), LightDirection = ((typeof(instance.LightDirection) == "Vector3")
                                 and instance.LightDirection) or Vector3.new(-0.6, -1, -0.4), ZIndex = tonumber(instance.ZIndex) or 7})
-                        queueParentAssignment(input, ViewportFrame, resolveParentInstance(input, instance.Parent))
-                        local Camera = newInstance("Camera", {Parent = ViewportFrame,
-                                FieldOfView = numberOrFallback(instance.FieldOfView, 40)})
+                        doStep19(input, ViewportFrame, checkState8(input, instance.Parent))
+                        local Camera = createInstance("Camera", {Parent = ViewportFrame,
+                                FieldOfView = toNumberOrDefault(instance.FieldOfView, 40)})
                         ViewportFrame.CurrentCamera = Camera
                         local cameraOrbit = {}
                         cameraOrbit.Center = Vector3.new(0, 0, 0)
                         cameraOrbit.Distance = 10
                         cameraOrbit.Angle = 0
                         cameraOrbit.Spin = instance.Spin ~= false
-                        cameraOrbit.Height = numberOrFallback(instance.CameraHeight, 0.35)
-                        cameraOrbit.Zoom = numberOrFallback(instance.Zoom, 1.05)
+                        cameraOrbit.Height = toNumberOrDefault(instance.CameraHeight, 0.35)
+                        cameraOrbit.Zoom = toNumberOrDefault(instance.Zoom, 1.05)
 
-                        local function isItemSelected()
+                        local function checkState3()
                                 if cameraOrbit.Model then
                                         local unit = Vector3.new(math.sin(cameraOrbit.Angle), cameraOrbit.Height,
                                                 math.cos(cameraOrbit.Angle)).Unit
@@ -6894,14 +6945,14 @@ local function createPilatLibrary()
                                 end
                         end
 
-                        local function rebuildOptionCells(template)
+                        local function destroyInstances(template)
                                 if cameraOrbit.Model then
                                         cameraOrbit.Model:Destroy()
                                         cameraOrbit.Model = nil
                                 end
 
                                 cameraOrbit.Template = template
-                                local descendants = cloneInstanceStripped(template)
+                                local descendants = collectDescendants(template)
                                 if not (descendants) then
                                         return
                                 end
@@ -6924,12 +6975,12 @@ local function createPilatLibrary()
                                 cameraOrbit.Distance = (cameraOrbit.Radius / math.tan(math.rad(Camera.FieldOfView / 2))) * cameraOrbit.Zoom
                                 descendants.Parent = ViewportFrame
                                 cameraOrbit.Model = descendants
-                                isItemSelected()
+                                checkState3()
                         end
 
-                        local model = registerCanvasElement(input, ViewportFrame, "Model", instance, function()
+                        local model = scanTable6(input, ViewportFrame, "Model", instance, function()
                                 local fieldValue = input.m
-                                applyLayoutPosition(input, ViewportFrame, instance)
+                                doStep20(input, ViewportFrame, instance)
 
                                 if typeof(instance.Size) ~= "UDim2" then
                                         if instance.Width == nil then
@@ -6941,16 +6992,16 @@ local function createPilatLibrary()
                                 end
 
                                 if instance.Corner ~= nil then
-                                        applyCornerToParent(ViewportFrame, numberOrFallback(instance.Corner, 0) * fieldValue.Unit)
+                                        destroyAll(ViewportFrame, toNumberOrDefault(instance.Corner, 0) * fieldValue.Unit)
                                 end
 
                                 if (instance.StrokeColor ~= nil) or (instance.StrokeThickness ~= nil) then
-                                        applyStrokeToParent(ViewportFrame, resolveColor(instance.StrokeColor, colorWhite),
-                                                numberOrFallback(instance.StrokeThickness,
+                                        destroyAll2(ViewportFrame, tryCall4(instance.StrokeColor, color3FromRGBResult),
+                                                toNumberOrDefault(instance.StrokeThickness,
                                                 0.08) * fieldValue.Unit, instance.StrokeTransparency, scrollingFrame.ApplyStrokeMode.Border)
                                 end
 
-                                fieldValue = numberOrFallback(instance.Zoom, 1.05)
+                                fieldValue = toNumberOrDefault(instance.Zoom, 1.05)
 
                                 if fieldValue ~= cameraOrbit.Zoom then
                                         if cameraOrbit.Radius then
@@ -6958,10 +7009,10 @@ local function createPilatLibrary()
                                         end
                                 end
 
-                                cameraOrbit.Zoom, cameraOrbit.Height = fieldValue, numberOrFallback(instance.CameraHeight, 0.35)
+                                cameraOrbit.Zoom, cameraOrbit.Height = fieldValue, toNumberOrDefault(instance.CameraHeight, 0.35)
 
                                 if instance.Model ~= cameraOrbit.Template then
-                                        rebuildOptionCells(instance.Model)
+                                        destroyInstances(instance.Model)
                                 end
 
                                 ViewportFrame.Visible = (instance.Visible ~= false) and (cameraOrbit.Model ~= nil)
@@ -6982,7 +7033,7 @@ local function createPilatLibrary()
                                 if cameraOrbit.Model then
                                         if cameraOrbit.Spin then
                                                 cameraOrbit.Angle = (cameraOrbit.Angle + (0.4886921905584123 * input2)) % 6.283185307179586
-                                                isItemSelected()
+                                                checkState3()
                                         end
                                 end
                         end
@@ -7014,25 +7065,25 @@ local function createPilatLibrary()
                         local uiStroke = fieldValue2:FindFirstChildOfClass("UIStroke")
                         fieldValue2.ClipsDescendants = copy.ClipContent ~= false
                         fieldValue3.AnchorPoint = vector2New(0, 0)
-                        local Frame2 = newInstance("Frame", {Parent = fieldValue2, Name = "SearchField",
+                        local Frame2 = createInstance("Frame", {Parent = fieldValue2, Name = "SearchField",
                                 AnchorPoint = vector2New(0.5,
-                                0.5), BackgroundColor3 = colorBlack, BackgroundTransparency = 0.6, Visible = false, ZIndex = 4, makeStroke(0.1)})
-                        local doStepResult = applyDefaultTextStyle(newInstance("TextBox", {Parent = Frame2, Name = "SearchInput",
+                                0.5), BackgroundColor3 = color3FromRGBResult2, BackgroundTransparency = 0.6, Visible = false, ZIndex = 4, tryCall(0.1)})
+                        local doStepResult = doStep(createInstance("TextBox", {Parent = Frame2, Name = "SearchInput",
                                 AnchorPoint = vector2New(0.5, 0.5), Position = uDim2FromScale(0.5, 0.5), Size = uDim2FromScale(0.9,
                                 0.56), PlaceholderText = tostring(data.SearchPlaceholder
                                 or "Search..."), PlaceholderColor3 = color3FromRGB(198, 198, 198), ZIndex = 5}))
-                        local ScrollingFrame = newInstance("ScrollingFrame", {Parent = fieldValue2, Name = "CanvasScroll",
+                        local ScrollingFrame = createInstance("ScrollingFrame", {Parent = fieldValue2, Name = "CanvasScroll",
                                 Active = true, BackgroundTransparency = 1, CanvasSize = uDim2New(), ElasticBehavior = scrollingFrame.ElasticBehavior.Never, ScrollBarImageColor3 = copy.ScrollBarColor, ScrollBarImageTransparency = copy.ScrollBarTransparency, ScrollingDirection = scrollingFrame.ScrollingDirection.Y, ZIndex = 5})
-                        local Frame3 = newInstance("Frame", {Parent = fieldValue2, Name = "CanvasDock",
+                        local Frame3 = createInstance("Frame", {Parent = fieldValue2, Name = "CanvasDock",
                                 BackgroundTransparency = 1, Visible = false, ZIndex = 7})
-                        local Frame4 = newInstance("Frame", {Parent = fieldValue2, Name = "CanvasDockRule",
+                        local Frame4 = createInstance("Frame", {Parent = fieldValue2, Name = "CanvasDockRule",
                                 BackgroundColor3 = color3FromRGB(170, 174, 184), Visible = false, ZIndex = 7})
-                        local Frame5 = newInstance("Frame", {Parent = ScrollingFrame, Name = "CanvasRoot",
+                        local Frame5 = createInstance("Frame", {Parent = ScrollingFrame, Name = "CanvasRoot",
                                 AutomaticSize = scrollingFrame.AutomaticSize.Y, BackgroundTransparency = 1, Size = uDim2New(1, 0, 0,
                                 0), ZIndex = 6})
 
                         if tostring(data.Layout or "stack"):lower() ~= "free" then
-                                newInstance("UIListLayout", {Parent = Frame5, Name = "CanvasLayout",
+                                createInstance("UIListLayout", {Parent = Frame5, Name = "CanvasLayout",
                                         SortOrder = scrollingFrame.SortOrder.LayoutOrder})
                         end
 
@@ -7068,7 +7119,7 @@ local function createPilatLibrary()
 
                         local tempValue6
 
-                        local function isItemSelected()
+                        local function checkState3()
                                 local parent, tempValue5 = fieldValue.Parent, fieldValue.AbsoluteSize.X
 
                                 if parent then
@@ -7082,23 +7133,23 @@ local function createPilatLibrary()
                                 local tempValue7 = (parent.AbsoluteSize.X * factor5) / math.max(amount5, 0.001)
                                 tempValue7 = if tempValue7 <= 0 then tempValue5 else tempValue7
                                 local tempValue8, tempValue9 = (tempValue7 / 10) * 0.85, tempValue5 * 0.025
-                                local tempValue10, textSize, lineHeight = (tempValue8 * 0.2) * numberOrFallback(copy.Padding,
-                                        1), math.max(8, math.floor(((tempValue7 * 0.026) * numberOrFallback(copy.TextScale,
-                                        1)) + 0.5)), math.max(0.8, numberOrFallback(copy.LineHeight, 1.16))
+                                local tempValue10, textSize, lineHeight = (tempValue8 * 0.2) * toNumberOrDefault(copy.Padding,
+                                        1), math.max(8, math.floor(((tempValue7 * 0.026) * toNumberOrDefault(copy.TextScale,
+                                        1)) + 0.5)), math.max(0.8, toNumberOrDefault(copy.LineHeight, 1.16))
                                 local unit, width, fieldValue4 = textSize * lineHeight, math.max(1,
                                         tempValue5 - (tempValue9 * 2)), richView.m
-                                fieldValue4.TextSize, fieldValue4.LineHeight, fieldValue4.Unit, fieldValue4.Width, fieldValue4.Font, fieldValue4.Align = textSize, lineHeight, unit, width, resolveFont(copy.Font)
+                                fieldValue4.TextSize, fieldValue4.LineHeight, fieldValue4.Unit, fieldValue4.Width, fieldValue4.Font, fieldValue4.Align = textSize, lineHeight, unit, width, tryCall3(copy.Font)
                                         or font, alignments[tostring(copy.Alignment):lower()] or left
-                                fieldValue2.BackgroundColor3, fieldValue2.BackgroundTransparency, fieldValue2.ClipsDescendants = resolveColor(copy.BackgroundColor,
-                                        colorBlack), clamp01(copy.BackgroundTransparency, 0.5), copy.ClipContent ~= false
+                                fieldValue2.BackgroundColor3, fieldValue2.BackgroundTransparency, fieldValue2.ClipsDescendants = tryCall4(copy.BackgroundColor,
+                                        color3FromRGBResult2), clampValue2(copy.BackgroundTransparency, 0.5), copy.ClipContent ~= false
 
                                 if uiStroke then
                                         pcall(function()
                                                 uiStroke.StrokeSizingMode = scrollingFrame.StrokeSizingMode.FixedSize
                                         end)
 
-                                        uiStroke.Color, uiStroke.Transparency, uiStroke.Thickness = resolveColor(copy.StrokeColor,
-                                                colorBlack), clamp01(copy.StrokeTransparency, 0), math.max(1, tempValue8 * numberOrFallback(copy.StrokeScale,
+                                        uiStroke.Color, uiStroke.Transparency, uiStroke.Thickness = tryCall4(copy.StrokeColor,
+                                                color3FromRGBResult2), clampValue2(copy.StrokeTransparency, 0), math.max(1, tempValue8 * toNumberOrDefault(copy.StrokeScale,
                                                 0.05))
                                 end
 
@@ -7112,7 +7163,7 @@ local function createPilatLibrary()
                                                 tempValue8 * 0.62), uDim2FromOffset(scrollingEnabled, tempValue8 / 2)
                                 end
 
-                                local tempValue12, visible2, tempValue13 = (tempValue8 * 0.64) * numberOrFallback(copy.TitleScale,
+                                local tempValue12, visible2, tempValue13 = (tempValue8 * 0.64) * toNumberOrDefault(copy.TitleScale,
                                         1), (visible and ((scrollingEnabled - (tempValue11 / 2)) - tempValue9)) or (tempValue5 - tempValue9)
                                 tempValue13, fieldValue3.Visible = tempValue, parent
                                 fieldValue3.Text = tempValue13
@@ -7122,14 +7173,14 @@ local function createPilatLibrary()
                                 lineHeight = ((currentCount > 0) and currentCount) or tempValue10
 
                                 if richView.du > 0 then
-                                        scrollingEnabled, parent, currentCount = math.floor((richView.du * unit) + 0.5), math.floor((numberOrFallback(richView.dg,
+                                        scrollingEnabled, parent, currentCount = math.floor((richView.du * unit) + 0.5), math.floor((toNumberOrDefault(richView.dg,
                                                 0.22) * unit) + 0.5), ((richView.dr ~= false) and math.max(1, math.floor((textSize * 0.12) + 0.5))) or 0
                                         Frame3.Visible, Frame3.Position, Frame3.Size = true, uDim2FromOffset(tempValue9,
                                                 lineHeight), uDim2FromOffset(width, scrollingEnabled)
                                         Frame4.Visible = currentCount > 0
 
                                         if currentCount > 0 then
-                                                Frame4.BackgroundColor3, Frame4.Position, Frame4.Size = resolveColor(richView.drc, color3FromRGB(170, 174,
+                                                Frame4.BackgroundColor3, Frame4.Position, Frame4.Size = tryCall4(richView.drc, color3FromRGB(170, 174,
                                                         184)), uDim2FromOffset(tempValue9, (lineHeight + scrollingEnabled) + parent), uDim2FromOffset(width, currentCount)
                                                 lineHeight += (scrollingEnabled + (parent * 2)) + currentCount
                                         else
@@ -7143,7 +7194,7 @@ local function createPilatLibrary()
                                 tryCall5()
 
                                 for _, item in ipairs(richView.rh) do
-                                        safeCall(item, tempValue6, width, unit)
+                                        tryCall2(item, tempValue6, width, unit)
                                 end
 
                                 tryCall5()
@@ -7153,8 +7204,8 @@ local function createPilatLibrary()
                                 end
 
                                 tempValue5 = richView.ch or math.ceil(Frame5.AbsoluteSize.Y)
-                                tempValue5 = math.max(tempValue5, math.ceil(unit * math.max(0, numberOrFallback(copy.MinLines, 0))), 1)
-                                visible2 = math.max(0, math.floor(numberOrFallback(copy.MaxLines, 0)))
+                                tempValue5 = math.max(tempValue5, math.ceil(unit * math.max(0, toNumberOrDefault(copy.MinLines, 0))), 1)
+                                visible2 = math.max(0, math.floor(toNumberOrDefault(copy.MaxLines, 0)))
                                 tempValue13 = math.min(tempValue5, ((visible2 > 0) and math.ceil(unit * visible2)) or (1 / 0))
                                 scrollingEnabled = tempValue5 > (tempValue13 + 0.5)
                                 ScrollingFrame.Position, ScrollingFrame.Size, ScrollingFrame.CanvasSize = uDim2FromOffset(tempValue9,
@@ -7162,8 +7213,8 @@ local function createPilatLibrary()
                                 ScrollingFrame.ScrollBarThickness = (scrollingEnabled and math.max(2,
                                         math.floor((tempValue7 * 0.006) + 0.5))) or 0
                                 ScrollingFrame.ScrollingEnabled = scrollingEnabled
-                                ScrollingFrame.ScrollBarImageColor3, ScrollingFrame.ScrollBarImageTransparency = resolveColor(copy.ScrollBarColor,
-                                        colorWhite), clamp01(copy.ScrollBarTransparency, 0)
+                                ScrollingFrame.ScrollBarImageColor3, ScrollingFrame.ScrollBarImageTransparency = tryCall4(copy.ScrollBarColor,
+                                        color3FromRGBResult), clampValue2(copy.ScrollBarTransparency, 0)
                                 tempValue12 = math.max(1, math.ceil((lineHeight + tempValue13) + tempValue10))
                                 fieldValue2.Size = uDim2New(1, 0, 0, tempValue12)
                                 fieldValue.Size = uDim2New(factor5, 0, 0, tempValue12 + math.ceil((tempValue8 * 0.15) / 0.85))
@@ -7176,25 +7227,25 @@ local function createPilatLibrary()
                         local amount4 = -1
                         local amount7 = -1
 
-                        trackEventConnection(fieldValue:GetPropertyChangedSignal("AbsoluteSize"), function()
+                        trackConnection(fieldValue:GetPropertyChangedSignal("AbsoluteSize"), function()
                                 if math.abs(fieldValue.AbsoluteSize.X - amount4) >= 0.5 then
                                         amount4 = fieldValue.AbsoluteSize.X
                                         richView.dirty = true
                                 end
                         end)
 
-                        trackEventConnection(Frame5:GetPropertyChangedSignal("AbsoluteSize"), function()
+                        trackConnection(Frame5:GetPropertyChangedSignal("AbsoluteSize"), function()
                                 if math.abs(Frame5.AbsoluteSize.Y - amount7) >= 0.5 then
                                         amount7 = Frame5.AbsoluteSize.Y
                                         richView.dirty = true
                                 end
                         end)
 
-                        registerLayoutCallback(function()
+                        doStep9(function()
                                 richView.dirty = true
                         end)
 
-                        trackEventConnection(doStepResult:GetPropertyChangedSignal("Text"), function()
+                        trackConnection(doStepResult:GetPropertyChangedSignal("Text"), function()
                                 if richView.query ~= doStepResult.Text then
                                         richView.query = doStepResult.Text
 
@@ -7206,17 +7257,17 @@ local function createPilatLibrary()
                                 end
                         end)
 
-                        trackEventConnection(doStepResult.Focused, function()
-                                tweenInstance(Frame2, {BackgroundTransparency = 0.42}, 0.16)
+                        trackConnection(doStepResult.Focused, function()
+                                animate(Frame2, {BackgroundTransparency = 0.42}, 0.16)
                         end)
 
-                        trackEventConnection(doStepResult.FocusLost, function()
-                                tweenInstance(Frame2, {BackgroundTransparency = 0.6}, 0.16)
+                        trackConnection(doStepResult.FocusLost, function()
+                                animate(Frame2, {BackgroundTransparency = 0.6}, 0.16)
                         end)
 
                         local bestValue, bestValue2, tempValue14, startTime = 0.2, 0, true, 0
 
-                        local trackConnectionResult, handlers2 = trackEventConnection(RunService.Heartbeat, function(deltaTime)
+                        local trackConnectionResult, handlers2 = trackConnection(RunService.Heartbeat, function(deltaTime)
                                 if richView.alive then
                                         if fieldValue.Parent == nil then
                                                 return
@@ -7229,7 +7280,7 @@ local function createPilatLibrary()
 
                                 if bestValue >= 0.2 then
                                         bestValue = 0
-                                        tempValue14 = isInstanceVisibleInHierarchy(fieldValue)
+                                        tempValue14 = checkState7(fieldValue)
                                 end
 
                                 if #richView.pp > 0 then
@@ -7251,14 +7302,14 @@ local function createPilatLibrary()
                                                 if (os.clock() - startTime) >= 0.1 then
                                                         richView.dirty = false
                                                         startTime = os.clock()
-                                                        local callResult, result = pcall(isItemSelected)
+                                                        local callResult, result = pcall(checkState3)
 
                                                         if not (callResult) then
                                                                 richView.dirty = true
 
                                                                 if not (richView.warned) then
                                                                         richView.warned = true
-                                                                        warn("[Pilat] canvas " .. tostring(result))
+                                                                        warn("[Chilli] canvas " .. tostring(result))
                                                                         items.errs[#items.errs + 1] = "canvas " .. tostring(result)
                                                                 end
                                                         end
@@ -7287,11 +7338,11 @@ local function createPilatLibrary()
                         end, Plate = function()
                                 return fieldValue2
                         end, SetDock = function(input2, value)
-                                richView.du = math.max(0, numberOrFallback(input2, 0))
+                                richView.du = math.max(0, toNumberOrDefault(input2, 0))
 
                                 if type(value) == "table" then
                                         if value.Gap ~= nil then
-                                                richView.dg = numberOrFallback(value.Gap, 0.22)
+                                                richView.dg = toNumberOrDefault(value.Gap, 0.22)
                                         end
 
                                         if value.Divider ~= nil then
@@ -7370,7 +7421,7 @@ local function createPilatLibrary()
                                 richView.dirty = true
                         end, Attach = function(value, input2)
                                 if typeof(value) == "Instance" then
-                                        queueParentAssignment(richView, value, resolveParentInstance(richView, input2))
+                                        doStep19(richView, value, checkState8(richView, input2))
                                 end
 
                                 return value
@@ -7402,7 +7453,7 @@ local function createPilatLibrary()
                                         if build then
                                                 local build2 = build
                                                 build = nil
-                                                safeCall(build2, input2, input3, input4)
+                                                tryCall2(build2, input2, input3, input4)
                                         end
                                 end)
                         end
@@ -7453,6 +7504,7 @@ local function createPilatLibrary()
         return items
 end
 
+-- ==== 02_sae : main feature script - owns ctx, then dispatches the runStep sections below ====
 local function loadAllSections()
         local ctx = {}
         local totalSteps, completedSteps, milestoneStep, parts = 44, 0, 0, {}
@@ -7892,7 +7944,8 @@ local function loadAllSections()
                         or 1, m = checkStateResult, ms = tempValue2}, ctx.getDisplayName
                 state.n = getDisplayName(firstValue)
                 state.a = data.AreaId
-
+                -- FIX: use the game's own AssetEarnings (same source as pilatSae rateOf / egg predictor)
+                -- so Sell Value compares against the real money/s, not the rough estimate.
                 pcall(function()
                         local ae = require(ReplicatedStorage.Shared.Util.AssetEarnings)
                         local sc = tonumber(assetScale) or 1
@@ -8079,87 +8132,6 @@ local function loadAllSections()
                 return true
         end
 
-        do
-                pcall(function()
-                        if type(listfiles) ~= "function" or type(readfile) ~= "function" or type(writefile) ~= "function" then
-                                return
-                        end
-                        local httpScrub = game:GetService("HttpService")
-                        local hwNames = {["Halloween Dimension"] = true, ["Halloween Monsters"] = true, ["Ghost Dog & Fishing"] = true,
-                                ["Pumpkin Boss"] = true, ["Phantom Express"] = true, ["Priority Rotation"] = true,
-                                ["Auto Farm Monsters"] = true, ["Teleport To Pumpkins"] = true, ["Auto Ghost Dog Quest"] = true,
-                                ["Auto Fishing"] = true, ["Auto Pumpkin Boss"] = true, ["Auto Dodge Attacks"] = true,
-                                ["Auto Claim Boss Mastery"] = true, ["Auto Manor Key"] = true, ["Auto Phantom Express"] = true,
-                                ["Fly While Riding (10 studs)"] = true, ["Auto Vacuum Ghouler Boss"] = true, ["Teleport To Ghosts"] = true,
-                                ["Auto Trade Souls"] = true, ["Rotate Fishing And Treadmill"] = true,
-                                ["Take Halloween Eggs From Holders"] = true, ["Place And Hatch Missing Index Eggs"] = true,
-                                hwEggs = true, hwInstant = true, thief = true, hwIndex = true, placeIdx = true, hwMon = true, hwPumpTp = true,
-                                hwBuy = true, hwDog = true, hwFish = true, pumpkin = true, pbDodge = true, pbClaim = true, hwKey = true,
-                                train = true, trainFly = true, hwBoss = true, hwGhostTp = true, hwSouls = true, rot = true}
-                        local function isHw(key)
-                                if type(key) ~= "string" then
-                                        return false
-                                end
-                                return hwNames[key] == true or key:find("Halloween", 1, true) ~= nil
-                        end
-                        local function walk(node, inHw, depth)
-                                local changed = false
-                                if type(node) ~= "table" or depth > 14 then
-                                        return false
-                                end
-                                for key, value in pairs(node) do
-                                        local hw = inHw or isHw(key)
-                                        if type(value) == "boolean" then
-                                                if hw and value == true then
-                                                        node[key] = false
-                                                        changed = true
-                                                end
-                                        elseif type(value) == "table" then
-                                                if hw and value.Value == true then
-                                                        value.Value = false
-                                                        changed = true
-                                                end
-                                                if walk(value, hw, depth + 1) then
-                                                        changed = true
-                                                end
-                                        end
-                                end
-                                return changed
-                        end
-                        local function scan(folder, depth)
-                                if depth > 4 then
-                                        return
-                                end
-                                local okList, files = pcall(listfiles, folder)
-                                if not okList or type(files) ~= "table" then
-                                        return
-                                end
-                                for _, path in ipairs(files) do
-                                        path = tostring(path)
-                                        if type(isfolder) == "function" and isfolder(path) then
-                                                scan(path, depth + 1)
-                                        elseif path:lower():match("%.json$") then
-                                                pcall(function()
-                                                        local raw = readfile(path)
-                                                        if type(raw) ~= "string" or #raw > 3000000 or not raw:find("{", 1, true) then
-                                                                return
-                                                        end
-                                                        local data = httpScrub:JSONDecode(raw)
-                                                        if type(data) == "table" and walk(data, false, 0) then
-                                                                writefile(path, httpScrub:JSONEncode(data))
-                                                        end
-                                                end)
-                                        end
-                                end
-                        end
-                        for _, root in ipairs({"PilatSAEv7", "Pilat", "PilatLibrary", "PilatLibrary"}) do
-                                if type(isfolder) ~= "function" or isfolder(root) then
-                                        scan(root, 0)
-                                end
-                        end
-                end)
-        end
-
         print("[Pilat] 02_sae: about to call uiLibrary.Window()")
         local mainWindow = uiLibrary.Window({
                 Title = "Pilat 7.0 |",
@@ -8185,8 +8157,8 @@ local function loadAllSections()
                         pcall(connection.Disconnect, connection)
                 end
 
-                if ctx.pilat and ctx.pilat.window then
-                        pcall(ctx.pilat.window.Destroy, ctx.pilat.window)
+                if ctx.chilli and ctx.chilli.window then
+                        pcall(ctx.chilli.window.Destroy, ctx.chilli.window)
                 end
 
                 pcall(mainWindow.Destroy, mainWindow)
@@ -8280,6 +8252,7 @@ local function loadAllSections()
                 end
         end
 
+        -- ==== 00_core#1 ====
         runStep("00_core#1", function()
                 local rarityMap = {}
 
@@ -9354,7 +9327,7 @@ local function loadAllSections()
         end
 
         local cacheCore, entries4, itemsCore = {}, {}, {{"Farm", nil, {"+Auto Steal", "+Egg Checker", "Auto Progression",
-                "Auto Mutation", "Auto Place Egg", "Auto Treadmill", "Auto Hatch & Equip", "Auto Sell", "Auto Fuse Machine", "Auto Favorite", "Priority"}}, {"Event", nil, {"UFO Sightings", "Shooting Star", "Butterfly Bloom", "The Hollow"}}, {"Admin Abuse", "Right", {"Capture The Egg", "Admin Treadmill", "Instant Steal V3", "Minigame Eggs", "Cursed Island Wars"}}, {"Player", nil, {"ESP", "+Movement", "+Character", "+Combat"}}, {"Predictor", nil, {"Discord Webhook", "+Egg Predictor"}}, {"Server", nil, {"+Server"}}, {"Misc", nil, {"+Performance", "+Utility"}}, {"Auto Hop", nil, {"+Pilat Finder"}}, {"Quick", nil, {"Quick Buttons"}}}
+                "Auto Mutation", "Auto Place Egg", "Auto Treadmill", "Auto Hatch & Equip", "Auto Sell", "Auto Fuse Machine", "Auto Favorite", "Priority Rotation", "Priority"}}, {"Event", nil, {"Pumpkin Boss", "Halloween Dimension", "Halloween Monsters", "Ghost Dog & Fishing", "Phantom Express", "Shooting Star", "Butterfly Bloom", "The Hollow"}}, {"Admin Abuse", "Right", {"Capture The Egg", "Admin Treadmill", "Admin Abuse Boost", "Minigame Eggs", "Cursed Island Wars"}}, {"Player", nil, {"ESP", "+Movement", "+Character", "+Combat"}}, {"Predictor", nil, {"Discord Webhook", "+Egg Predictor"}}, {"Server", nil, {"+Server"}}, {"Misc", nil, {"+Performance", "+Utility"}}, {"Auto Hop", nil, {"+Pilat Finder"}}, {"Quick", nil, {"Quick Buttons"}}}
 
         for index, item in ipairs(itemsCore) do
                 index = mainWindow:Tab(item[1], item[2])
@@ -9367,40 +9340,32 @@ local function loadAllSections()
                 end
         end
 
-        for _, hiddenName in ipairs({"Pumpkin Boss", "Halloween Dimension", "Halloween Monsters", "Ghost Dog & Fishing", "Phantom Express", "Priority Rotation"}) do
-                local okHidden, hiddenSec = pcall(function()
-                        return entries4["Event"]:HiddenSection(hiddenName, false)
-                end)
-                if okHidden and hiddenSec then
-                        cacheCore[hiddenName] = hiddenSec
-                end
-        end
-
-        ctx.pilat = {}
+        -- ==== Chilli-style Egg Predictor window (embedded, same UI as Chilli Hub) ====
+        ctx.chilli = {}
         do
-                local okPilat, errPilat = pcall(function()
-                        local pilatUi = createPilatLibrary()
-                        local pilatWindow = pilatUi.Window({Title = "Pilat 7.0",
+                local okChilli, errChilli = pcall(function()
+                        local chilliUi = createChilliLibrary()
+                        local chilliWindow = chilliUi.Window({Title = "Pilat 7.0",
                                 Game = ((gameRef.GameId ~= 0) and gameRef.GameId) or gameRef.PlaceId,
                                 Key = Enum.KeyCode.RightControl})
-                        local pilatTab = pilatWindow:Tab("Predictor", nil)
-                        ctx.pilat.window = pilatWindow
-                        ctx.pilat.tab = pilatTab
-                        ctx.pilat.page = pilatTab.page
-                        ctx.pilat.egg = pilatTab:Section("Egg Predictor", true)
-                        ctx.pilat.fuse = pilatTab:Section("Fuse Predictor", false)
-                        pilatWindow:State("Open On Launch", false)
+                        local chilliTab = chilliWindow:Tab("Predictor", nil)
+                        ctx.chilli.window = chilliWindow
+                        ctx.chilli.tab = chilliTab
+                        ctx.chilli.page = chilliTab.page
+                        ctx.chilli.egg = chilliTab:Section("Egg Predictor", true)
+                        ctx.chilli.fuse = chilliTab:Section("Fuse Predictor", false)
+                        chilliWindow:State("Open On Launch", false)
 
-                        ctx.pilat.open = function()
-                                pilatWindow:Show(true)
-                                pcall(pilatWindow.Select, pilatWindow, pilatTab)
+                        ctx.chilli.open = function()
+                                chilliWindow:Show(true)
+                                pcall(chilliWindow.Select, chilliWindow, chilliTab)
                                 return true
                         end
                 end)
 
-                if not okPilat then
-                        warn("[Pilat] Pilat predictor window failed: " .. tostring(errPilat))
-                        ctx.pilat = {}
+                if not okChilli then
+                        warn("[Pilat] Chilli predictor window failed: " .. tostring(errChilli))
+                        ctx.chilli = {}
                 end
         end
 
@@ -9408,6 +9373,7 @@ local function loadAllSections()
                 return mainWindow.open == true
         end
 
+        -- ==== 02_admin#1 ====
         runStep("02_admin#1", function()
                 local tableView, font, font2 = {Cards = {}, Rows = nil, Header = nil}
 
@@ -9803,10 +9769,10 @@ local function loadAllSections()
                         adminSteal2, hubSettings = tempValue5
                                 or ("Ready, waiting for an egg, " .. attributeAdmin), "rbxassetid://137134884810647"
                         if tempValueAdmin then
-                                return doStep13("Instant Steal V3", adminSteal2, "active", hubSettings, tempValue7 .. " ACTIVE")
+                                return doStep13("Admin Abuse Boost", adminSteal2, "active", hubSettings, tempValue7 .. " ACTIVE")
                         end
                         tempValue2 = ctx.hubSettings
-                        return doStep13("Instant Steal V3", adminSteal2, "off", hubSettings, tempValue8 .. " INACTIVE",
+                        return doStep13("Admin Abuse Boost", adminSteal2, "off", hubSettings, tempValue8 .. " INACTIVE",
                                 ((tempValue2.adminSteal and not attributeAdmin) and hubSettings) or nil)
                 end
 
@@ -9837,7 +9803,7 @@ local function loadAllSections()
 
                 doStep12(cacheCore["Capture The Egg"], "capture", false)
                 doStep12(cacheCore["Admin Treadmill"], "treadmill", false)
-                doStep12(cacheCore["Instant Steal V3"], "old", false)
+                doStep12(cacheCore["Admin Abuse Boost"], "old", false)
                 doStep12(cacheCore["Minigame Eggs"], "minigame", false)
         end)
 
@@ -10284,6 +10250,7 @@ local function loadAllSections()
                 end
         end
 
+        -- ==== 05_swap#1 ====
         runStep("05_swap#1", function()
                 local tempValueSwap, tempValue2 = false, false
 
@@ -10404,6 +10371,19 @@ local function loadAllSections()
                 return true
         end
 
+        -- instant steal v3 hooks: direct humanoid swap (clone <-> real)
+        ctx.state.swapReal = function()
+                if ctx.isRigAttached() then
+                        doStep16()
+                end
+        end
+
+        ctx.state.swapClone = function()
+                if not ctx.isRigAttached() then
+                        getHumanoid()
+                end
+        end
+
         local doStep9Result = doStep9({name = "Shield", gap = 0.25})
 
         doStep9Result.on = function()
@@ -10468,13 +10448,6 @@ local function loadAllSections()
                         end
                 end
 
-                if not steal then
-                        local stateUfo = ctx.state
-                        if stateUfo.ufoSteals ~= nil then
-                                steal = stateUfo.ufoSteals()
-                        end
-                end
-
                 steal2 = nil
 
                 if steal then
@@ -10494,5241 +10467,7 @@ local function loadAllSections()
                 return steal2
         end
 
-        if not pcall(function()
-                ctx.state.instantFactory = (function()
-
-return function(options)
-options = type(options) == "table" and options or {}
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local localPlayer = Players.LocalPlayer
-if not localPlayer then error("[Pilat] Local player is unavailable.") end
-local alive = true
-local api = {HandedOff=false, Running=false, LastStatus="Starting", LastReason=nil}
-local function isAlive()
-    if not alive then return false end
-    if type(options.Valid) ~= "function" then return true end
-    local ok, valid = pcall(options.Valid)
-    return ok and valid == true
-end
-local function reportStatus(text)
-    api.LastStatus = tostring(text or "")
-    if type(options.Status) == "function" and isAlive() then pcall(options.Status, api.LastStatus) end
-end
-local runtime = {Env={YslemCamFollow=true}, Links={}, Tasks={}, Requests={}, Animates={}, Holds={}}
-local performance = {Restoring=false, setStealing=function() end}
-local blackout = {on=function() end, off=function() end, setPet=function() end}
-local function describe(record) return {Name=tostring(record.AssetCategory or "Egg"), Icon="", Value=0} end
-
-local initialized, created = xpcall(function()
-
-function runtime.connect(signal, callback)
-    local link = signal:Connect(function(...)
-        if isAlive() then runtime.dispatch(callback, ...) end
-    end)
-    runtime.Links[#runtime.Links + 1] = link
-    return link
-end
-
-function runtime.dispatch(callback, ...)
-    if not isAlive() then return end
-    local thread = coroutine.running()
-    local outer = runtime.Tasks[thread]
-    runtime.Tasks[thread] = true
-    local ok, err = pcall(callback, ...)
-    runtime.Tasks[thread] = isAlive() and outer or nil
-    if not ok and isAlive() then
-        warn("[Pilat] Instant Steal: " .. tostring(err))
-        if runtime.OnError then pcall(runtime.OnError, err) end
-    end
-end
-
-function runtime.spawn(callback, ...)
-    if not isAlive() then return nil end
-    return task.spawn(function(...)
-        local thread = coroutine.running()
-        runtime.Tasks[thread] = true
-        local ok, err = pcall(callback, ...)
-        runtime.Tasks[thread] = nil
-        if not ok and isAlive() then
-            warn("[Pilat] Instant Steal: " .. tostring(err))
-            if runtime.OnError then pcall(runtime.OnError, err) end
-        end
-    end, ...)
-end
-
-function runtime.spawnOwned(tripId, callback, ...)
-    return runtime.spawn(function(...)
-        local ok, err = pcall(callback, ...)
-        if not ok and isAlive() then
-            warn("[Pilat] Instant Steal: " .. tostring(err))
-            if runtime.OnError then pcall(runtime.OnError, err, tripId) end
-        end
-    end, ...)
-end
-
-function runtime.delay(seconds, callback, ...)
-    if not isAlive() then return nil end
-    local thread = task.delay(seconds, function(...)
-        local current = coroutine.running()
-        if not isAlive() then runtime.Tasks[current] = nil; return end
-        local ok, err = pcall(callback, ...)
-        runtime.Tasks[current] = nil
-        if not ok and isAlive() then
-            warn("[Pilat] Instant Steal: " .. tostring(err))
-            if runtime.OnError then pcall(runtime.OnError, err) end
-        end
-    end, ...)
-    runtime.Tasks[thread] = true
-    return thread
-end
-
-function runtime.cancel(thread)
-    if not thread then return true end
-    if thread == coroutine.running() or coroutine.status(thread) == "dead" then
-        runtime.Tasks[thread] = nil
-        return true
-    end
-    local ok = pcall(task.cancel, thread)
-    if ok then runtime.Tasks[thread] = nil end
-    return ok
-end
-
-function runtime.refreshWatches()
-    for _, watch in pairs(runtime.Watches or {}) do
-        local ok, source = pcall(watch.Resolve)
-        if not ok then source = nil end
-        local connected = watch.Link ~= nil
-        if connected then
-            local readable, active = pcall(function() return watch.Link.Connected end)
-            if readable and active == false then connected = false end
-        end
-        if source ~= watch.Source or (source and not connected) then
-            if watch.Link then pcall(function() watch.Link:Disconnect() end) end
-            watch.Source, watch.Link = source, nil
-            if source then
-                local connected, link = pcall(function()
-                    return source:Connect(function(...)
-                        if isAlive() and watch.Source == source then runtime.dispatch(watch.Callback, ...) end
-                    end)
-                end)
-                if connected then watch.Link = link end
-            end
-        end
-    end
-end
-
-function runtime.watch(key, resolve, callback)
-    runtime.Watches = runtime.Watches or {}
-    local old = runtime.Watches[key]
-    if old and old.Link then pcall(function() old.Link:Disconnect() end) end
-    if old then old.Source = nil end
-    runtime.Watches[key] = { Resolve = resolve, Callback = callback }
-    runtime.refreshWatches()
-end
-
-function runtime.restorePrompt(prompt, record)
-    if not runtime.PromptHolds or runtime.PromptHolds[prompt] ~= record then return end
-    runtime.PromptHolds[prompt] = nil
-    pcall(function()
-        if prompt.HoldDuration == 0 then prompt.HoldDuration = record.Duration end
-    end)
-end
-
-function runtime.firePrompt(prompt)
-    if not isAlive() or typeof(fireproximityprompt) ~= "function" then return false end
-    runtime.PromptHolds = runtime.PromptHolds or {}
-    local record = runtime.PromptHolds[prompt]
-    if not record then
-        local ok, duration = pcall(function() return prompt.HoldDuration end)
-        if ok and type(duration) == "number" and duration ~= 0 then
-            if pcall(function() prompt.HoldDuration = 0 end) then
-                record = { Duration = duration, Users = 0 }
-                runtime.PromptHolds[prompt] = record
-            end
-        end
-    end
-    if record then record.Users += 1 end
-    local ok, err = pcall(fireproximityprompt, prompt)
-    if record and runtime.PromptHolds[prompt] == record then
-        record.Users -= 1
-        if record.Users == 0 then runtime.restorePrompt(prompt, record) end
-    end
-    return ok, err
-end
-
-function runtime.clearHolds()
-    for link in pairs(runtime.Holds) do pcall(function() link:Disconnect() end) end
-    table.clear(runtime.Holds)
-    for prompt, record in pairs(runtime.PromptHolds or {}) do runtime.restorePrompt(prompt, record) end
-end
-
-function runtime.stop()
-    runtime.clearHolds()
-    if runtime.clearCarryProbe then runtime.clearCarryProbe() end
-    for _, link in ipairs(runtime.Links) do pcall(function() link:Disconnect() end) end
-    table.clear(runtime.Links)
-    for _, watch in pairs(runtime.Watches or {}) do
-        if watch.Link then pcall(function() watch.Link:Disconnect() end) end
-    end
-    runtime.Watches = {}
-    local current = coroutine.running()
-    for thread in pairs(runtime.Tasks) do
-        if thread ~= current then pcall(task.cancel, thread) end
-    end
-    table.clear(runtime.Tasks)
-    table.clear(runtime.Requests)
-    for script, enabled in pairs(runtime.Animates) do
-        pcall(function() script.Enabled = enabled end)
-    end
-    table.clear(runtime.Animates)
-    if runtime.AnimateOwners then table.clear(runtime.AnimateOwners) end
-end
-
-function runtime.cancelRequest(key, reason)
-    local request = runtime.Requests[key]
-    if not request then return true end
-    if not runtime.cancel(request.Thread) then return false end
-    runtime.cancel(request.Timer)
-    request.Timer = nil
-    request.Done = true
-    request.Values = table.pack(false, reason or "Request cancelled")
-    if runtime.Requests[key] == request then runtime.Requests[key] = nil end
-    return true
-end
-
-function runtime.call(key, timeout, callback, ...)
-    if not isAlive() then return false, "Closed" end
-    if type(timeout) ~= "number" or timeout ~= timeout or timeout <= 0 or timeout == math.huge then
-        return false, "Request timed out"
-    end
-    local request = runtime.Requests[key]
-    if not request then
-        request = { Done = false, Deadline = os.clock() + timeout }
-        runtime.Requests[key] = request
-        request.Thread = runtime.spawn(function(...)
-            local values = table.pack(pcall(callback, ...))
-            if request.Done then return end
-            runtime.cancel(request.Timer)
-            request.Timer = nil
-            request.Values, request.Done = values, true
-            if runtime.Requests[key] == request then runtime.Requests[key] = nil end
-        end, ...)
-        if not request.Done then
-
-            request.Timer = runtime.delay(math.max(0, request.Deadline - os.clock()), function()
-                if runtime.Requests[key] == request and not request.Done then
-                    runtime.cancelRequest(key, "Request timed out")
-                end
-            end)
-        end
-    end
-    local deadline = math.min(request.Deadline, os.clock() + timeout)
-    while isAlive() and not request.Done and os.clock() < deadline do
-        RunService.Heartbeat:Wait()
-    end
-    if not isAlive() then return false, "Closed" end
-    if not request.Done then
-
-        if os.clock() >= request.Deadline then
-            runtime.cancelRequest(key, "Request timed out")
-        end
-        return false, "Request timed out"
-    end
-    return table.unpack(request.Values, 1, request.Values.n)
-end
-
-function runtime.invoke(event, timeout, ...)
-    if not isAlive() or not event or not event:IsA("RemoteFunction") then
-        return false, "Remote unavailable"
-    end
-    return runtime.call(event, timeout, event.InvokeServer, event, ...)
-end
-
-local CFG = {
-	SpeedCap = 1.15,
-	HopRatio = 1.515,
-	HopMin = 40,
-	HopGap = 0.06,
-	HopGapMin = 0.06,
-	HopGapMax = 0.2,
-	HopRetries = 6,
-	HopLift = 42,
-	DimStep = 40,
-	LandOffset = 14,
-	LandSettle = 0.08,
-	DropDelay = 0.05,
-	GrabInterval = 0.03,
-	RegrabFar = 40,
-	Height = 70,
-	ClimbShare = 0.5,
-	CarryRatio = 0.9,
-	EasyRatio = 1.3,
-}
-
-local RELAY_DROP = Vector3.new(554.071, 70.276, -395.573)
-local RELAY_JITTER = 16
-local RELAY_STEP = 500
-local RELAY_LIFT = 40
-local RELAY_GAP_MIN = 0.14
-local RELAY_GAP_MAX = 0.16
-local RELAY_PACE_RATIO = 7.5
-local RELAY_SAFE = Vector3.new(542.93, 71.5, -405.58)
-local PRE_GRAB_DELAY = 1.5
-local RUN_RATIO = 1.05
-local FIRST_HIT_WAIT = 1.4
-local DODGE_LANE_Z = -382
-local DODGE_Y = 152
-local DODGE_DROP_POINT = Vector3.new(659.17, 70.83, -419.78)
-local DODGE_BURST_STUDS = 855
-local DODGE_BURST_SPEED = 5500
-local DODGE_CRUISE_SPEED = 2200
-local DODGE_DESCENT_STUDS = 120
-local DODGE_DROP_WAIT = 0.2
-local DODGE_MIN_DROP = 2.5
-local DODGE_REGRAB_WAIT = 1.04
-local DODGE_BASE = Vector3.new(540.4, 70.8, -383.3)
-local DODGE_TRIP = Vector3.new(5846.0, 17010.1, 15699.4)
-local DODGE_TRIP_HOLD = 0.15
-local DODGE_R1_WAIT = 1.2
-local DODGE_R2_WAIT = 1.6
-local DODGE_PICK_DELAY = 0.35
-local ISLAND_BACK = 2
-local ISLANDS = {
-	{ "Forest", 600, 661 },
-	{ "Lake", 722, 811 },
-	{ "Desert", 901, 1013 },
-	{ "Jungle", 1125, 1265 },
-	{ "Snow", 1405, 1582 },
-	{ "Volcano", 1759, 1962 },
-	{ "Abyss Ocean", 2166, 2400 },
-	{ "Prehistoric", 2634, 2920 },
-	{ "Cosmic", 3207, 3567 },
-	{ "Cherry Blossom", 3928, 4170 },
-	{ "Titan Temple", 4411, 5129 },
-	{ "Light Dark", 5577, 6000 },
-	{ "Enchanted Forest", 6524, math.huge },
-}
-
-local function safeRequire(getter)
-	local ok, result = pcall(function()
-		return require(getter())
-	end)
-	return ok and result or nil
-end
-
-local networkingFolder
-local EggState
-
-function runtime.loadDependency(key, getter, accept)
-    runtime.ModuleLoads = runtime.ModuleLoads or {}
-    runtime.ModuleRetry = runtime.ModuleRetry or {}
-    if runtime.ModuleLoads[key] or os.clock() < (runtime.ModuleRetry[key] or 0) then return end
-    runtime.ModuleLoads[key] = true
-    runtime.ModuleRetry[key] = os.clock() + 3
-    runtime.spawn(function()
-        local value = safeRequire(getter)
-        if isAlive() and type(value) == "table" then accept(value) end
-        runtime.ModuleLoads[key] = nil
-    end)
-end
-
-function runtime.refreshDependencies()
-    if not EggState then
-        runtime.loadDependency("EggState", function() return ReplicatedStorage.Client.EggState end, function(value) EggState = value end)
-    end
-end
-runtime.refreshDependencies()
-
-local function remote(name)
-    local packages = ReplicatedStorage:FindFirstChild("Packages")
-    local current = packages and packages:FindFirstChild("Networking")
-
-    if current ~= networkingFolder then
-        networkingFolder = current
-        runtime.EggSnapshot = nil
-    end
-    return networkingFolder and networkingFolder:FindFirstChild(name)
-end
-
-local function root()
-	local character = localPlayer.Character
-	return character and character:FindFirstChild("HumanoidRootPart")
-end
-
-local shield = { Original = nil, Clone = nil, Character = nil, Links = {}, Tracks = {}, Connection = nil, Added = nil }
-
-local function walkSpeed()
-	local character = localPlayer.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local speed = humanoid and humanoid.WalkSpeed or 16
-	if shield.Original and shield.Original.Health > 0 then
-		speed = math.min(speed, shield.Original.WalkSpeed)
-	end
-	local ok, result = pcall(function()
-		local stat = localPlayer:FindFirstChild("leaderstats")
-		stat = stat and stat:FindFirstChild("Speed")
-        if not runtime.TreadmillUtil then
-            runtime.loadDependency("TreadmillUtil", function()
-                return ReplicatedStorage.Shared.Util.TreadmillUtil
-            end, function(value)
-                if type(value.SpeedPowerToWalkSpeed) == "function" then runtime.TreadmillUtil = value end
-            end)
-        end
-        local util = runtime.TreadmillUtil
-        return stat and util and util.SpeedPowerToWalkSpeed(stat.Value) or nil
-	end)
-	if ok and type(result) == "number" and result > 0 then
-		speed = math.min(speed, result)
-	end
-	return speed
-end
-
-local function shieldControls(humanoid)
-	pcall(function()
-		local scripts = localPlayer:FindFirstChild("PlayerScripts")
-		local module = scripts and scripts:FindFirstChild("PlayerModule")
-		if module then
-			local controls = runtime.Controls
-
-            local current = localPlayer.Character
-            if type(controls) == "table" and current and humanoid
-                and humanoid.Parent == current and humanoid.Health > 0 then
-                controls.humanoid = humanoid
-            end
-		end
-	end)
-end
-
-local function shieldAnimate(character)
-    local animate = character and character:FindFirstChild("Animate")
-    if not animate or not animate:IsA("LocalScript") then return end
-
-    if runtime.Animates[animate] ~= nil then return end
-    runtime.AnimateOwners = runtime.AnimateOwners or setmetatable({}, { __mode = "k" })
-    local token = {}
-    local enabled = animate.Enabled
-    runtime.Animates[animate] = enabled
-    runtime.AnimateOwners[animate] = token
-    local function restart()
-        local ok = pcall(function()
-            animate.Enabled = false
-            task.wait()
-            if runtime.AnimateOwners[animate] == token and animate.Parent == character then
-                animate.Enabled = enabled
-            end
-        end)
-        if runtime.AnimateOwners[animate] == token then
-            runtime.AnimateOwners[animate] = nil
-            runtime.Animates[animate] = nil
-            if not ok then pcall(function() animate.Enabled = enabled end) end
-        end
-    end
-    if isAlive() then
-        runtime.spawn(restart)
-    else
-
-        restart()
-    end
-end
-
-local function shieldUnlink()
-    for track, link in pairs(shield.Tracks) do
-        pcall(function() link:Disconnect() end)
-        pcall(function() track:Stop(0); track:Destroy() end)
-    end
-    table.clear(shield.Tracks)
-	for _, link in ipairs(shield.Links) do
-		pcall(function()
-			link:Disconnect()
-		end)
-	end
-	table.clear(shield.Links)
-end
-
-local groundedStates = {
-	[Enum.HumanoidStateType.Running] = true,
-	[Enum.HumanoidStateType.RunningNoPhysics] = true,
-	[Enum.HumanoidStateType.Landed] = true,
-}
-
-local function grounded(humanoid)
-	if not humanoid or humanoid.Health <= 0 or humanoid.FloorMaterial == Enum.Material.Air then
-		return false
-	end
-	return groundedStates[humanoid:GetState()] == true
-end
-
-function shield.LiveHumanoid(character, exclude)
-    if not character then return nil end
-    for _, child in ipairs(character:GetChildren()) do
-        if child ~= exclude and child:IsA("Humanoid") and child.Health > 0 then
-            return child
-        end
-    end
-    return nil
-end
-
-function shield.Restore()
-    shieldUnlink()
-    local original, clone, owner = shield.Original, shield.Clone, shield.Character
-    shield.Original, shield.Clone, shield.Character = nil, nil, nil
-    local current = localPlayer.Character
-    local subject
-    if owner and current == owner then
-        subject = shield.LiveHumanoid(owner, clone)
-        if not subject and original then
-            local ok = pcall(function()
-                if original.Parent == nil and original.Health > 0 then original.Parent = owner end
-                if original.Parent == owner and original.Health > 0 then subject = original end
-            end)
-            if not ok then subject = nil end
-        end
-        if subject then
-            local camera = workspace.CurrentCamera
-            if camera then
-                pcall(function()
-                    if camera.CameraSubject == clone or camera.CameraSubject == original or camera.CameraSubject == nil then
-                        camera.CameraSubject = subject
-                    end
-                end)
-            end
-        end
-    end
-    if clone and clone ~= subject then pcall(function() clone:Destroy() end) end
-    if original and original ~= subject then
-        pcall(function() if original.Parent == nil then original:Destroy() end end)
-    end
-
-    if subject then
-        shieldControls(subject)
-        if localPlayer.Character == owner and subject.Parent == owner then shieldAnimate(owner) end
-    end
-end
-
-local function shieldSwap()
-    if not isAlive() then return end
-    local character = localPlayer.Character
-    if shield.Original or shield.Clone then
-        local clone = shield.Clone
-        local owned = shield.Character == character and clone and clone.Parent == character
-        if owned and not shield.LiveHumanoid(character, clone) then return end
-
-        shield.Restore()
-    end
-    local humanoid = shield.LiveHumanoid(character)
-    if not humanoid or not grounded(humanoid) then return end
-    local camera = workspace.CurrentCamera
-    if not camera then return end
-    local cloned, clone = pcall(function() return humanoid:Clone() end)
-    if not cloned or not clone then return end
-    shield.Original, shield.Clone, shield.Character = humanoid, clone, character
-    local swappedOk = pcall(function()
-        humanoid.Parent = nil
-        clone.Parent = character
-        camera.CameraSubject = clone
-    end)
-    if not swappedOk then
-        shield.Restore()
-        return
-    end
-    shieldControls(clone)
-    if not isAlive() or localPlayer.Character ~= character or shield.Clone ~= clone
-        or shield.Original ~= humanoid or clone.Parent ~= character then
-        if shield.Clone == clone and shield.Original == humanoid then shield.Restore() end
-        return
-    end
-    shieldAnimate(character)
-
-    table.insert(shield.Links, humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-        if shield.Clone == clone and clone.Parent == character then
-            clone.WalkSpeed = humanoid.WalkSpeed
-        end
-    end))
-
-    local animator = humanoid:FindFirstChildOfClass("Animator")
-    local animator2 = clone:FindFirstChildOfClass("Animator")
-    if animator and animator2 then
-        table.insert(shield.Links, animator.AnimationPlayed:Connect(function(played)
-            local animation = played.Animation
-            if not animation or shield.Clone ~= clone or clone.Parent ~= character then return end
-            local ok, track = pcall(function() return animator2:LoadAnimation(animation) end)
-            if not ok or not track then return end
-            pcall(function()
-                track.Priority = played.Priority
-                track.Looped = played.Looped
-                track:Play(0.05, math.max(played.WeightTarget, 0.01), played.Speed)
-            end)
-            local stopped
-            stopped = played.Stopped:Connect(function()
-                stopped:Disconnect()
-                shield.Tracks[track] = nil
-                pcall(function() track:Stop(0); track:Destroy() end)
-            end)
-            shield.Tracks[track] = stopped
-        end))
-    end
-
-    table.insert(shield.Links, clone.Died:Connect(function()
-        if shield.Clone ~= clone or shield.Original ~= humanoid then return end
-        shieldUnlink()
-        shield.Original, shield.Clone, shield.Character = nil, nil, nil
-        local current = localPlayer.Character
-        local replacement = current == character and shield.LiveHumanoid(character, clone) or nil
-        if current == character and not replacement and humanoid.Parent == nil then
-            humanoid.Parent = character
-            if workspace.CurrentCamera then workspace.CurrentCamera.CameraSubject = humanoid end
-            shieldControls(humanoid)
-            humanoid.Health = 0
-        else
-            if replacement then
-                local camera = workspace.CurrentCamera
-                if camera and camera.CameraSubject == clone then camera.CameraSubject = replacement end
-                shieldControls(replacement)
-            end
-            pcall(function() if humanoid.Parent == nil then humanoid:Destroy() end end)
-        end
-        pcall(function() clone:Destroy() end)
-    end))
-end
-
-local function shieldUndo()
-    shield.Restore()
-end
-
-local function shieldStart()
-    if not isAlive() or shield.Connection or shield.Starting then return end
-    local starting = {}
-    shield.Starting = starting
-    local ok, err = pcall(shieldSwap)
-    if not ok then
-        if shield.Starting == starting then
-            shield.Starting = nil
-            pcall(shield.Restore)
-        end
-        error(err, 0)
-    end
-    if not isAlive() or shield.Starting ~= starting then return end
-    shield.Starting = nil
-	local n = 0
-	shield.Connection = RunService.Heartbeat:Connect(function(dt)
-        if not isAlive() then return end
-		n += dt
-		local character = localPlayer.Character
-		local missing = not (shield.Clone and character and shield.Clone.Parent == character)
-		if (missing and 0.25 or 3) <= n then
-			n = 0
-			shieldSwap()
-		end
-	end)
-	shield.Added = localPlayer.CharacterAdded:Connect(function(character)
-        shieldUndo()
-		runtime.spawn(function()
-			character:WaitForChild("Humanoid", 10)
-            task.wait(1)
-			if isAlive() and shield.Connection and localPlayer.Character == character then
-				shieldSwap()
-			end
-		end)
-	end)
-end
-
-local function shieldStop()
-    shield.Starting = nil
-	if shield.Connection then
-		shield.Connection:Disconnect()
-		shield.Connection = nil
-	end
-	if shield.Added then
-		shield.Added:Disconnect()
-		shield.Added = nil
-	end
-	shieldUndo()
-end
-
-local state = { Carrying = false, Uid = nil, Delivered = 0, Busy = false, Cancel = false, Mult = 1, PulledAt = 0, HeldSeen = 0, GuessedDrop = false }
-
-local function progress(frac, text)
-	local f = state.Progress
-	if f then
-		f(frac, text)
-	end
-end
-
-runtime.watch("Carry", function()
-    return type(EggState) == "table" and EggState.CarryChanged or nil
-end, function(arg)
-        local carrying = type(arg) == "table" and arg.IsCarrying == true
-        local uid = type(arg) == "table" and type(arg.Uid) == "string" and arg.Uid ~= "" and arg.Uid or nil
-        if carrying and arg.GuardDisabled == true then carrying = false end
-
-        if not carrying and uid and state.Carrying and state.Uid and uid ~= state.Uid then return end
-        state.GuessedDrop = false
-        if carrying then
-            local newCarry = not state.Carrying or (uid and uid ~= state.Uid)
-            state.HeldSeen = os.clock()
-            if newCarry then
-                state.CarryAt = os.clock()
-                state.CarryLogged = false
-
-                state.Uid, state.Mult = uid, 1
-            end
-            if uid then state.Uid = uid end
-            local mult = tonumber(arg.SpeedMultiplier)
-            if mult and mult > 0 and mult < math.huge then state.Mult = mult end
-            state.WakeReq = arg.RunBackWakeDelayRequired
-        end
-        state.Carrying = carrying
-        if carrying and uid == state.TargetUid then
-            state.SeenTargetCarry = uid
-            state.StartupCarryConflict = nil
-        elseif carrying and state.TargetUid then
-            state.StartupCarryConflict = {Uid=uid}
-        end
-        if type(options.CarryChanged) == "function" then pcall(options.CarryChanged, state.Carrying, state.Uid) end
-        runtime.EggSnapshot = nil
-end)
-
-local function verdictIsRejected(payload)
-    local function rejected(value)
-        if value == false then return true end
-        if type(value) ~= "string" then return false end
-        value = string.lower(value):match("^%s*(.-)%s*$")
-        return value == "failed" or value == "failure" or value == "rejected"
-            or value == "denied" or value == "error" or value == "invalid"
-            or value == "cancelled" or value == "canceled" or value == "false"
-    end
-    if rejected(payload) then return true end
-    if type(payload) ~= "table" then return false end
-    for _, key in ipairs({ "Success", "Succeeded", "Accepted", "Redeemed", "IsSuccess", "IsAccepted", "IsRedeemed" }) do
-        if rejected(payload[key]) then return true end
-    end
-    for _, key in ipairs({ "Status", "Result", "Verdict" }) do
-        if rejected(payload[key]) then return true end
-    end
-    return false
-end
-
-runtime.watch("Verdict", function()
-    local event = remote("RE/EggWorld/FieldEggRedeemVerdict")
-    return event and event:IsA("RemoteEvent") and event.OnClientEvent or nil
-end, function(payload)
-    local phase = state.DeliveryPhase
-    if not state.Busy or not phase or phase.TripId ~= state.TripId
-        or phase.Character ~= localPlayer.Character or phase.Uid ~= state.TargetUid
-        or state.SeenTargetCarry ~= phase.Uid then return end
-    local verdictUid = type(payload) == "table" and (payload.Uid or payload.EggUid or payload.FieldEggUid) or nil
-    if verdictUid ~= nil and tostring(verdictUid) ~= phase.Uid then return end
-    if verdictIsRejected(payload) then
-        state.DeliveryFailedAt = os.clock()
-        state.PendingAnonymousVerdict = nil
-        return
-    end
-    if type(verdictUid) == "string" and verdictUid == phase.Uid then
-        state.Delivered = os.clock()
-        state.TripDelivered = true
-    elseif payload == nil or payload == true or type(payload) == "table" then
-        state.PendingAnonymousVerdict = {TripId=phase.TripId, Uid=phase.Uid, Character=phase.Character, At=os.clock()}
-    end
-end)
-
-runtime.watch("Alerts", function()
-    local event = remote("RE/Alerts/Raise")
-    return event and event:IsA("RemoteEvent") and event.OnClientEvent or nil
-end, function(arg)
-		if type(arg) == "table" and type(arg.Text) == "string" and string.find(string.lower(arg.Text), "delivery failed", 1, true) then
-			state.DeliveryFailedAt = os.clock()
-		end
-end)
-
-runtime.watch("RigSync", function()
-    local event = remote("RE/RigSync/Refresh")
-    return event and event:IsA("RemoteEvent") and event.OnClientEvent or nil
-end, function(arg)
-		if type(arg) == "string" then
-			local ok, decoded = pcall(function()
-				return game:GetService("HttpService"):JSONDecode(arg)
-			end)
-			arg = ok and decoded or nil
-		end
-		if type(arg) ~= "table" then
-			return
-		end
-		if arg.Action == "Relocate" then
-			state.PulledAt = os.clock()
-			local a = arg.Arguments
-			if type(a) == "table" and tonumber(a[1]) and tonumber(a[2]) and tonumber(a[3]) then
-				state.RelocPos = Vector3.new(tonumber(a[1]), tonumber(a[2]), tonumber(a[3]))
-			else
-				state.RelocPos = nil
-			end
-		elseif arg.Action == "BeginRagdoll" then
-			state.Ragdoll = true
-			state.RagdollAt = os.clock()
-			state.RagdollArgs = type(arg.Arguments) == "table" and arg.Arguments or nil
-			local r = root()
-			if r then
-				pcall(function()
-					r.AssemblyLinearVelocity = Vector3.zero
-				end)
-			end
-		elseif arg.Action == "EndRagdoll" then
-			state.Ragdoll = false
-			state.RagdollEnd = os.clock()
-		end
-end)
-
-function runtime.ready()
-    if type(EggState) ~= "table" or type(EggState.CarryFieldEgg) ~= "function"
-        or type(EggState.DropFieldEgg) ~= "function" then
-        return false, "Game data not ready"
-    end
-    local event = remote("RF/EggWorld/AskFieldEggSnapshot")
-    if not event or not event:IsA("RemoteFunction") then return false, "Game data not ready" end
-
-    for _, key in ipairs({ "Verdict", "RigSync" }) do
-        local watch = runtime.Watches and runtime.Watches[key]
-        if not watch or not watch.Link then return false, "Game events not ready" end
-    end
-    return true
-end
-
-runtime.spawn(function()
-    while isAlive() do
-        runtime.refreshDependencies()
-        runtime.refreshWatches()
-        task.wait(2)
-    end
-end)
-
-local function takeEgg(uid)
-    if not isAlive() or state.Cancel or state.TakePending or state.Carrying then return end
-    if type(uid) == "string" and type(EggState) == "table" and type(EggState.CarryFieldEgg) == "function" then
-        local owner, tripId, character = coroutine.running(), state.TripId, localPlayer.Character
-        state.TakePending = owner
-        local ok, err = runtime.call("CarryFieldEgg", 4, EggState.CarryFieldEgg, uid)
-        if state.TakePending == owner then
-            state.TakePending = nil
-            if isAlive() and not state.Cancel and state.TripId == tripId and localPlayer.Character == character then
-                state.LastTakeError = not ok and tostring(err) or nil
-            end
-        end
-    end
-end
-
-local function dropEgg()
-    runtime.EggSnapshot = nil
-	if type(EggState) == "table" and type(EggState.DropFieldEgg) == "function" then
-        return runtime.call("DropFieldEgg", 4, EggState.DropFieldEgg, "PlayerRequest")
-	end
-end
-
-do
-    local parts = setmetatable({}, { __mode = "k" })
-    runtime.PromptParts = parts
-    local function add(child)
-        if child:IsA("BasePart") then parts[child] = true end
-    end
-    runtime.connect(workspace.ChildAdded, add)
-    runtime.connect(workspace.ChildRemoved, function(child) parts[child] = nil end)
-    for _, child in ipairs(workspace:GetChildren()) do add(child) end
-end
-
-local function promptNear(position, radius)
-    local best, bestDistance = nil, radius
-    for child in pairs(runtime.PromptParts) do
-        if child.Parent == workspace and child.Name == "SmartPromptPart" then
-            local prompt = child:FindFirstChild("CarryAreaEgg")
-            if prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled == true then
-                local distance = (child.Position - position).Magnitude
-                if distance < bestDistance then best, bestDistance = prompt, distance end
-            end
-        end
-    end
-    return best
-end
-
-function runtime.clearCarryProbe()
-    local probe = runtime.CarryProbe
-    runtime.CarryProbe = nil
-    if probe then
-        for _, link in ipairs(probe.Links) do pcall(function() link:Disconnect() end) end
-    end
-end
-
-local function heldByMe(uid)
-    local character = localPlayer.Character
-    local egg = type(uid) == "string" and workspace:FindFirstChild(uid)
-    if not egg and type(uid) == "string" then
-        local slots = workspace:FindFirstChild("AreaEggSlotsClient")
-        egg = slots and slots:FindFirstChild(uid)
-    end
-    if not character or not egg then runtime.clearCarryProbe(); return false end
-    local probe = runtime.CarryProbe
-    if not probe or probe.Egg ~= egg or probe.Character ~= character then
-        runtime.clearCarryProbe()
-        probe = { Egg = egg, Character = character, Joints = {}, Links = {} }
-        runtime.CarryProbe = probe
-        local function add(inst)
-            if inst:IsA("WeldConstraint") or inst:IsA("JointInstance") then probe.Joints[inst] = true end
-        end
-        probe.Links[1] = egg.DescendantAdded:Connect(add)
-        probe.Links[2] = egg.DescendantRemoving:Connect(function(inst) probe.Joints[inst] = nil end)
-        for _, inst in ipairs(egg:GetDescendants()) do add(inst) end
-    end
-    for joint in pairs(probe.Joints) do
-        local ok, held = pcall(function()
-            local a, b = joint.Part0, joint.Part1
-            return (a and a:IsDescendantOf(character)) or (b and b:IsDescendantOf(character))
-        end)
-        if ok and held then return true end
-    end
-    return false
-end
-
-function runtime.confirmCarry(uid)
-    if not isAlive() or not state.Carrying or state.Uid ~= nil or type(uid) ~= "string" then return false end
-    if not heldByMe(uid) then return false end
-    state.Uid = uid
-    if uid == state.TargetUid then state.SeenTargetCarry = uid; state.StartupCarryConflict = nil end
-    state.HeldSeen = os.clock()
-    state.GuessedDrop = false
-    return true
-end
-
-runtime.spawn(function()
-	while isAlive() do
-		task.wait(0.2)
-        if not state.Carrying then
-            local uid = state.TargetUid or state.Uid
-            if type(uid) == "string" and heldByMe(uid) then
-                local now = os.clock()
-                state.GuessedDrop = false
-                state.Carrying = true
-                state.Uid = uid
-                if uid == state.TargetUid then state.SeenTargetCarry = uid end
-                state.HeldSeen = now
-                state.CarryAt = now
-                state.CarryLogged = false
-            end
-        elseif state.Uid == nil then
-            if not runtime.confirmCarry(state.TargetUid) and os.clock() - state.HeldSeen > 1.5 then
-                state.Carrying, state.GuessedDrop = false, true
-            end
-        elseif heldByMe(state.Uid) then
-            state.HeldSeen = os.clock()
-        elseif os.clock() - state.HeldSeen > 1.5 then
-			state.Carrying, state.GuessedDrop = false, true
-		end
-	end
-end)
-
-local function snapshot(force)
-    local snapshotRemote = remote("RF/EggWorld/AskFieldEggSnapshot")
-    if not (snapshotRemote and snapshotRemote:IsA("RemoteFunction")) then
-        state.SnapshotError = "Egg snapshot remote unavailable"
-        return {}
-    end
-    local cache = runtime.EggSnapshot
-    local now = os.clock()
-    if not force and cache and cache.Remote == snapshotRemote and now >= cache.At
-        and now - cache.At < (cache.Error and 0.5 or 0.2) then
-        state.SnapshotError = cache.Error
-        return cache.List
-    end
-    local ok, result = runtime.invoke(snapshotRemote, 8)
-
-    if remote("RF/EggWorld/AskFieldEggSnapshot") ~= snapshotRemote then
-        state.SnapshotError = "Egg snapshot changed; refresh and try again"
-        return {}
-    end
-    local list, byUid, failure = {}, {}, nil
-    if not ok then
-        failure = result == "Request timed out" and "Egg snapshot timed out" or "Egg snapshot request failed"
-    elseif type(result) ~= "table" or type(result.Records) ~= "table" then
-        failure = "Egg snapshot format changed"
-    else
-        for _, record in pairs(result.Records) do
-            if type(record) == "table" and type(record.Uid) == "string"
-                and (record.State == "Slot" or record.State == "Dropped")
-                and typeof(record.BottomCFrame) == "CFrame" and not byUid[record.Uid] then
-                local position = record.BottomCFrame.Position
-                if position.X == position.X and position.Y == position.Y and position.Z == position.Z
-                    and math.abs(position.X) < math.huge and math.abs(position.Y) < math.huge
-                    and math.abs(position.Z) < math.huge then
-                    list[#list + 1] = record
-                    byUid[record.Uid] = record
-                end
-            end
-        end
-    end
-    state.SnapshotError = failure
-    runtime.EggSnapshot = { Remote = snapshotRemote, At = os.clock(), List = list, ByUid = byUid, Error = failure }
-    return list
-end
-
-local function eggPosition(uid)
-    snapshot()
-    local cache = runtime.EggSnapshot
-    local record = not state.SnapshotError and cache and cache.ByUid[uid]
-    return record and record.BottomCFrame.Position or nil
-end
-
-local status = reportStatus
-
-local semi = { Dodge = true, DodgeGo = true, TakeFirstHit = true, WakeWait = 2.8, Frozen = false, Home = nil, Kind = nil, AtDrop = false, SlowRun = false, Fails = 0, ResetDone = false, Rotate = nil, ExitPath = nil, Log = {} }
-local inDimensionNow = function()
-	return localPlayer.Character ~= nil and localPlayer:GetAttribute("InHalloweenDimension") == true
-end
-local method = "Relay"
-
-local function slog(msg)
-	local r = root()
-	local list = semi.Log
-	list[#list + 1] = string.format("%.1f %s | y=%s", os.clock() % 1000, msg, r and string.format("%.0f", r.Position.Y) or "nil")
-	if #list > 300 then
-		table.remove(list, 1)
-	end
-end
-
-pcall(function()
-	runtime.Env.YslemSemiReport = function()
-		return table.concat(semi.Log, "\n")
-	end
-	runtime.Env.S2rInstantStealReport = runtime.Env.YslemSemiReport
-end)
-
-local function frozenCamera()
-	local camera = workspace.CurrentCamera
-	if not camera then
-		return function() end
-	end
-	local oldType = camera.CameraType
-	local frame = camera.CFrame
-	pcall(function()
-		camera.CameraType = Enum.CameraType.Scriptable
-		camera.CFrame = frame
-	end)
-	return function()
-		pcall(function()
-			camera.CameraType = oldType
-		end)
-	end
-end
-
-local userFps = nil
-local function restoreFps()
-    if runtime.FpsChanged and typeof(setfpscap) == "function" then
-        if pcall(setfpscap, userFps or 60) then runtime.FpsChanged = false end
-    end
-end
-
-local function dipInterval()
-	local ping = 0
-	local ok, value = pcall(function()
-		return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-	end)
-	if ok then
-		ping = tonumber(value) or 0
-	end
-	if ping <= 200 then
-		return 0.2
-	end
-	return math.clamp(ping / 1000, 0.2, 1)
-end
-
-local function netPing()
-	local ping = 0.1
-	pcall(function()
-		ping = localPlayer:GetNetworkPing()
-	end)
-	return math.clamp(tonumber(ping) or 0.1, 0, 1)
-end
-
-local fpsGen = 0
-local function fpsOn()
-	if typeof(setfpscap) ~= "function" then
-		return
-	end
-    if not runtime.FpsChanged then
-        userFps = nil
-        if typeof(getfpscap) == "function" then
-            local ok, cap = pcall(getfpscap)
-            cap = ok and tonumber(cap) or nil
-            if cap and cap == cap and cap >= 0 and cap < math.huge then userFps = cap end
-        end
-    end
-	fpsGen += 1
-	local mine = fpsGen
-	runtime.spawn(function()
-		local high = true
-		local step = dipInterval()
-		local started = os.clock()
-        while isAlive() and fpsGen == mine and os.clock() - started < 60 do
-            local target = high and 50 or 40
-            if userFps and userFps > 0 then target = math.min(target, userFps) end
-            if pcall(setfpscap, target) then runtime.FpsChanged = true end
-			high = not high
-			task.wait(step)
-		end
-		if fpsGen == mine then
-			restoreFps()
-		end
-	end)
-end
-
-local function fpsOff()
-	fpsGen += 1
-	restoreFps()
-end
-
-local stealClone = nil
-local function dropClone()
-	local copy = stealClone
-	stealClone = nil
-	if copy then
-		pcall(function()
-			copy:Destroy()
-		end)
-	end
-end
-
-local function postClone()
-	dropClone()
-	local character = localPlayer.Character
-	if not character then
-		return
-	end
-	local was = character.Archivable
-	character.Archivable = true
-    local copied, copy = pcall(function() return character:Clone() end)
-    character.Archivable = was
-    if copied and copy then
-		for _, d in ipairs(copy:GetDescendants()) do
-			if d:IsA("LuaSourceContainer") or d:IsA("Animator") or d:IsA("AnimationController") or d:IsA("Sound") then
-				pcall(function()
-					d:Destroy()
-				end)
-			elseif d:IsA("Humanoid") then
-				pcall(function()
-					d.PlatformStand = true
-					d.AutoRotate = false
-					d.WalkSpeed = 0
-					d.JumpPower = 0
-					d.JumpHeight = 0
-					d.BreakJointsOnDeath = false
-					d.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-					d.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-				end)
-			elseif d:IsA("BasePart") then
-				d.Anchored = true
-				d.CanCollide = false
-				d.CanTouch = false
-				d.CanQuery = false
-			end
-		end
-		copy.Name = "Clone"
-		copy.Parent = workspace
-		stealClone = copy
-	end
-end
-
-local viewState = nil
-
-local function randomName()
-	return string.format("%08x", math.random(0, 2147483647))
-end
-
-local function cloneModel(model, parent)
-	local map = {}
-	for _, d in ipairs(model:GetDescendants()) do
-		map[d] = d.Archivable
-		pcall(function()
-			d.Archivable = true
-		end)
-	end
-	local was = model.Archivable
-	model.Archivable = true
-	local ok, result = pcall(function()
-		return model:Clone()
-	end)
-	model.Archivable = was
-	for inst, value in pairs(map) do
-		pcall(function()
-			inst.Archivable = value
-		end)
-	end
-	if not ok or not result then
-		return nil
-	end
-	result.Name = randomName()
-	for _, d in ipairs(result:GetDescendants()) do
-		if d:IsA("LuaSourceContainer") or d:IsA("Sound") or d:IsA("ForceField") or d:IsA("JointInstance") or d:IsA("Constraint") or d:IsA("WeldConstraint") or d:IsA("BodyMover") or d:IsA("ProximityPrompt") or d:IsA("BillboardGui") then
-			pcall(function()
-				d:Destroy()
-			end)
-		elseif d:IsA("BasePart") then
-			d.Anchored = true
-			d.CanCollide = false
-			d.CanQuery = false
-			d.CanTouch = false
-		elseif d:IsA("Humanoid") then
-			d.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-			d.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-		end
-	end
-	result.Parent = parent
-	return result
-end
-
-local promptSaved = nil
-local function hidePrompts(hide)
-	pcall(function()
-		local service = game:GetService("ProximityPromptService")
-		if hide then
-			promptSaved = promptSaved or { guis = {}, max = nil }
-			if promptSaved.max == nil then
-				local okMax, current = pcall(function()
-					return service.MaxPromptsVisible
-				end)
-				if okMax then
-					promptSaved.max = current
-				end
-			end
-			pcall(function()
-				service.MaxPromptsVisible = 0
-			end)
-			local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
-			if playerGui then
-				for _, promptGui in ipairs(playerGui:GetChildren()) do
-					local guiName = string.lower(promptGui.Name)
-					if promptGui:IsA("ScreenGui") and promptGui.Enabled and not string.find(guiName, "pilat", 1, true)
-						and (string.find(guiName, "prompt", 1, true) or string.find(guiName, "interact", 1, true)) then
-						promptGui.Enabled = false
-						promptSaved.guis[#promptSaved.guis + 1] = promptGui
-					end
-				end
-			end
-		elseif promptSaved then
-			local saved = promptSaved
-			promptSaved = nil
-			for _, promptGui in ipairs(saved.guis) do
-				pcall(function()
-					promptGui.Enabled = true
-				end)
-			end
-			if saved.max ~= nil then
-				pcall(function()
-					service.MaxPromptsVisible = saved.max
-				end)
-			end
-		end
-	end)
-end
-
-local sinkName = nil
-local touchSaved = nil
-local function sinkInput(on)
-	pcall(function()
-		local cas = game:GetService("ContextActionService")
-		if on then
-			if sinkName then
-				return
-			end
-			sinkName = "PilatInstantFreeze" .. tostring(math.random(100000, 999999))
-			cas:BindActionAtPriority(sinkName, function()
-				return Enum.ContextActionResult.Sink
-			end, false, 3000, Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D, Enum.KeyCode.Up, Enum.KeyCode.Down,
-				Enum.KeyCode.Left, Enum.KeyCode.Right, Enum.KeyCode.Space, Enum.KeyCode.Thumbstick1, Enum.KeyCode.ButtonA)
-		elseif sinkName then
-			local name = sinkName
-			sinkName = nil
-			cas:UnbindAction(name)
-		end
-	end)
-	pcall(function()
-		local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
-		local touch = playerGui and playerGui:FindFirstChild("TouchGui")
-		if on then
-			if touch and touch:IsA("ScreenGui") and not touchSaved then
-				touchSaved = { Gui = touch, Enabled = touch.Enabled }
-				touch.Enabled = false
-			end
-		elseif touchSaved then
-			local saved = touchSaved
-			touchSaved = nil
-			saved.Gui.Enabled = saved.Enabled
-		end
-	end)
-end
-
-local function viewControls(on)
-	hidePrompts(not on)
-	sinkInput(not on)
-	pcall(function()
-		local scripts = localPlayer:FindFirstChild("PlayerScripts")
-		local module = scripts and scripts:FindFirstChild("PlayerModule")
-		if module then
-			local controls = runtime.Controls
-
-            if type(controls) == "table" then
-                if viewState then controls:Disable() else controls:Enable() end
-            end
-		end
-	end)
-end
-
-local function releaseView()
-	local view = viewState
-	if not view then
-		return
-	end
-    viewState = nil
-    runtime.cancel(view.Timer)
-    for _, link in ipairs(view.DescendantLinks or {}) do
-        pcall(function() link:Disconnect() end)
-    end
-	semi.Frozen = false
-	if view.BindName then
-		pcall(function()
-			RunService:UnbindFromRenderStep(view.BindName)
-		end)
-	end
-	if view.Link then
-		pcall(function()
-			view.Link:Disconnect()
-		end)
-	end
-	if view.Beat then
-		pcall(function()
-			view.Beat:Disconnect()
-		end)
-	end
-    for part, previous in pairs(view.HiddenOriginal or {}) do
-        pcall(function() part.LocalTransparencyModifier = previous end)
-    end
-	for _, extra in ipairs(view.Extras) do
-		pcall(function()
-			extra.Inst.Enabled = extra.Prev
-		end)
-	end
-
-    for camera, previous in pairs(view.Cameras or {}) do
-        pcall(function()
-            if previous.AppliedType ~= nil and camera.CameraType == previous.AppliedType then
-                camera.CameraType = previous.Type
-            end
-        end)
-        pcall(function()
-            if previous.AppliedSubject ~= nil and camera.CameraSubject == previous.AppliedSubject then
-                local subject = previous.Subject
-                if not subject or not subject.Parent then
-                    subject = nil
-                    if camera == workspace.CurrentCamera then
-                        local character = localPlayer.Character
-                        subject = character and character:FindFirstChildOfClass("Humanoid")
-                    end
-                end
-                camera.CameraSubject = subject
-            end
-        end)
-    end
-	for _, copy in ipairs(view.Copies) do
-		pcall(function()
-			copy:Destroy()
-		end)
-	end
-
-    viewControls(true)
-end
-
-local function freezeView(character, offset, cameraCFrame, forced)
-	local camera = workspace.CurrentCamera
-    if not isAlive() or viewState or not character or localPlayer.Character ~= character or not camera then
-        return false
-    end
-	offset = offset or Vector3.zero
-	local view = { Camera = camera, CameraType = camera.CameraType, CameraCFrame = cameraCFrame or camera.CFrame, Cameras = {}, Copies = {}, Hidden = {}, HiddenOriginal = {}, Parts = {}, Extras = {} }
-    local function cameraBaseline(current)
-        local previous = view.Cameras[current]
-        if not previous then
-            previous = { Type = current.CameraType, Subject = current.CameraSubject }
-            view.Cameras[current] = previous
-        end
-        return previous
-    end
-    cameraBaseline(camera)
-	viewState = view
-	view.Forced = forced == true
-	view.Follow = runtime.Env.YslemCamFollow ~= false
-	if not view.Forced then
-		view.Timer = runtime.delay(120, function()
-			if viewState == view then
-				releaseView()
-			end
-		end)
-	end
-
-    local partIndices, extraIndices = {}, {}
-    local function addDescendant(d)
-        if not isAlive() or viewState ~= view then return end
-        if d:IsA("BasePart") then
-            if partIndices[d] then return end
-            view.HiddenOriginal[d] = d.LocalTransparencyModifier
-            view.Parts[#view.Parts + 1] = d
-            partIndices[d] = #view.Parts
-        elseif not extraIndices[d] and (d:IsA("BillboardGui") or d:IsA("SurfaceGui") or d:IsA("ParticleEmitter")
-            or d:IsA("Trail") or d:IsA("Beam") or d:IsA("Highlight") or d:IsA("Fire")
-            or d:IsA("Smoke") or d:IsA("Sparkles") or d:IsA("Light")) then
-            local ok, enabled = pcall(function() return d.Enabled end)
-            if ok then
-                view.Extras[#view.Extras + 1] = { Inst = d, Prev = enabled }
-                extraIndices[d] = #view.Extras
-            end
-        end
-    end
-    local function removeDescendant(d)
-        if viewState ~= view then return end
-        local at = partIndices[d]
-        if at then
-            local previous = view.HiddenOriginal[d]
-            pcall(function()
-                if d.LocalTransparencyModifier == (view.Follow and 0 or 1) then
-                    d.LocalTransparencyModifier = previous
-                end
-            end)
-            local last = view.Parts[#view.Parts]
-            view.Parts[at] = last
-            partIndices[last] = at
-            view.Parts[#view.Parts] = nil
-            partIndices[d], view.HiddenOriginal[d] = nil, nil
-        end
-        at = extraIndices[d]
-        if at then
-            local record = view.Extras[at]
-            pcall(function() if d.Enabled == false then d.Enabled = record.Prev end end)
-            local last = view.Extras[#view.Extras]
-            view.Extras[at] = last
-            extraIndices[last.Inst] = at
-            view.Extras[#view.Extras] = nil
-            extraIndices[d] = nil
-        end
-    end
-    view.DescendantLinks = {
-        character.DescendantAdded:Connect(addDescendant),
-        character.DescendantRemoving:Connect(removeDescendant),
-    }
-    for _, d in ipairs(character:GetDescendants()) do addDescendant(d) end
-    local lastScan = os.clock()
-
-	local function tick()
-        if not isAlive() or viewState ~= view then return end
-
-        if localPlayer.Character ~= character then
-            releaseView()
-            return
-        end
-		if os.clock() - lastScan > 0.5 then
-			lastScan = os.clock()
-			if view.Semi then
-				hidePrompts(true)
-			end
-
-		end
-		local shown = view.Follow and 0 or 1
-		pcall(function()
-			for _, part in ipairs(view.Parts) do
-				if part.LocalTransparencyModifier ~= shown then
-					part.LocalTransparencyModifier = shown
-				end
-			end
-		end)
-		if #view.Extras > 0 then
-			pcall(function()
-				for _, extra in ipairs(view.Extras) do
-					if extra.Inst.Enabled then
-						extra.Inst.Enabled = false
-					end
-				end
-			end)
-		end
-		pcall(function()
-			local live = workspace.CurrentCamera
-            if not live then return end
-			if live ~= camera then
-				camera = live
-				view.Camera = live
-                for _, copy in ipairs(view.Copies) do
-                    pcall(function() copy.Parent = live end)
-                end
-			end
-            local previous = cameraBaseline(camera)
-			if view.Follow then
-				local liveChar = localPlayer.Character
-				local liveHum = liveChar and liveChar:FindFirstChildOfClass("Humanoid")
-				if liveHum then
-					if camera.CameraType ~= Enum.CameraType.Custom then
-						camera.CameraType = Enum.CameraType.Custom
-                        previous.AppliedType = Enum.CameraType.Custom
-					end
-					if camera.CameraSubject ~= liveHum then
-						camera.CameraSubject = liveHum
-                        previous.AppliedSubject = liveHum
-					end
-					return
-				end
-			end
-			if camera.CameraType ~= Enum.CameraType.Scriptable then
-				camera.CameraType = Enum.CameraType.Scriptable
-                previous.AppliedType = Enum.CameraType.Scriptable
-			end
-			camera.CFrame = view.CameraCFrame
-		end)
-	end
-
-	tick()
-	view.BindName = randomName()
-	if not pcall(function()
-		RunService:BindToRenderStep(view.BindName, Enum.RenderPriority.Last.Value + 1, tick)
-	end) then
-		view.BindName = nil
-		view.Link = RunService.RenderStepped:Connect(tick)
-	end
-
-	local ok, copy = false, nil
-	if not view.Follow then
-		ok, copy = pcall(cloneModel, character, camera)
-	end
-	if ok and copy then
-		if offset.Magnitude > 0.01 then
-			for _, d in ipairs(copy:GetDescendants()) do
-				if d:IsA("BasePart") then
-					pcall(function()
-						d.CFrame = d.CFrame + offset
-					end)
-				end
-			end
-		end
-		view.Copies[#view.Copies + 1] = copy
-	end
-
-    if not isAlive() or viewState ~= view or localPlayer.Character ~= character then
-        if viewState == view then releaseView() end
-        return false
-    end
-	view.Semi = true
-	viewControls(false)
-
-    if not isAlive() or viewState ~= view or localPlayer.Character ~= character then
-        if viewState == view then releaseView() end
-        return false
-    end
-	semi.Frozen = true
-	return true
-end
-
-local function releaseBackHome(home)
-    local tripId, character = state.TripId, localPlayer.Character
-	local frozen = viewState
-	if not frozen then
-		return
-	end
-	if typeof(home) ~= "Vector3" then
-		releaseView()
-		return
-	end
-	local started = os.clock()
-	while os.clock() - started < 7 and isAlive() and state.TripId == tripId and localPlayer.Character == character and viewState == frozen do
-		local r = root()
-		if not r or r.Position.Y < 5000 then
-			break
-		end
-		RunService.Heartbeat:Wait()
-	end
-	for _ = 1, 10 do
-		if not isAlive() or state.TripId ~= tripId or localPlayer.Character ~= character or viewState ~= frozen then
-			return
-		end
-		local r = root()
-		if r then
-			pcall(function()
-				r.CFrame = CFrame.new(home) * r.CFrame.Rotation
-				r.AssemblyLinearVelocity = Vector3.zero
-				r.AssemblyAngularVelocity = Vector3.zero
-			end)
-		end
-		RunService.Heartbeat:Wait()
-	end
-	if isAlive() and state.TripId == tripId and localPlayer.Character == character and viewState == frozen then
-		releaseView()
-	end
-end
-
-local function swapped()
-	local character = localPlayer.Character
-	return shield.Clone ~= nil and character ~= nil and shield.Clone.Parent == character
-end
-
-local function lineInfo()
-
-    for _, name in ipairs({ "World", "__OBJECTS" }) do
-        local container = workspace:FindFirstChild(name)
-        local areas = container and container:FindFirstChild("Areas")
-        local line = areas and areas:FindFirstChild("SeparationLine")
-        if line and line:IsA("BasePart") then
-            local position = line.Position
-            local x, y = position and position.X, position and position.Y
-            if type(x) == "number" and type(y) == "number" and x == x and y == y
-                and math.abs(x) < math.huge and math.abs(y) < math.huge then return x, y end
-        end
-    end
-    return 552.2, 67.67
-end
-
-local function homePoint()
-	for _, def in ipairs({
-		{ { "GearGiver_Slap", "Podium" }, Vector3.new(-16.415, 21.072, -6.106) },
-		{ { "World", "Machines", "RiftMachine", "Rift", "Meshes/VoidPortal_Cube.003" }, Vector3.new(-26.776, 1.75, 18.665) },
-		{ { "__OBJECTS", "Machines", "RiftMachine", "Rift", "Meshes/VoidPortal_Cube.003" }, Vector3.new(-26.776, 1.75, 18.665) },
-	}) do
-		local node = workspace
-		for _, name in ipairs(def[1]) do
-			node = node and node:FindFirstChild(name) or nil
-		end
-		if node and node:IsA("BasePart") then
-			return node.CFrame:PointToWorldSpace(def[2])
-		end
-	end
-	return Vector3.new(528.7, 70.57, -364.11)
-end
-
-local function place(position)
-
-    if not isAlive() or (state.Busy and state.TripCharacter and localPlayer.Character ~= state.TripCharacter) then return end
-	local r = root()
-	if not r then
-		return
-	end
-	pcall(function()
-		r.CFrame = CFrame.new(position) * CFrame.Angles(0, math.rad(90), 0)
-		r.AssemblyLinearVelocity = Vector3.zero
-		r.AssemblyAngularVelocity = Vector3.zero
-	end)
-end
-
-local dangerCache, dangerAt = {}, -math.huge
-local function dangers()
-	if os.clock() - dangerAt < 5 then
-		return dangerCache
-	end
-	dangerAt = os.clock()
-	local list = {}
-	local function add(inst)
-		local ok, cf, size = pcall(function()
-			if inst:IsA("Model") then
-				return inst:GetBoundingBox()
-			elseif inst:IsA("BasePart") then
-				return inst.CFrame, inst.Size
-			end
-		end)
-		if ok and cf and size then
-            local half = Vector3.new(math.abs(size.X), math.abs(size.Y), math.abs(size.Z)) * 0.5
-
-            local right, up, look = cf.RightVector, cf.UpVector, cf.LookVector
-            local rx = math.abs(right.X) * half.X + math.abs(up.X) * half.Y + math.abs(look.X) * half.Z
-            local rz = math.abs(right.Z) * half.X + math.abs(up.Z) * half.Y + math.abs(look.Z) * half.Z
-			list[#list + 1] = { MinX = cf.Position.X - rx, MaxX = cf.Position.X + rx, MinZ = cf.Position.Z - rz, MaxZ = cf.Position.Z + rz }
-		end
-	end
-	local function bad(name)
-		if name == "ScrambleLocalVisuals" or name == "DrScrambleEvent" then
-			return false
-		end
-		name = string.lower(name)
-		return string.find(name, "portal", 1, true) or string.find(name, "teleport", 1, true) or string.find(name, "mech", 1, true) or string.find(name, "arena", 1, true) or string.find(name, "scramble", 1, true)
-	end
-	for _, child in ipairs(workspace:GetChildren()) do
-		if (child:IsA("Model") or child:IsA("BasePart") or child:IsA("Folder")) and bad(child.Name) then
-			if child:IsA("Folder") then
-				for _, inner in ipairs(child:GetChildren()) do
-					add(inner)
-				end
-			else
-				add(child)
-			end
-		end
-	end
-	local build = workspace:FindFirstChild("World")
-	build = build and build:FindFirstChild("Build")
-	if build then
-		for _, child in ipairs(build:GetChildren()) do
-			if bad(child.Name) then
-				for _, inner in ipairs(child:GetChildren()) do
-					add(inner)
-				end
-			end
-		end
-	end
-	dangerCache = list
-	return list
-end
-
-local function avoid(from, to)
-	for _, d in ipairs(dangers()) do
-		local x0, x1, z0, z1 = d.MinX - 12, d.MaxX + 12, d.MinZ - 12, d.MaxZ + 12
-		local inside = from.X >= x0 and from.X <= x1 and from.Z >= z0 and from.Z <= z1
-		if not inside then
-			local t0, t1, hit = 0, 1, true
-
-            local dx, dz = to.X - from.X, to.Z - from.Z
-            if math.abs(dx) < 1e-6 then
-                if from.X < x0 or from.X > x1 then hit = false end
-            else
-                local a, b = (x0 - from.X) / dx, (x1 - from.X) / dx
-                if a > b then a, b = b, a end
-                t0, t1 = math.max(t0, a), math.min(t1, b)
-                if t0 > t1 then hit = false end
-            end
-            if hit then
-                if math.abs(dz) < 1e-6 then
-                    if from.Z < z0 or from.Z > z1 then hit = false end
-                else
-                    local a, b = (z0 - from.Z) / dz, (z1 - from.Z) / dz
-                    if a > b then a, b = b, a end
-                    t0, t1 = math.max(t0, a), math.min(t1, b)
-                    if t0 > t1 then hit = false end
-                end
-            end
-			if hit then
-				local zLow, zHigh = z0 - 2, z1 + 2
-				local z = math.abs(from.Z - zLow) <= math.abs(from.Z - zHigh) and zLow or zHigh
-				if z < -440 or z > -290 then
-					z = z == zLow and zHigh or zLow
-				end
-				local x = math.abs(from.X - x0) <= math.abs(from.X - x1) and x0 or x1
-				if math.abs(from.Z - z) < 3 then
-					x = math.abs(to.X - x0) <= math.abs(to.X - x1) and x0 or x1
-				end
-				return Vector3.new(x, to.Y, z)
-			end
-		end
-	end
-	return to
-end
-
-local function eggNow(uid, cache, nonBlocking)
-    local function owned(request)
-        return isAlive() and not state.Cancel and state.TripId == request.TripId
-            and localPlayer.Character == request.Character and root() == request.Root
-    end
-    local function finite(pos)
-        return typeof(pos) == "Vector3" and pos.X == pos.X and pos.Y == pos.Y and pos.Z == pos.Z
-            and math.abs(pos.X) < math.huge and math.abs(pos.Y) < math.huge and math.abs(pos.Z) < math.huge
-    end
-    local function remember(pos)
-        if finite(pos) then
-            cache.Pos, cache.Missing = pos, false
-        elseif not state.SnapshotError then
-
-            cache.Pos, cache.Missing = nil, true
-        end
-    end
-    local pending = cache.Pending
-    if pending and not owned(pending) then
-        cache.Pending = nil
-        runtime.cancel(pending.Thread)
-    end
-    if not isAlive() or state.Cancel then return nil end
-    local node = workspace:FindFirstChild(uid)
-    local slots = workspace:FindFirstChild("AreaEggSlotsClient")
-    node = node or (slots and slots:FindFirstChild(uid))
-    if node then
-        local ok, pos = pcall(function() return node:GetPivot().Position end)
-        if ok and finite(pos) then
-            cache.Generation = (cache.Generation or 0) + 1
-            cache.Pos, cache.At, cache.Missing = pos, os.clock(), false
-            return pos
-        end
-    end
-    if not cache.Pending and os.clock() - (cache.At or 0) >= 0.5 then
-        cache.At = os.clock()
-        local request = { Character = localPlayer.Character, Root = root(), TripId = state.TripId, Generation = cache.Generation or 0 }
-        if nonBlocking then
-            cache.Pending = request
-            local thread = runtime.spawn(function()
-                local ok, pos = pcall(eggPosition, uid)
-                if cache.Pending ~= request then return end
-                cache.Pending = nil
-                if not owned(request) or (cache.Generation or 0) ~= request.Generation then return end
-                if ok then remember(pos) end
-                cache.At = os.clock()
-            end)
-            request.Thread = thread
-            if not thread and cache.Pending == request then cache.Pending = nil end
-        else
-            local ok, pos = pcall(eggPosition, uid)
-            if not owned(request) then return nil end
-            if (cache.Generation or 0) == request.Generation and ok then remember(pos) end
-        end
-    end
-    return finite(cache.Pos) and cache.Pos or nil
-end
-
-local function holdStill()
-	local character = localPlayer.Character
-    local originalRoot = root()
-    local tripId = state.TripId
-	local function zero()
-		if not isAlive() or state.TripId ~= tripId or localPlayer.Character ~= character or root() ~= originalRoot then return end
-		local r = root()
-		if r then
-			pcall(function()
-				r.AssemblyLinearVelocity = Vector3.zero
-				r.AssemblyAngularVelocity = Vector3.zero
-			end)
-		end
-	end
-	zero()
-	local link
-	pcall(function()
-		if RunService.Stepped then
-			link = RunService.Stepped:Connect(zero)
-			runtime.Holds[link] = true
-		end
-	end)
-	return function()
-		if link then
-			runtime.Holds[link] = nil
-			pcall(function()
-				link:Disconnect()
-			end)
-		end
-	end
-end
-
-local function ragdollWait()
-    local character, tripId = localPlayer.Character, state.TripId
-    local originalRoot = root()
-	local seen = state.RagdollAt
-	if not state.Ragdoll then return false end
-	if type(seen) ~= "number" or seen ~= seen or os.clock() - seen >= 12 then
-		state.Ragdoll = false
-		return false
-	end
-	state.Hits = (state.Hits or 0) + 1
-	status("Knocked down, staying still")
-	local kb = state.RagdollArgs
-	slog(string.format("hit by the guard (%d this trip): staying still until the ragdoll ends, knock-back %s", state.Hits, kb and string.format("%.0f,%.0f,%.0f", tonumber(kb[2]) or 0, tonumber(kb[3]) or 0, tonumber(kb[4]) or 0) or "?"))
-	local release = holdStill()
-	local stop = os.clock() + 8
-	while isAlive() and state.TripId == tripId and localPlayer.Character == character and root() == originalRoot and state.Ragdoll and os.clock() < stop and not state.Cancel do
-		RunService.Heartbeat:Wait()
-        if not isAlive() or state.TripId ~= tripId or state.Cancel or localPlayer.Character ~= character or root() ~= originalRoot then break end
-		local r = root()
-		if r then
-			pcall(function()
-				r.AssemblyLinearVelocity = Vector3.zero
-				r.AssemblyAngularVelocity = Vector3.zero
-			end)
-		end
-	end
-	release()
-    if not isAlive() or state.TripId ~= tripId or localPlayer.Character ~= character or root() ~= originalRoot then return false end
-	state.Ragdoll = false
-	local calm = 0
-	while isAlive() and state.TripId == tripId and localPlayer.Character == character and root() == originalRoot and calm < 0.15 and not state.Cancel do
-		calm += RunService.Heartbeat:Wait()
-	end
-	return true
-end
-
-local function runToEgg(uid, egg, opts)
-	opts = opts or {}
-	local ratio = math.min(opts.Ratio or CFG.SpeedCap, CFG.SpeedCap)
-	local height = opts.Height or 0
-	local lineX = lineInfo()
-	local home = homePoint()
-	local character = localPlayer.Character
-
-    local routeTrip = state.TripId
-    local originalRoot = root()
-    local function valid()
-        return isAlive() and state.TripId == routeTrip and not state.Cancel and localPlayer.Character == character
-            and originalRoot ~= nil and root() == originalRoot
-    end
-    if not valid() then return false end
-    if state.Carrying then
-        if state.Uid == nil and type(runtime.confirmCarry) == "function" then runtime.confirmCarry(uid) end
-        return valid() and state.Uid == uid
-    end
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.PlatformStand = false
-		if character:FindFirstChildWhichIsA("Tool") then
-			pcall(function()
-				humanoid:UnequipTools()
-			end)
-		end
-	end
-
-	local r = root()
-	if not r then
-		return false
-	end
-	local stage = "field"
-
-	if not opts.Field and math.abs(r.Position.Y - home.Y) <= 40 and r.Position.X < lineX - 2
-        and Vector3.new(r.Position.X - home.X, 0, r.Position.Z - home.Z).Magnitude > 20 then
-		stage = "safe"
-	end
-
-	local runY = egg.Y + 3
-    local targetCache = { At = 0, Pos = egg }
-    local refreshAt = 0
-    local targetMissing = false
-	local function snapToHeight(target)
-		local at = root()
-		local current = localPlayer.Character
-		if not at or not current or math.abs(at.Position.Y - target) < 1 or math.abs(at.Position.Y - target) > 90 then
-			return false
-		end
-		pcall(function()
-			current:PivotTo(CFrame.new(Vector3.new(at.Position.X, target, at.Position.Z)) * at.CFrame.Rotation)
-			at.AssemblyLinearVelocity = Vector3.new(at.AssemblyLinearVelocity.X, 0, at.AssemblyLinearVelocity.Z)
-		end)
-		return true
-	end
-	if stage == "field" and height > 0.5 then
-		snapToHeight(runY + height)
-	end
-
-	local started, lastCheck, lastPos, lastTake = os.clock(), os.clock(), r.Position, 0
-	while os.clock() - started < 120 and valid() do
-		if ragdollWait() then
-			started += 1
-		end
-		r = root()
-		if not valid() or not r then
-			return false
-		end
-
-        if os.clock() >= refreshAt then
-            local currentEgg = eggNow(uid, targetCache, true)
-            refreshAt = os.clock() + 0.1
-            if not valid() then return false end
-            if currentEgg then egg, runY = currentEgg, currentEgg.Y + 3 end
-            if targetCache.Missing then targetMissing = true;break end
-        end
-		local flatEgg = Vector3.new(egg.X - r.Position.X, 0, egg.Z - r.Position.Z)
-        if state.Carrying then
-            if state.Uid == nil and type(runtime.confirmCarry) == "function" then runtime.confirmCarry(uid) end
-            break
-        end
-		if stage == "field" and flatEgg.Magnitude <= 2.5 and math.abs(r.Position.Y - runY) < 6 then
-			break
-		end
-		local target = egg
-		if stage == "safe" then
-			if Vector3.new(home.X - r.Position.X, 0, home.Z - r.Position.Z).Magnitude <= 6 then
-				stage = "field"
-				if height > 0.5 then
-					snapToHeight(runY + height)
-				end
-			else
-				target = home
-			end
-		end
-
-		local waypoint = avoid(r.Position, target)
-		local flat = Vector3.new(waypoint.X - r.Position.X, 0, waypoint.Z - r.Position.Z)
-		local unit = flat.Magnitude > 0.01 and flat.Unit or Vector3.zero
-		local speed = math.max(walkSpeed() * ratio, 8)
-        if not valid() or state.Carrying then break end
-		if height > 0.5 and stage == "field" then
-			local wantY = flatEgg.Magnitude <= 3 and runY or runY + height
-			if (flatEgg.Magnitude <= 3 and snapToHeight(runY)) or (math.abs(wantY - r.Position.Y) > 2 and snapToHeight(wantY)) then
-				RunService.Heartbeat:Wait()
-				continue
-			end
-			local vy = math.clamp((wantY - r.Position.Y) / 0.12, -speed * 0.5, speed * 0.5)
-			local horizontal = unit * math.min(math.sqrt(math.max(speed * speed - vy * vy, 0)), flat.Magnitude / 0.05)
-			pcall(function()
-				r.AssemblyLinearVelocity = Vector3.new(horizontal.X, vy, horizontal.Z)
-			end)
-		else
-			local v = unit * math.min(speed, flat.Magnitude / 0.05)
-			pcall(function()
-				r.AssemblyLinearVelocity = Vector3.new(v.X, r.AssemblyLinearVelocity.Y, v.Z)
-				if humanoid and unit.Magnitude > 0 then
-					humanoid:Move(unit, false)
-				end
-			end)
-		end
-
-		if os.clock() - lastCheck >= 1.5 then
-			if (r.Position - lastPos).Magnitude < 3 and humanoid and flatEgg.Magnitude > 15 then
-				pcall(function()
-					humanoid.Jump = true
-				end)
-			end
-			lastPos, lastCheck = r.Position, os.clock()
-		end
-
-		if stage == "field" and (egg - r.Position).Magnitude <= 9 and os.clock() - lastTake > 0.1 then
-			lastTake = os.clock()
-			runtime.spawn(takeEgg, uid)
-		end
-		RunService.Heartbeat:Wait()
-	end
-
-	r = root()
-	if r and r == originalRoot and state.TripId == routeTrip and localPlayer.Character == character then
-		pcall(function()
-			r.AssemblyLinearVelocity = Vector3.new(0, r.AssemblyLinearVelocity.Y, 0)
-			if humanoid then
-				humanoid:Move(Vector3.zero, false)
-			end
-		end)
-	end
-    return valid() and ((state.Carrying and state.Uid == uid)
-        or (not state.Carrying and not targetMissing and r ~= nil and (egg - r.Position).Magnitude <= 8))
-end
-
-local function grab(uid, timeout)
-    local character = localPlayer.Character
-
-    local routeTrip = state.TripId
-    local originalRoot = root()
-    local function valid()
-        return isAlive() and state.TripId == routeTrip and not state.Cancel and localPlayer.Character == character
-            and originalRoot ~= nil and root() == originalRoot
-    end
-    if not valid() then return false end
-	local cache = { At = 0 }
-	local deadline, since = os.clock() + timeout, 1
-	while (not state.Carrying or state.Uid == nil) and os.clock() < deadline and valid() do
-        if state.Carrying then
-            if runtime.confirmCarry(uid) then break end
-
-            RunService.Heartbeat:Wait()
-            continue
-        end
-		local stillFrom = os.clock()
-		if ragdollWait() then
-			deadline += os.clock() - stillFrom
-			since = 1
-		end
-		if not valid() then break end
-        if state.Carrying then continue end
-		local egg = eggNow(uid, cache, true)
-		local dt = math.max(RunService.Heartbeat:Wait(), 1 / 240)
-		local r = root()
-		if not valid() or not r or os.clock() >= deadline then break end
-        if state.Carrying then continue end
-        if cache.Missing then break end
-		since += dt
-		if r and egg then
-			local delta = egg - r.Position
-			if delta.Magnitude > 2 then
-				local pace = math.max(walkSpeed() * CFG.SpeedCap, 16)
-
-                if not valid() or os.clock() >= deadline then break end
-                if state.Carrying then continue end
-				local v = delta / math.max(0.08, dt)
-				if v.Magnitude > pace then
-					v = v.Unit * pace
-				end
-				pcall(function()
-					r.AssemblyLinearVelocity = v + Vector3.new(0, workspace.Gravity * dt * 0.5, 0)
-					r.AssemblyAngularVelocity = Vector3.zero
-				end)
-			end
-			if since >= CFG.GrabInterval then
-				since = 0
-				local prompt = promptNear(egg - Vector3.new(0, 3, 0), 10)
-                if prompt then runtime.firePrompt(prompt) end
-                if not valid() or os.clock() >= deadline then break end
-                if not state.Carrying then runtime.spawn(takeEgg, uid) end
-			end
-		elseif since >= CFG.GrabInterval then
-			since = 0
-			runtime.spawn(takeEgg, uid)
-		end
-	end
-	local r = root()
-	if r and r == originalRoot and state.TripId == routeTrip and localPlayer.Character == character then
-		pcall(function()
-			r.AssemblyLinearVelocity = Vector3.zero
-		end)
-	end
-	return valid() and state.Carrying and state.Uid == uid
-end
-
-local function regrab(uid)
-    local character, tripId = localPlayer.Character, state.TripId
-    if not isAlive() or state.Cancel or not root() then return false end
-	if state.Carrying then
-        if state.Uid == nil then return grab(uid, 3) end
-		return state.Uid == uid
-	end
-	if state.Cancel or not root() then return false end
-	local r = root()
-	local egg = eggNow(uid, { At = 0 })
-    if not isAlive() or state.TripId ~= tripId or state.Cancel or localPlayer.Character ~= character or root() ~= r then return false end
-
-    if state.Carrying then
-        if state.Uid == nil then return grab(uid, 3) end
-        return state.Uid == uid
-    end
-	local gap = r and egg and (r.Position - egg).Magnitude or 0
-	if gap > 1500 then
-		slog(string.format("the egg is %.0f studs away: no teleport that long to take it back", gap))
-		status("The egg is too far to take back")
-		return false
-	end
-	if r and egg and gap > CFG.RegrabFar then
-		status("The egg fell far behind, teleporting onto it")
-		place(egg + Vector3.new(0, 3, 0))
-	else
-		status("The egg fell close, taking it back")
-	end
-	return grab(uid, 3)
-end
-
-local function groundY(position, fallback)
-	local y = fallback
-	pcall(function()
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		params.FilterDescendantsInstances = { localPlayer.Character }
-		params.IgnoreWater = true
-		params.RespectCanCollide = true
-		local hit = workspace:Raycast(position + Vector3.new(0, 60, 0), Vector3.new(0, -140, 0), params)
-		if hit and hit.Material ~= Enum.Material.Water and math.abs(hit.Position.Y - fallback) < 40 then
-			y = hit.Position.Y + 3.5
-		end
-	end)
-	return y
-end
-
-local function carrySpeed(distance)
-	local ws = walkSpeed()
-	if semi.SlowRun then
-		return math.max(ws * 0.8 * state.Mult, 8)
-	end
-	local base = ws * math.min(CFG.CarryRatio, CFG.SpeedCap) * state.Mult
-	local fast = base * 1.5
-	local excess = 5.5 * base
-	local limit = fast
-	if distance and distance > excess then
-		limit = math.min(fast, base * distance / (distance - excess))
-	end
-	return math.min(math.max(math.min(base * CFG.EasyRatio, limit), base), math.max(ws * CFG.SpeedCap, base))
-end
-
-local function tpHome(lineX, laneZ, started, uid)
-    uid = uid or state.TargetUid or state.Uid
-    local character = localPlayer.Character
-    local originalRoot = root()
-
-    local routeTrip = state.TripId
-    local function valid()
-        return isAlive() and state.TripId == routeTrip and not state.Cancel and localPlayer.Character == character and originalRoot ~= nil and root() == originalRoot
-            and type(uid) == "string" and uid ~= ""
-            and (not state.Carrying or state.Uid == uid)
-    end
-    if not valid() then return false end
-    local originalDrop = dropEgg
-    local function dropEgg()
-        if valid() and state.Carrying and state.Uid == uid then return originalDrop() end
-    end
-	local home = homePoint()
-	local steps = { Vector3.new(lineX - 7, home.Y, laneZ), home }
-	status("Safe zone: teleporting")
-	for _, target in ipairs(steps) do
-		local tries = 0
-		while state.Carrying and state.Delivered < started and valid() and tries < 3 do
-			tries += 1
-			local pulledBefore = state.PulledAt
-			local held = 0
-			while held < math.max(CFG.HopGap, 0.1) and valid() and root() do
-				place(target)
-				held += RunService.Heartbeat:Wait()
-			end
-			local check = root()
-			local pulled = state.PulledAt > pulledBefore or (check ~= nil and (check.Position - target).Magnitude > 10)
-			if not pulled then
-				break
-			end
-		end
-	end
-	local waited = 0
-	while state.Carrying and state.Delivered < started and valid() and waited < 1 do
-		waited += RunService.Heartbeat:Wait()
-	end
-	if state.Carrying and state.Delivered < started and valid() then
-		local at = root()
-		if at and Vector3.new(at.Position.X - home.X, 0, at.Position.Z - home.Z).Magnitude > 6 then
-			place(home)
-			RunService.Heartbeat:Wait()
-		end
-		if not valid() then return false end
-		local atHome = root()
-		if not atHome or (atHome.Position - home).Magnitude > 15 then return false end
-		status("Safe zone: dropping the egg on the base")
-		dropEgg()
-		local confirm = 0
-		while state.Delivered < started and confirm < 1 and valid() do
-			confirm += RunService.Heartbeat:Wait()
-		end
-	end
-	return valid() and state.Delivered >= started
-end
-
-local function runHome(lineX, laneZ, uid)
-    uid = uid or state.TargetUid or state.Uid
-	local started = os.clock()
-	local home = homePoint()
-	local checkpoint = lineX - 7
-	local height = semi.SlowRun and 0 or CFG.Height
-	local share = math.clamp(CFG.ClimbShare, 0.1, 0.9)
-	local descent = height * math.sqrt(1 - share * share) / share
-	local character = localPlayer.Character
-    local originalRoot = root()
-
-    local routeTrip = state.TripId
-    local function valid()
-        return isAlive() and state.TripId == routeTrip and not state.Cancel and localPlayer.Character == character and originalRoot ~= nil and root() == originalRoot
-            and type(uid) == "string" and uid ~= ""
-            and (not state.Carrying or state.Uid == uid)
-    end
-    if not valid() then return false end
-    local originalDrop = dropEgg
-    local function dropEgg()
-        if valid() and state.Carrying and state.Uid == uid then return originalDrop() end
-    end
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if state.TripId == routeTrip and root() == originalRoot and humanoid then
-		humanoid.PlatformStand = false
-	end
-
-	local r = root()
-	if r and character and height > 0.5 and home.Y + height - 2 > r.Position.Y then
-		pcall(function()
-			character:PivotTo(CFrame.new(Vector3.new(r.Position.X, home.Y + height, r.Position.Z)) * r.CFrame.Rotation)
-			r.AssemblyLinearVelocity = Vector3.zero
-			r.AssemblyAngularVelocity = Vector3.zero
-		end)
-	end
-
-	local start = root()
-	local speed = carrySpeed(start and (Vector3.new(start.Position.X - home.X, 0, start.Position.Z - home.Z).Magnitude + math.max(0, height) * 2) or nil)
-
-	local last = os.clock()
-	local timeout = 0
-	status("Safe zone")
-	while state.Carrying and state.Delivered < started and valid() and timeout < 25 do
-		r = root()
-		if not r then
-			return false
-		end
-		local now = os.clock()
-		local dt = math.max(now - last, 1 / 240)
-		last = now
-		timeout += dt
-
-		local toHome = r.Position.X <= checkpoint + 2
-		local target = toHome and home or Vector3.new(checkpoint, home.Y, laneZ)
-		if toHome and (home - r.Position).Magnitude < 4 then
-			break
-		end
-		local aim = avoid(r.Position, target)
-		local flat = Vector3.new(aim.X - r.Position.X, 0, aim.Z - r.Position.Z)
-		local remaining = toHome and 0 or math.max(0, r.Position.X - checkpoint)
-		local wantY = home.Y + height
-		if toHome or remaining <= descent then
-			wantY = home.Y + height * math.clamp(remaining / math.max(descent, 1), 0, 1)
-		end
-		local vy = math.clamp((wantY - r.Position.Y) / 0.12, -speed * share, speed * share)
-		local horizontal = math.sqrt(math.max(speed * speed - vy * vy, 0))
-		local v = flat.Magnitude > 0.01 and flat.Unit * math.min(horizontal, flat.Magnitude / 0.05) or Vector3.zero
-		pcall(function()
-			r.AssemblyLinearVelocity = Vector3.new(v.X, vy, v.Z)
-		end)
-		RunService.Heartbeat:Wait()
-	end
-
-    if state.TripId == routeTrip and localPlayer.Character == character and root() == originalRoot then
-        local stopped = root()
-        if stopped then
-            pcall(function() stopped.AssemblyLinearVelocity = Vector3.zero end)
-        end
-    end
-	if state.TripId == routeTrip and root() == originalRoot and humanoid then
-		pcall(function()
-			humanoid:Move(Vector3.zero, false)
-		end)
-	end
-
-	local settle = 0
-	while settle < 2 and state.Delivered < started and state.Carrying and valid() do
-		settle += RunService.Heartbeat:Wait()
-	end
-
-	if state.Carrying and state.Delivered < started and valid() then
-		task.wait(0.2)
-		if not valid() then return false end
-		if state.Delivered >= started then return true end
-		local atHome = root()
-		if not atHome or (atHome.Position - home).Magnitude > 15 then
-			return false
-		end
-		dropEgg()
-		local waited = 0
-		while state.Delivered < started and waited < 1 and valid() do
-			waited += RunService.Heartbeat:Wait()
-		end
-	end
-	return valid() and state.Delivered >= started
-end
-
-local function treadmillStand()
-	local ok, standAt = pcall(function()
-		local PlotState = require(ReplicatedStorage.Client.PlotState)
-		local slot = type(PlotState.ResolveLocalSlot) == "function" and PlotState.ResolveLocalSlot() or PlotState.GetMySlot()
-		local plots = type(PlotState.ResolveFolder) == "function" and PlotState.ResolveFolder() or PlotState.GetPlotsFolder()
-		local plot = plots and slot and plots:FindFirstChild(tostring(slot))
-		local bottom = plot and plot:FindFirstChild("TreadmillBottom")
-		if not (bottom and bottom:IsA("BasePart")) then
-			return nil
-		end
-		local character = localPlayer.Character
-		local r = character and character:FindFirstChild("HumanoidRootPart")
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		if not r or not humanoid then
-			return nil
-		end
-		local feet = humanoid.RigType == Enum.HumanoidRigType.R15 and (r.Size.Y * 0.5 + math.max(humanoid.HipHeight, 0.5)) or (r.Size.Y * 0.5 + 2)
-		return (bottom.CFrame * CFrame.new(0, bottom.Size.Y * 0.5 + feet + 0.05, 0)).Position
-	end)
-	return ok and standAt or nil
-end
-
-local function treadmillMounted(timeout, expectedRemote)
-	local snapshot = expectedRemote or remote("RF/Treadmill/AskRenderSnapshot")
-	if not snapshot or not snapshot:IsA("RemoteFunction")
-        or remote("RF/Treadmill/AskRenderSnapshot") ~= snapshot then return nil end
-	local ok, ids = runtime.invoke(snapshot, timeout or 4)
-	if not ok or type(ids) ~= "table" or remote("RF/Treadmill/AskRenderSnapshot") ~= snapshot then return nil end
-
-    if ids.Success == false or ids.success == false then return nil end
-    local function userKey(value)
-        if type(value) ~= "number" and type(value) ~= "string" then return nil end
-        local number = tonumber(value)
-        if not number or number ~= number or math.abs(number) == math.huge or number % 1 ~= 0 or number == 0 then return nil end
-        return tostring(number)
-    end
-    local function activeRecord(record)
-
-        for _, key in ipairs({"Mounted", "mounted", "IsMounted", "isMounted", "Active", "active"}) do
-            if record[key] == false then return false end
-        end
-        return true
-    end
-    local userId, mounted, unmounted, unknown = userKey(localPlayer.UserId), false, false, false
-    for key, value in pairs(ids) do
-        local valueId = userKey(value)
-        if type(value) == "boolean" and userKey(key) then
-            if userKey(key) == userId then
-                if value then mounted = true else unmounted = true end
-            end
-        elseif valueId and type(key) == "number" and key >= 1 and key % 1 == 0 then
-            if valueId == userId then mounted = true end
-        elseif type(value) == "table" then
-            local recordId = userKey(value.UserId or value.userId or value.Id)
-            if recordId and userKey(key) then
-                if recordId == userId then
-                    if activeRecord(value) then mounted = true else unmounted = true end
-                end
-            else
-
-                local flag = value.Mounted
-                if flag == nil then flag = value.mounted end
-                if flag == nil then flag = value.IsMounted end
-                if flag == nil then flag = value.isMounted end
-                if flag == nil then flag = value.Active end
-                if flag == nil then flag = value.active end
-                if userKey(key) and type(flag) == "boolean" then
-                    if userKey(key) == userId then
-                        if flag and activeRecord(value) then mounted = true else unmounted = true end
-                    end
-                else unknown = true end
-            end
-        else unknown = true end
-    end
-
-    if unknown or (mounted and unmounted) then return nil end
-    return mounted
-end
-
-local function treadmillReset()
-	local character, startRoot = localPlayer.Character, root()
-	local routeTrip = state.TripId
-	local function valid()
-		return isAlive() and state.TripId == routeTrip and not state.Cancel and localPlayer.Character == character
-			and startRoot ~= nil and root() == startRoot
-	end
-	if not valid() then return false end
-	local wear = remote("RF/Treadmill/AskWearStill")
-	local doff = remote("RF/Treadmill/AskDoff")
-    local snapshot = remote("RF/Treadmill/AskRenderSnapshot")
-    local function sameRemote(event)
-        local name = event == wear and "RF/Treadmill/AskWearStill" or "RF/Treadmill/AskDoff"
-        return remote(name) == event and remote("RF/Treadmill/AskRenderSnapshot") == snapshot
-    end
-
-    local standOk, stand = runtime.call({}, 4, treadmillStand)
-	if not (standOk and wear and wear:IsA("RemoteFunction") and doff and doff:IsA("RemoteFunction")
-        and snapshot and snapshot:IsA("RemoteFunction") and stand) or not valid()
-        or not sameRemote(wear) or not sameRemote(doff) then
-		slog("treadmill reset: not available (remote or stand missing)")
-		return false
-	end
-	place(stand)
-	local function pause(t, deadline)
-		local untilAt = math.min(os.clock() + t, deadline or math.huge)
-		while os.clock() < untilAt and valid() do
-			RunService.Heartbeat:Wait()
-		end
-		return valid()
-	end
-	if not pause(0.15) then return false end
-	local function phase(event, expected)
-		local retryUntil, deadline = os.clock() + 0.7, os.clock() + 4
-		while valid() and os.clock() < retryUntil do
-            if not sameRemote(event) then return false end
-			local ok, accepted = runtime.invoke(event, deadline - os.clock())
-			if not valid() or not sameRemote(event) then return false end
-			if not ok or accepted == false or (type(accepted) == "table"
-                and (accepted.Success == false or accepted.success == false)) then return false end
-			if not pause(0.08, deadline) or os.clock() >= deadline then return false end
-			local confirmed = treadmillMounted(deadline - os.clock(), snapshot)
-			if not valid() or not sameRemote(event) then return false end
-			if confirmed == expected and os.clock() <= deadline then return true end
-		end
-		return false
-	end
-	local mounted = phase(wear, true)
-	if not valid() then return false end
-	if mounted and not pause(0.25) then return false end
-
-	local released = phase(doff, false)
-	slog(string.format("treadmill reset: worn=%s, taken off=%s", tostring(mounted), tostring(released)))
-	return valid() and mounted and released
-end
-
-local clown = { At = nil }
-local function plantClown(pos)
-	pcall(postClone)
-	local copy = stealClone
-	local r = root()
-	if copy and r then
-		pcall(function()
-			copy.Name = randomName()
-			copy:PivotTo(CFrame.new(pos) * r.CFrame.Rotation)
-		end)
-	end
-	clown.At = pos
-	slog(string.format("Clown planted at %.1f %.1f %.1f", pos.X, pos.Y, pos.Z))
-end
-
-local function relayFlow(uid, started, releaseCamera, semiFrozen)
-    local character = localPlayer.Character
-    local originalRoot = root()
-
-    local routeTrip = state.TripId
-    local function valid()
-        return isAlive() and state.TripId == routeTrip and not state.Cancel and localPlayer.Character == character and originalRoot ~= nil and root() == originalRoot
-            and type(uid) == "string" and uid ~= ""
-            and (not state.Carrying or state.Uid == uid or (state.Uid == nil and runtime.confirmCarry(uid)))
-    end
-    if not valid() then return false end
-    local originalPlace = place
-    local function place(position)
-        if valid() then originalPlace(position) end
-    end
-	local function held()
-		return valid() and state.Carrying and state.Uid == uid
-	end
-    local targetMissing = false
-    local function targetPosition(cache, fallback, async)
-        if not valid() then return nil end
-        local position = eggNow(uid, cache, async)
-        if not valid() then return nil end
-        if held() then targetMissing = false; return position or fallback end
-        if cache.Missing then targetMissing = true; return nil end
-        return position or fallback
-    end
-	local function wait(t)
-		local w = 0
-		while w < t and valid() do
-			w += RunService.Heartbeat:Wait()
-		end
-	end
-	local function flatAway(a, b)
-		return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
-	end
-	local safe = Vector3.new(RELAY_SAFE.X, groundY(RELAY_SAFE, RELAY_SAFE.Y), RELAY_SAFE.Z)
-	local function finish()
-        if not isAlive() or state.TripId ~= routeTrip or localPlayer.Character ~= character then return end
-		clown.At = nil
-		if semiFrozen and typeof(semi.Home) == "Vector3" and root() and valid() then
-			status("Relay: the clown goes back to the player")
-			place(semi.Home)
-			wait(0.3)
-		end
-        if not isAlive() or state.TripId ~= routeTrip or localPlayer.Character ~= character then return end
-		releaseCamera()
-		if semiFrozen then
-			releaseView()
-		end
-        if not isAlive() or state.TripId ~= routeTrip or localPlayer.Character ~= character then return end
-		dropClone()
-	end
-
-	local burst
-	local function ragdollGuard(around)
-		local seen = state.RagdollAt
-		if not state.Ragdoll then return false end
-		if type(seen) ~= "number" or seen ~= seen or os.clock() - seen >= 12 then
-			state.Ragdoll = false
-			return false
-		end
-		status("Relay: knocked down, staying still")
-		slog(string.format("Relay: ragdolled %.2f s after the pickup, holding still, carrying=%s", os.clock() - (state.CarryAt or seen), tostring(held())))
-		local release = holdStill()
-		local stop = os.clock() + 8
-		while state.Ragdoll and os.clock() < stop and valid() do
-			RunService.Heartbeat:Wait()
-            if not valid() then break end
-			local r = root()
-			if r then
-				pcall(function()
-					r.AssemblyLinearVelocity = Vector3.zero
-					r.AssemblyAngularVelocity = Vector3.zero
-				end)
-			end
-		end
-		release()
-        if not valid() then return false end
-		state.Ragdoll = false
-		wait(0.15)
-		slog(string.format("Relay: ragdoll over after %.2f s, carrying=%s", os.clock() - seen, tostring(held())))
-		if not held() and valid() then
-			status("Relay: taking the egg back")
-			local got = burst(3, around)
-			slog(string.format("Relay: egg taken back after the ragdoll=%s", tostring(got)))
-		end
-		return true
-	end
-
-	local function hopTo(target)
-		local r = root()
-		if not r then
-			return false
-		end
-		local hopStep = RELAY_STEP
-		local cruiseY = target.Y + RELAY_LIFT
-		local baseGap = RELAY_GAP_MIN + math.random() * (RELAY_GAP_MAX - RELAY_GAP_MIN)
-		local gap = baseGap
-		local firstHop = true
-		local deadline = os.clock() + 20
-		local retries, shrinks = 0, 0
-		while os.clock() < deadline and valid() do
-			r = root()
-			if not r then
-				return false
-			end
-			local flat = Vector3.new(target.X - r.Position.X, 0, target.Z - r.Position.Z)
-			local pulledBefore = state.PulledAt
-			local nextPos
-			if flat.Magnitude <= hopStep then
-				nextPos = target
-			else
-				local dir = flat.Unit
-				local hopY = firstHop and (r.Position.Y + 39) or cruiseY
-				nextPos = Vector3.new(r.Position.X + dir.X * hopStep, hopY, r.Position.Z + dir.Z * hopStep)
-			end
-			local held2 = 0
-			if firstHop and state.CarryAt and not state.CarryLogged then
-				state.CarryLogged = true
-				slog(string.format("Relay: first hop %.2f s after the carry started", os.clock() - state.CarryAt))
-			end
-			local paceGap = math.min(flat.Magnitude, hopStep) / math.max(walkSpeed() * (tonumber(runtime.Env.YslemPaceRatio) or RELAY_PACE_RATIO), 200)
-			local holdFor = math.max(gap, paceGap)
-			while held2 < holdFor and valid() and not state.Ragdoll do
-				place(nextPos)
-				held2 += RunService.Heartbeat:Wait()
-			end
-			if state.Ragdoll then
-				ragdollGuard(nil)
-				if not held() then
-					return false
-				end
-				deadline = os.clock() + 20
-				continue
-			end
-			local check = root()
-			local pulled = state.PulledAt > pulledBefore or (check ~= nil and (check.Position - nextPos).Magnitude > 10)
-			if not pulled then
-				firstHop = false
-				gap = RELAY_GAP_MIN + math.random() * (RELAY_GAP_MAX - RELAY_GAP_MIN)
-				if nextPos == target then
-					return true
-				end
-			else
-				retries += 1
-				gap = math.min(CFG.HopGapMax, gap + 0.02)
-				if retries > CFG.HopRetries then
-					if shrinks >= 2 then
-						return false
-					end
-					shrinks += 1
-					retries = 0
-					hopStep = math.max(hopStep * 0.6, CFG.HopMin * 0.5)
-				end
-			end
-		end
-		return false
-	end
-
-	local firstPick = state.CarryAt
-	local function waitWake(pinAt)
-		if not firstPick or semi.WakeWait <= 0 then
-			return
-		end
-		local need = semi.WakeWait
-		local left = firstPick + need - os.clock()
-		if left <= 0 then
-			slog(string.format("Relay: %.1f s since the pickup, no wait needed", os.clock() - firstPick))
-			return
-		end
-		status("Relay: letting the pickup delay pass")
-		slog(string.format("Relay: holding %.1f s so that %.1f s have passed since the pickup", left, need))
-		local stop = os.clock() + left
-		while os.clock() < stop and held() and valid() and not (state.DeliveryFailedAt and state.DeliveryFailedAt > firstPick) do
-			local r = root()
-			if r and pinAt and (r.Position - pinAt).Magnitude > 2.5 then
-				place(pinAt)
-			end
-			RunService.Heartbeat:Wait()
-		end
-	end
-
-	burst = function(seconds, around)
-        local burstRoot = root()
-        local ownerValid = valid
-        local function valid() return ownerValid() and burstRoot ~= nil and root() == burstRoot end
-		local cache = { At = 0, Pos = around }
-		local deadline, since = os.clock() + seconds, 1
-		while not held() and os.clock() < deadline and valid() do
-
-            if state.Carrying then
-                if state.Uid ~= nil then return false end
-                if runtime.confirmCarry(uid) then break end
-                RunService.Heartbeat:Wait()
-                continue
-            end
-			if state.Ragdoll and state.RagdollAt and os.clock() - state.RagdollAt < 12 then
-				local pauseAt = os.clock()
-				RunService.Heartbeat:Wait()
-				deadline += os.clock() - pauseAt
-				continue
-			end
-			local egg = targetPosition(cache, around, true)
-			local dt = math.max(RunService.Heartbeat:Wait(), 1 / 240)
-			local r = root()
-			if not valid() or held() or not r or os.clock() >= deadline then break end
-            if state.Carrying then continue end
-            if targetMissing then return false end
-			since += dt
-			if r and egg then
-				place(egg + Vector3.new(0, 3.2, 0))
-				pcall(function()
-					local humanoid = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
-					if humanoid then
-						humanoid.PlatformStand = false
-						humanoid.Jump = true
-					end
-					r.AssemblyLinearVelocity = Vector3.new(0, 45, 0)
-				end)
-				if since >= CFG.GrabInterval then
-					since = 0
-					local prompt = promptNear(egg - Vector3.new(0, 3, 0), 10)
-					if prompt then runtime.firePrompt(prompt) end
-					if not valid() or os.clock() >= deadline then break end
-					if not state.Carrying then runtime.spawn(takeEgg, uid) end
-				end
-			end
-		end
-        if held() then targetMissing = false end
-		return valid() and held()
-	end
-
-	if not held() then
-		status("Relay: confirming the carry")
-		local synced = 0
-		while not held() and synced < 2.5 and valid() do
-			synced += RunService.Heartbeat:Wait()
-		end
-		if not held() then
-			return false
-		end
-	end
-
-	local dropAt
-	local bank = typeof(semi.Home) == "Vector3" and semi.Home or safe
-	do
-		local dropX = DODGE_DROP_POINT.X
-		local lane = tonumber(runtime.Env.YslemDodgeLane) or DODGE_LANE_Z
-		local cruiseY = tonumber(runtime.Env.YslemDodgeY) or DODGE_Y
-		local dropPos = DODGE_DROP_POINT
-		local r0 = root()
-		if not r0 or not valid() then finish(); return false end
-		local startX = r0.Position.X
-		local totalDist = math.abs(startX - dropX)
-		slog(string.format("Dodge: %.0f studs from x=%.0f to the drop x=%.1f on lane z=%.1f y=%.0f, %.2f s after the pickup", totalDist, startX, dropX, lane, cruiseY, firstPick and (os.clock() - firstPick) or -1))
-		status("Dodge: running the chain")
-		progress(0.5, "Carrying the egg")
-		local dir = startX > dropX and -1 or 1
-		local travelled = 0
-		local pulls = 0
-		local lastPulled = state.PulledAt
-		local chainStart = os.clock()
-		local firstFrame = true
-		local chainOk = true
-		while travelled < totalDist and valid() do
-			local dt = firstFrame and 0 or math.min(RunService.Heartbeat:Wait(), 0.1)
-			if not valid() or not root() then chainOk = false; break end
-			if state.Ragdoll then
-				ragdollGuard(nil)
-				if not held() then
-					chainOk = false
-					break
-				end
-				local rr = root()
-				if rr then
-					travelled = math.clamp((rr.Position.X - startX) * dir, 0, totalDist)
-				end
-				continue
-			end
-			if not held() then
-				chainOk = false
-				break
-			end
-			local speed = travelled < DODGE_BURST_STUDS and DODGE_BURST_SPEED or DODGE_CRUISE_SPEED
-			travelled = math.min(travelled + speed * dt, totalDist)
-			local slowLen = DODGE_DESCENT_STUDS
-			local yNow = cruiseY
-			if slowLen > 0 and totalDist - travelled < slowLen then
-				yNow = cruiseY + (dropPos.Y - cruiseY) * (1 - (totalDist - travelled) / slowLen)
-			end
-			local frac = slowLen > 0 and totalDist - travelled < slowLen and (1 - (totalDist - travelled) / slowLen) or 0
-			place(Vector3.new(startX + dir * travelled, yNow, lane + (dropPos.Z - lane) * frac))
-			if firstFrame then
-				firstFrame = false
-				if firstPick and not state.CarryLogged then
-					state.CarryLogged = true
-					slog(string.format("Dodge: first write %.2f s after the carry started", os.clock() - firstPick))
-				end
-			end
-			if state.PulledAt > lastPulled then
-				lastPulled = state.PulledAt
-				pulls += 1
-				slog(string.format("Dodge: the server pulled us back at %.0f studs (%d)", travelled, pulls))
-				if pulls > 3 then
-					chainOk = false
-					break
-				end
-			end
-		end
-		slog(string.format("Dodge: chain done=%s in %.2f s", tostring(chainOk and travelled >= totalDist), os.clock() - chainStart))
-		if not chainOk or not valid() or not held() then
-			status("Dodge: the chain was interrupted")
-			finish()
-			return false
-		end
-		status("Dodge: at the drop spot")
-		progress(0.65, "At the drop spot")
-		local holdEnd = os.clock() + DODGE_DROP_WAIT
-		local minDrop = tonumber(runtime.Env.YslemDodgeMinDrop) or DODGE_MIN_DROP
-		if firstPick then
-			holdEnd = math.max(holdEnd, firstPick + minDrop)
-		end
-		slog(string.format("Dodge: at the drop spot %.2f s after the pickup, holding until %.2f s", os.clock() - (firstPick or os.clock()), holdEnd - (firstPick or os.clock())))
-		while os.clock() < holdEnd and valid() and held() do
-			place(dropPos)
-			RunService.Heartbeat:Wait()
-		end
-		local released = false
-		for attempt = 1, 4 do
-			if not held() or not valid() then
-				break
-			end
-			local rr = root()
-			if rr and (rr.Position - dropPos).Magnitude > 1 then
-				place(dropPos)
-			end
-			local settleUntil = os.clock() + (attempt == 1 and 0 or math.max(0.15, 2 * netPing()))
-			while os.clock() < settleUntil and valid() and held() do
-				place(dropPos)
-				RunService.Heartbeat:Wait()
-			end
-			if not held() then
-				break
-			end
-			slog(string.format("Dodge: drop button (try %d) %.2f s after the pickup, RunBackWakeDelayRequired=%s", attempt, os.clock() - (firstPick or os.clock()), tostring(state.WakeReq)))
-            if not valid() then finish(); return false end
-			dropEgg()
-			local dropUntil = os.clock() + 0.3
-			while held() and os.clock() < dropUntil and valid() do
-				place(dropPos)
-				RunService.Heartbeat:Wait()
-			end
-			if not held() then
-				break
-			end
-		end
-		released = not held()
-		if not released then
-			slog("Dodge: the drop did not go through")
-			status("Dodge: the drop did not go through")
-			finish()
-			return false
-		end
-		local droppedAt = os.clock()
-		dropAt = nil
-		local pollBy = os.clock() + 3
-		local dropCache = { At = 0 }
-		while os.clock() < pollBy and valid() do
-			dropAt = eggNow(uid, dropCache, true)
-			if dropAt then
-				break
-			end
-			place(dropPos)
-			wait(0.1)
-		end
-        if not valid() then finish(); return false end
-
-        if not dropAt and dropCache.Missing and not held() then
-            finish(); status("That egg is gone")
-            return false, "that egg is gone"
-        end
-		if dropAt and (dropAt - dropPos).Magnitude > 1500 then
-			state.NestBack = true
-			slog(string.format("the egg went back to its nest %.2f s after the pickup", os.clock() - (firstPick or os.clock())))
-			finish()
-			status("The egg went back to its nest")
-			return false
-		end
-		slog(string.format("Dodge: egg seen after the drop at %s, %.0f studs from the drop spot", dropAt and string.format("%.1f %.1f %.1f", dropAt.X, dropAt.Y, dropAt.Z) or "nowhere", dropAt and (dropAt - dropPos).Magnitude or -1))
-        if type(options.HelpFriend) == "function" and options.HelpFriend() == true then
-            local deadline = os.clock() + 3
-            while valid() and os.clock() < deadline do
-                local event = remote("RF/EggWorld/AskFieldEggSnapshot")
-                local ok, value = runtime.invoke(event, 2)
-                if not valid() then finish(); return false, "Cancelled" end
-                if ok and type(value) == "table" and type(value.Records) == "table"
-                    and not state.Carrying and not heldByMe(uid) then
-                    for _, item in pairs(value.Records) do
-                        if type(item) == "table" and item.Uid == uid
-                            and (item.State == "Dropped" or (item.State == "Carried" and item.CarrierUserId ~= nil and item.CarrierUserId ~= localPlayer.UserId)) then
-                            api.HandedOff = true
-                            finish()
-                            return false, "Dropped for a friend"
-                        end
-                    end
-                end
-                wait(0.1)
-            end
-            finish()
-            return false, "Friend handoff was not confirmed"
-        end
-		plantClown(dropPos)
-		progress(0.75, "Egg dropped")
-		status("Dodge: treadmill before the regrab")
-        local okTread = treadmillReset()
-        if not okTread and valid() then
-            status("Dodge: treadmill reset retry")
-            wait(0.25)
-            if not valid() then finish(); return false end
-            okTread = treadmillReset()
-        end
-        slog(string.format("Dodge: treadmill before the regrab done=%s, %.2f s after the drop", tostring(okTread), os.clock() - droppedAt))
-        if not okTread then
-            status("Treadmill reset failed")
-            finish()
-            return false
-        end
-        if not valid() then finish(); return false end
-		local back = clown.At or dropPos
-		slog(string.format("Dodge: re-teleport to the clown at %.1f %.1f %.1f", back.X, back.Y, back.Z))
-		place(back)
-		local regrabEnd = droppedAt + DODGE_REGRAB_WAIT
-		while os.clock() < regrabEnd and valid() do
-			place(back)
-			RunService.Heartbeat:Wait()
-		end
-		progress(0.85, "Taking the egg back")
-		status("Dodge: taking the egg back")
-        dropAt = targetPosition({ At = 0 }, dropAt)
-        if targetMissing then
-            finish(); status("That egg is gone")
-            return false, "that egg is gone"
-        end
-		if dropAt then
-			place(dropAt + Vector3.new(0, 3.2, 0))
-		end
-		local got = burst(1.5, dropAt or back)
-		slog(string.format("Dodge: taken back=%s %.2f s after the drop, RunBackWakeDelayRequired=%s", tostring(got), os.clock() - droppedAt, tostring(state.WakeReq)))
-		if not got and valid() and not targetMissing then
-			local again = targetPosition({ At = 0 }, dropAt)
-			if again then
-				place(again + Vector3.new(0, 3.2, 0))
-			end
-			got = burst(2.5, again or dropAt or back)
-		end
-		if not got and valid() and not targetMissing then
-			place(back)
-			wait(0.2)
-			local last = targetPosition({ At = 0 }, dropAt or back)
-			got = burst(3, last)
-		end
-		if not got then
-            if targetMissing then
-                finish(); status("That egg is gone")
-                return false, "that egg is gone"
-            end
-			slog("Dodge: could not take the egg back")
-			status("Could not take the egg back")
-			finish()
-			return false
-		end
-        if not valid() then finish(); return false end
-		progress(0.93, "Bringing it home")
-		status("Dodge: running to the clown's spot")
-		slog(string.format("Dodge: running to the clown's spot %.1f %.1f %.1f, %.2f s after the pickup", bank.X, bank.Y, bank.Z, os.clock() - (firstPick or os.clock())))
-		do
-			local hum = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
-			if hum then
-				hum.PlatformStand = false
-			end
-			local runEnd = os.clock() + 25
-			local lastRun = os.clock()
-			while valid() and state.Delivered < started and os.clock() < runEnd and held() do
-				local rr = root()
-				if not rr then
-					break
-				end
-				if state.Ragdoll then
-					ragdollGuard(nil)
-					continue
-				end
-				local nowRun = os.clock()
-				local dtRun = math.min(nowRun - lastRun, 0.1)
-				lastRun = nowRun
-				local toBank = Vector3.new(bank.X - rr.Position.X, 0, bank.Z - rr.Position.Z)
-				if toBank.Magnitude < 2 and math.abs(bank.Y - rr.Position.Y) < 6 then
-					break
-				end
-				local aim = avoid(rr.Position, bank)
-				local flat = Vector3.new(aim.X - rr.Position.X, 0, aim.Z - rr.Position.Z)
-				local waypointDistance = flat.Magnitude > 0.01 and flat.Magnitude or toBank.Magnitude
-				local stepLen = math.min(DODGE_CRUISE_SPEED * dtRun, toBank.Magnitude, waypointDistance)
-				local dir2 = flat.Magnitude > 0.01 and flat.Unit or (toBank.Magnitude > 0.01 and toBank.Unit or Vector3.zero)
-				place(Vector3.new(rr.Position.X + dir2.X * stepLen, bank.Y, rr.Position.Z + dir2.Z * stepLen))
-				RunService.Heartbeat:Wait()
-			end
-			pcall(function()
-				local rr = root()
-				if rr and valid() then
-					rr.AssemblyLinearVelocity = Vector3.zero
-				end
-			end)
-		end
-		local verdictBy = os.clock() + 4
-		while valid() and state.Delivered < started and os.clock() < verdictBy do
-			RunService.Heartbeat:Wait()
-		end
-		slog(string.format("Dodge: verdict=%s %.2f s after the pickup", tostring(state.Delivered >= started), os.clock() - (firstPick or os.clock())))
-	end
-	status("Relay: waiting for the deposit")
-	local depositBy = os.clock() + 8
-	while valid() and state.Delivered < started and os.clock() < depositBy do
-		if state.Ragdoll and ragdollGuard(nil) then
-			depositBy = os.clock() + 8
-		end
-		wait(0.1)
-	end
-	slog(string.format("Relay: banked=%s", tostring(state.Delivered >= started)))
-	if valid() and state.Delivered < started and firstPick and state.DeliveryFailedAt and state.DeliveryFailedAt > firstPick then
-		semi.WakeWait = math.min(15, semi.WakeWait + 2.5)
-		slog(string.format("Relay: the server refused the delivery %.1f s after the pickup, next try waits %.1f s", state.DeliveryFailedAt - firstPick, semi.WakeWait))
-	end
-	if state.Delivered < started and held() and valid() then
-		local lineX, _, _ = lineInfo()
-		local r = root()
-		local laneZ = r and math.clamp(r.Position.Z, -425, -300) or -364
-		slog("Relay: no deposit from the safe zone, running home")
-		local wasSlow = semi.SlowRun
-		semi.SlowRun = true
-		local okHome = runHome(lineX, laneZ, uid)
-        if not isAlive() or state.TripId ~= routeTrip or localPlayer.Character ~= character then return false end
-		semi.SlowRun = wasSlow
-		finish()
-		return okHome
-	end
-	finish()
-	return valid() and state.Delivered >= started
-end
-
-local function instantTP(uid)
-    local character = localPlayer.Character
-    local originalRoot = root()
-
-    local routeTrip = state.TripId
-    local original_dropClone = dropClone
-    local function dropClone(...)
-        if isAlive() and state.TripId == routeTrip and localPlayer.Character == character then
-            return original_dropClone(...)
-        end
-    end
-    local original_fpsOff = fpsOff
-    local function fpsOff(...)
-        if isAlive() and state.TripId == routeTrip and localPlayer.Character == character then
-            return original_fpsOff(...)
-        end
-    end
-    local original_releaseView = releaseView
-    local function releaseView(...)
-        if isAlive() and state.TripId == routeTrip and localPlayer.Character == character then
-            return original_releaseView(...)
-        end
-    end
-    local function valid()
-        return isAlive() and state.TripId == routeTrip and not state.Cancel and localPlayer.Character == character and originalRoot ~= nil and root() == originalRoot
-            and type(uid) == "string" and uid ~= ""
-            and (not state.Carrying or state.Uid == uid)
-    end
-    if not valid() then return false end
-    local originalDrop = dropEgg
-    local function dropEgg()
-        if valid() and state.Carrying and state.Uid == uid then return originalDrop() end
-    end
-    local originalPlace = place
-    local function place(position)
-        if valid() then originalPlace(position) end
-    end
-	local started = os.clock()
-	local lineX, lineY = lineInfo()
-	local r = root()
-	if not r then
-		return false
-	end
-	local laneZ = math.clamp(r.Position.Z, -425, -300)
-	local hopZ = math.clamp(r.Position.Z, -425, -300)
-	local semiFrozen = viewState ~= nil
-	local landing = Vector3.new(lineX + CFG.LandOffset, lineY + 3.35, laneZ)
-	local semiOnly = semiFrozen and semi.Kind ~= "decoy" and not semi.Plain
-	local semiEnd = (semiFrozen and not semi.Plain) or semi.SlowRun == true
-
-	local hopStep = math.max(walkSpeed() * CFG.HopRatio * (semiOnly and 0.85 or 1), CFG.HopMin)
-	local hopY = r.Position.Y + CFG.HopLift
-	local x = r.Position.X
-	local retries = 0
-	local shrinks = 0
-	local releaseCameraOriginal = semiFrozen and function() end or frozenCamera()
-    local function releaseCamera()
-        if isAlive() and state.TripId == routeTrip and localPlayer.Character == character then releaseCameraOriginal() end
-    end
-	state.ReleaseCamera = releaseCameraOriginal
-	if not semiFrozen then
-		pcall(postClone)
-	end
-	if not semi.Dodge then
-		fpsOn()
-	end
-	if semiFrozen or method == "Relay" then
-		local okRelay, relayReason = relayFlow(uid, started, releaseCamera, semiFrozen)
-		fpsOff()
-		return okRelay, relayReason
-	end
-
-	while x - hopStep > landing.X and valid() do
-		if not state.Carrying then
-
-			if not regrab(uid) then
-				break
-			end
-			local current = root()
-			if current and valid() then
-				x = math.min(x, current.Position.X)
-			end
-			continue
-		end
-
-		local nextX = x - hopStep
-		status(string.format("Instant TP: hopping home, X %d", math.floor(nextX)))
-		local pulledBefore = state.PulledAt
-		local held = 0
-		while held < CFG.HopGap and valid() and root() do
-			place(Vector3.new(nextX, hopY, hopZ))
-			held += RunService.Heartbeat:Wait()
-		end
-
-		local check = root()
-		local pulled = state.PulledAt > pulledBefore or (check ~= nil and (check.Position.X - nextX > 10 or check.AssemblyLinearVelocity.Magnitude > 150))
-		if pulled and state.Carrying and valid() then
-			retries += 1
-			CFG.HopGap = math.min(CFG.HopGapMax, CFG.HopGap + 0.02)
-			if retries > CFG.HopRetries then
-				if shrinks >= 2 then
-					break
-				end
-				shrinks += 1
-				retries = 0
-				hopStep = math.max(hopStep * 0.6, CFG.HopMin * 0.5)
-				CFG.HopGap = CFG.HopGapMax
-				status(string.format("Instant TP: pulled back too often, shorter hops (%d/2)", shrinks))
-			end
-			status(string.format("Instant TP: pulled back, retry %d/%d", retries, CFG.HopRetries))
-			local settle = 0
-			while settle < 0.12 and valid() do
-				place(Vector3.new(x, hopY, hopZ))
-				settle += RunService.Heartbeat:Wait()
-			end
-		else
-			x = nextX
-			CFG.HopGap = math.max(CFG.HopGapMin, CFG.HopGap - 0.01)
-		end
-	end
-
-	if not valid() or not root() then
-		releaseCamera()
-		dropClone()
-		fpsOff()
-		return false
-	end
-
-	status("Instant TP: landing next to the line")
-	landing = Vector3.new(landing.X, groundY(landing, landing.Y), landing.Z)
-	local function onSpot()
-		local current = root()
-		return valid() and current ~= nil and current.Position.X <= landing.X + 12 and math.abs(current.Position.Y - landing.Y) <= 10
-            and math.abs(current.Position.Z - landing.Z) <= 12
-	end
-	local function land()
-        if not valid() then return end
-		local current = root()
-
-		if current and current.Position.X <= landing.X + 1 and math.abs(current.Position.Y - landing.Y) <= 10
-            and math.abs(current.Position.Z - landing.Z) <= 10 then
-			pcall(function()
-				current.AssemblyLinearVelocity = Vector3.zero
-			end)
-			return
-		end
-		place(landing)
-	end
-	land()
-	for attempt = 1, 5 do
-		local settle = 0
-		while settle < CFG.LandSettle and valid() do
-			settle += RunService.Heartbeat:Wait()
-		end
-		if state.Carrying and not onSpot() then
-			status("Instant TP: landing retry " .. attempt)
-			land()
-		else
-			break
-		end
-	end
-	dropClone()
-
-	if state.Carrying and valid() then
-		local delay = 0
-		while delay < CFG.DropDelay and valid() do
-			delay += RunService.Heartbeat:Wait()
-		end
-		if state.Carrying and valid() and not onSpot() then
-			land()
-			local settle = 0
-			while settle < CFG.LandSettle and valid() do
-				settle += RunService.Heartbeat:Wait()
-			end
-		end
-		if not state.Carrying or not valid() then
-
-		elseif not onSpot() then
-			status("Instant TP: not on the drop spot, going home with the egg")
-		else
-			status("Instant TP: dropping the egg")
-			if semiFrozen then
-				local at = root()
-				if at then
-					slog(string.format("Instant TP: the clown drops the egg at x=%.0f z=%.0f (line %+.0f)", at.Position.X, at.Position.Z, at.Position.X - lineX))
-				end
-			end
-			for _ = 1, 3 do
-				dropEgg()
-				local waited = 0
-				while state.Carrying and waited < 0.8 and valid() do
-					waited += RunService.Heartbeat:Wait()
-				end
-				if not state.Carrying or not valid() then
-					break
-				end
-				status("Instant TP: the drop was not confirmed, trying again")
-				if not onSpot() then
-					land()
-				end
-			end
-			local current = root()
-			if current and valid() then
-				pcall(function()
-					current.AssemblyLinearVelocity = Vector3.zero
-					current.AssemblyAngularVelocity = Vector3.zero
-				end)
-			end
-
-			local dropSpot = root()
-			if dropSpot and valid() then
-				local looked = 0
-				while looked < 0.25 and valid() do
-					looked += RunService.Heartbeat:Wait()
-				end
-				local lies = eggNow(uid, { At = 0 })
-                if not valid() then return false end
-				if lies then
-					local away = (lies - dropSpot.Position).Magnitude
-					slog(string.format("timeline: the egg lies %.0f studs from the drop spot %.2f s after the drop", away, looked))
-					if away > 120 then
-						state.NestBack = true
-						slog("the egg went back to its nest after the drop")
-						releaseCamera()
-						if semiFrozen then
-							releaseView()
-						end
-						dropClone()
-						fpsOff()
-						status("The egg went back to its nest")
-						return false
-					end
-				end
-			end
-
-			releaseCamera()
-			if semiFrozen and semi.AtDrop == true then
-				releaseView()
-			end
-			dropClone()
-			status("Instant TP: taking the egg back")
-			if not valid() then return false end
-            local tookBack = grab(uid, 3) or (valid() and regrab(uid))
-			for _ = 1, 3 do
-				if tookBack or not valid() then
-					break
-				end
-				status("Instant TP: the egg is not in the hands yet, trying again")
-				tookBack = regrab(uid) or (valid() and grab(uid, 2))
-			end
-			if not tookBack then
-				fpsOff()
-				status("Could not take the egg back")
-				return false
-			end
-			dropClone()
-		end
-	end
-	releaseCamera()
-
-	local ok = false
-	local function goHome()
-        if not valid() then return false end
-		if semiEnd then
-			for round = 1, 2 do
-				if tpHome(lineX, laneZ, started, uid) then
-					return true
-				end
-				if not state.Carrying or not valid() then
-					return state.Delivered >= started
-				end
-				status(string.format("Instant TP: teleport home again (%d/2)", round))
-			end
-		end
-		return runHome(lineX, laneZ, uid)
-	end
-	if state.Carrying then
-		ok = goHome()
-	end
-	local again = 0
-	while not ok and state.Delivered < started and valid() and again < 2 do
-		again += 1
-		status(string.format("Instant TP: not delivered yet, going home again (%d/2)", again))
-		if not state.Carrying and not regrab(uid) then
-			break
-		end
-		local current = root()
-		if current and current.Position.X > lineX + 8 then
-			place(Vector3.new(lineX + 8, math.max(current.Position.Y, lineY + 3.35), current.Position.Z))
-			RunService.Heartbeat:Wait()
-		end
-		ok = goHome()
-	end
-	fpsOff()
-	return valid() and (ok or state.Delivered >= started)
-end
-
-local function returnFront()
-    local character = localPlayer.Character
-    local originalRoot = root()
-
-    local routeTrip = state.TripId
-    local function valid()
-        return isAlive() and state.TripId == routeTrip and not state.Cancel and localPlayer.Character == character and originalRoot ~= nil and root() == originalRoot
-    end
-    if not valid() then return false end
-	local reached = false
-	pcall(function()
-		local waited = 0
-		while root() and root().Position.Y > 5000 and waited < 8 and valid() do
-			waited += RunService.Heartbeat:Wait()
-		end
-		local r = root()
-		if not r or not valid() then
-			return
-		end
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.PlatformStand = false
-		end
-		local lineX = lineInfo()
-		local home = homePoint()
-		local hopZ = math.clamp(r.Position.Z, -425, -300)
-		local frontX = lineX - 7
-		local hopStep = math.max(walkSpeed() * CFG.HopRatio * 0.85, CFG.HopMin)
-		local hopY = r.Position.Y + CFG.HopLift
-		local x = r.Position.X
-		local gap = CFG.HopGap
-		local retries, shrinks = 0, 0
-		status("Going back to the front")
-		while x - frontX > hopStep and valid() do
-			local nextX = x - hopStep
-			local pulledBefore = state.PulledAt
-			local held = 0
-			while held < gap and valid() do
-				place(Vector3.new(nextX, hopY, hopZ))
-				held += RunService.Heartbeat:Wait()
-			end
-			local check = root()
-			local pulled = state.PulledAt > pulledBefore or (check ~= nil and check.Position.X - nextX > 10)
-			if pulled then
-				retries += 1
-				gap = math.min(CFG.HopGapMax, gap + 0.02)
-				if retries > CFG.HopRetries then
-					if shrinks >= 2 then
-						break
-					end
-					shrinks += 1
-					retries = 0
-					hopStep = math.max(hopStep * 0.6, CFG.HopMin * 0.5)
-				end
-				local settle = 0
-				while settle < 0.12 and valid() do
-					place(Vector3.new(x, hopY, hopZ))
-					settle += RunService.Heartbeat:Wait()
-				end
-			else
-				x = nextX
-			end
-		end
-		if not valid() then
-			return
-		end
-		for _, target in ipairs({ Vector3.new(frontX, home.Y, hopZ), home }) do
-			local held = 0
-			while held < math.max(gap, 0.1) and valid() do
-				place(target)
-				held += RunService.Heartbeat:Wait()
-			end
-		end
-		local settle = 0
-		while settle < 0.4 and valid() do
-			settle += RunService.Heartbeat:Wait()
-		end
-		local at = root()
-		reached = valid() and at ~= nil and (at.Position - home).Magnitude <= 20
-	end)
-	return reached
-end
-
-local function semiGo(uid, egg)
-	local startRoot = root()
-	if not isAlive() or state.Cancel or not startRoot then
-		return false, "Semi TP: no character yet"
-	end
-	local character = localPlayer.Character
-	local routeTrip = state.TripId
-    local original_releaseView = releaseView
-    local function releaseView(...)
-        if isAlive() and state.TripId == routeTrip and localPlayer.Character == character then
-            return original_releaseView(...)
-        end
-    end
-	local function valid()
-		return isAlive() and state.TripId == routeTrip and not state.Cancel and localPlayer.Character == character and root() == startRoot
-	end
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local startCF = startRoot.CFrame
-	local cache = { At = 0, Pos = egg }
-	local function eggPos()
-        local current = eggNow(uid, cache, true)
-
-        if cache.Missing then return nil end
-        return current or egg
-	end
-	local function eggPart()
-		local node = workspace:FindFirstChild(uid)
-		local slots = workspace:FindFirstChild("AreaEggSlotsClient")
-		node = node or (slots and slots:FindFirstChild(uid))
-		if not node then
-			return nil
-		end
-		if node:IsA("BasePart") then
-			return node
-		end
-		return node:FindFirstChild("Hitbox", true) or node:FindFirstChildWhichIsA("BasePart", true)
-	end
-
-	local camera = workspace.CurrentCamera
-	local camOffset = camera and (camera.CFrame.Position - startRoot.Position) or Vector3.new(0, 8, 14)
-	local camRot = camera and camera.CFrame.Rotation or CFrame.new()
-
-	semi.Kind, semi.AtDrop, semi.Home, semi.Plain = nil, false, nil, false
-	slog(string.format("Semi TP from %.0f,%.0f,%.0f to the egg %.0f,%.0f,%.0f", startRoot.Position.X, startRoot.Position.Y, startRoot.Position.Z, egg.X, egg.Y, egg.Z))
-
-	if (egg - startRoot.Position).Magnitude <= 60
-        and math.abs(startRoot.Position.Y - (egg.Y + 3)) < 6 then
-
-		semi.Kind = "decoy"
-		semi.AtDrop = true
-		local spotAt = startRoot.Position
-		local okFreeze = freezeView(character, Vector3.zero, nil)
-		if not valid() then releaseView(); return false, "Semi TP: cancelled or no character" end
-		semi.Home = okFreeze and spotAt or nil
-		slog("egg close: decoy at home, frozen=" .. tostring(okFreeze))
-		return true, { Decoy = true }
-	end
-
-	semi.Kind = "semi"
-	semi.AtDrop = true
-	for _ = 1, 3 do
-		RunService.Heartbeat:Wait()
-	end
-	if not valid() then return false, "Semi TP: cancelled or no character" end
-	local shieldSince = os.clock()
-	while not swapped() and os.clock() - shieldSince < 5 and valid() do
-		pcall(function()
-			local r0 = root()
-			if r0 then
-				r0.AssemblyLinearVelocity = Vector3.zero
-			end
-			if humanoid then
-				humanoid:Move(Vector3.zero, false)
-			end
-		end)
-		RunService.Heartbeat:Wait()
-	end
-	if not valid() then return false, "Semi TP: cancelled or no character" end
-	slog(string.format("shield=%s after %.2f s", tostring(swapped()), os.clock() - shieldSince))
-	local safeStand = Vector3.new(RELAY_SAFE.X, groundY(RELAY_SAFE, RELAY_SAFE.Y), RELAY_SAFE.Z)
-	local atNow = root()
-	local lineNow = lineInfo()
-
-	local needMove = atNow and (atNow.Position - safeStand).Magnitude > 3
-	if needMove then
-		if atNow.Position.X > lineNow + 100 then
-			status("Semi TP: hopping back to the base first")
-			returnFront()
-			if not valid() then
-				return false, "cancelled"
-			end
-		end
-		status("Semi TP: going to the safe-zone point")
-		place(safeStand)
-		for _ = 1, 8 do
-			if not valid() then return false, "Semi TP: cancelled or no character" end
-			RunService.Heartbeat:Wait()
-		end
-		if not valid() then return false, "Semi TP: cancelled or no character" end
-		pcall(function()
-			local r1 = root()
-			if r1 then
-				r1.AssemblyLinearVelocity = Vector3.zero
-				r1.AssemblyAngularVelocity = Vector3.zero
-			end
-		end)
-	end
-	if not valid() then return false, "Semi TP: cancelled or no character" end
-	local freezeAt = root()
-	local freezeSpot = freezeAt and freezeAt.Position or safeStand
-	local function freezeNow()
-		return freezeView(character, Vector3.zero, CFrame.new(freezeSpot + camOffset) * camRot)
-	end
-	local okFreeze = freezeNow()
-    if not valid() then releaseView(); return false, "Semi TP: cancelled or no character" end
-	if not okFreeze then
-		releaseView()
-		if not valid() then return false, "Semi TP: cancelled or no character" end
-		okFreeze = freezeNow()
-	end
-    if not valid() then releaseView(); return false, "Semi TP: cancelled or no character" end
-	semi.Home = okFreeze and freezeSpot or nil
-	slog("player frozen at the safe-zone point = " .. tostring(okFreeze))
-	for _ = 1, 6 do
-		if not valid() then releaseView(); return false, "Semi TP: cancelled or no character" end
-		RunService.Heartbeat:Wait()
-	end
-	if not valid() then releaseView(); return false, "Semi TP: cancelled or no character" end
-	pcall(function()
-		local hum = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if hum then
-			semi.Rotate = { Hum = hum, Old = hum.AutoRotate }
-			hum.AutoRotate = false
-		end
-	end)
-
-	local stableRot = startRoot.CFrame.Rotation
-	pcall(function()
-		local flat = Vector3.new(egg.X - startRoot.Position.X, 0, egg.Z - startRoot.Position.Z)
-		if flat.Magnitude > 1 then
-			stableRot = CFrame.lookAt(Vector3.zero, flat).Rotation
-		end
-	end)
-	local function placeAt(p)
-		local r = root()
-		if r then
-			pcall(function()
-				r.CFrame = CFrame.new(p) * stableRot
-				r.AssemblyLinearVelocity = Vector3.zero
-				r.AssemblyAngularVelocity = Vector3.zero
-			end)
-		end
-	end
-	local function inBiome()
-		local r = root()
-		return r ~= nil and r.Position.Y > 5000
-	end
-	local function jumpNow()
-		local hum = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if hum then
-			pcall(function()
-				hum.Jump = true
-				hum:ChangeState(Enum.HumanoidStateType.Jumping)
-			end)
-		end
-	end
-	local function holdPause(t)
-		local w = 0
-		while w < t and not state.Cancel do
-			w += RunService.Heartbeat:Wait()
-		end
-	end
-
-	local groundSkip, groundSkipAt = nil, 0
-	local function groundAt(pos, from)
-		local found = nil
-		pcall(function()
-			if not groundSkip or os.clock() - groundSkipAt > 1 then
-				groundSkip = {}
-				groundSkipAt = os.clock()
-				local slots = workspace:FindFirstChild("AreaEggSlotsClient")
-				if slots then
-					groundSkip[#groundSkip + 1] = slots
-				end
-				for _, child in ipairs(workspace:GetChildren()) do
-					if child:IsA("Model") and #child.Name == 32 and child:FindFirstChild("Hitbox") then
-						groundSkip[#groundSkip + 1] = child
-					end
-				end
-			end
-			local list = { localPlayer.Character }
-
-            local target = workspace:FindFirstChild(uid)
-            if target then list[#list + 1] = target end
-            if stealClone then list[#list + 1] = stealClone end
-			for _, v in ipairs(groundSkip) do
-				list[#list + 1] = v
-			end
-			local params = RaycastParams.new()
-			params.FilterType = Enum.RaycastFilterType.Exclude
-			params.FilterDescendantsInstances = list
-			params.IgnoreWater = true
-			pcall(function()
-				params.RespectCanCollide = true
-			end)
-			local origin = Vector3.new(pos.X, from, pos.Z)
-			for _ = 1, 4 do
-				local hit = workspace:Raycast(origin, Vector3.new(0, -400, 0), params)
-				if not hit then
-					break
-				end
-				if hit.Material ~= Enum.Material.Water and hit.Instance.CanCollide then
-					found = hit.Position
-					break
-				end
-				origin = hit.Position - Vector3.new(0, 0.05, 0)
-			end
-		end)
-		return found
-	end
-	local function standHeight()
-
-        local h = 3
-        local character2, r = localPlayer.Character, root()
-        local ok, exact = pcall(function()
-            local hum = character2 and character2:FindFirstChildOfClass("Humanoid")
-            if not hum or not r then return nil end
-            return r.Size.Y * 0.5 + (hum.RigType == Enum.HumanoidRigType.R6 and 2 or hum.HipHeight)
-        end)
-        if ok and type(exact) == "number" and exact > 1 and exact < 12 then
-            return exact + 0.05
-        end
-        pcall(function()
-            if character2 and r then
-                local box, boxSize = character2:GetBoundingBox()
-                local value = r.Position.Y - (box.Position.Y - boxSize.Y / 2)
-                if value > 1 and value < 12 then h = value end
-            end
-        end)
-        return h + 0.05
-	end
-	local approachDir = nil
-	pcall(function()
-		local flat = Vector3.new(startRoot.Position.X - egg.X, 0, startRoot.Position.Z - egg.Z)
-		if flat.Magnitude > 1 then
-			approachDir = flat.Unit
-		end
-	end)
-	local function landFor(at, high)
-        local dir = approachDir or Vector3.new(-1, 0, 0)
-        local stand = 2.5
-        pcall(function()
-            local part = eggPart()
-            if part and part.CanCollide then
-                stand = math.clamp(math.sqrt(part.Size.X ^ 2 + part.Size.Z ^ 2) / 2 + 2.2, 2.5, 7)
-            end
-        end)
-        local side = Vector3.new(-dir.Z, 0, dir.X)
-        local diagonal = math.sqrt(0.5)
-        local directions = {
-            dir, dir * -1, side, side * -1,
-            (dir + side) * diagonal, (dir - side) * diagonal,
-            (side - dir) * diagonal, (dir + side) * -diagonal,
-        }
-        local height, lower = standHeight(), nil
-
-        for _, direction in ipairs(directions) do
-            local base = Vector3.new(at.X + direction.X * stand, at.Y + 3, at.Z + direction.Z * stand)
-            local hit = groundAt(base, at.Y + (high and 160 or 6))
-            if hit then
-                local gap = math.abs(hit.Y - at.Y)
-                if gap < (high and 150 or 12) then
-                    return Vector3.new(base.X, hit.Y + height, base.Z)
-                end
-                if not high and gap < 40 and not lower then
-                    lower = Vector3.new(base.X, hit.Y + height, base.Z)
-                end
-            end
-        end
-
-        return lower
-	end
-	semi.LandFor = landFor
-
-	local function zoneRoots()
-		local out = {}
-		local base = workspace:FindFirstChild("World") or workspace:FindFirstChild("__OBJECTS")
-		base = base and base:FindFirstChild("Build")
-		for _, name in ipairs({ "FuseBiomeZone", "EnchantedTreeInterior" }) do
-			local node = base and base:FindFirstChild(name)
-			if node then
-				out[#out + 1] = node
-			end
-		end
-		return out
-	end
-	local function zoneExits()
-		local list, all = {}, {}
-		for _, zone in ipairs(zoneRoots()) do
-			for _, d in ipairs(zone:GetDescendants()) do
-				all[#all + 1] = d
-			end
-		end
-		local good = { "exit", "leave", "return", "back", "home", "portal", "gate", "door", "out", "teleport", "warp", "spawn", "lobby", "world", "main" }
-		local bad = { "fusion", "shrine", "pad", "place", "sell", "buy", "shop", "lion", "whale" }
-		local function score(inst, extra)
-			local label = string.lower(inst.Name .. " " .. (inst.Parent and inst.Parent.Name or "") .. " " .. (extra or ""))
-			for _, w in ipairs(bad) do
-				if string.find(label, w, 1, true) then
-					return 0
-				end
-			end
-			for _, w in ipairs(good) do
-				if string.find(label, w, 1, true) then
-					return 1
-				end
-			end
-			return 0
-		end
-		pcall(function()
-			for _, d in ipairs(all) do
-				if d:IsA("ProximityPrompt") and score(d, d.ActionText .. " " .. d.ObjectText) > 0 then
-					list[#list + 1] = d
-				elseif d:IsA("BasePart") and d.Size.Magnitude < 250 and score(d) > 0 then
-					list[#list + 1] = d
-				end
-				if #list >= 16 then
-					break
-				end
-			end
-		end)
-		return list
-	end
-	local function leaveByExits()
-		local list = zoneExits()
-		local function posOf(c)
-			if c:IsA("ProximityPrompt") then
-				local part = c.Parent
-				local reach = math.max(3, math.min(c.MaxActivationDistance - 1.5, 8))
-				if part and part:IsA("BasePart") then
-					return part.Position, reach
-				end
-				if part and part:IsA("Attachment") then
-					return part.WorldPosition, reach
-				end
-				return nil, 0
-			end
-			return c.Position, 1.5
-		end
-		local tried = {}
-		local deadline = os.clock() + 16
-		while os.clock() < deadline and not state.Cancel do
-			if not inBiome() then
-				return true
-			end
-			local r0 = root()
-			if not r0 then
-				break
-			end
-			local best, bestD, bestReach, bestPos
-			for _, c in ipairs(list) do
-				if not tried[c] and c.Parent then
-					local tp, rc = posOf(c)
-					if tp then
-						local d = (tp - r0.Position).Magnitude
-						if semi.ExitPath and c:GetFullName() == semi.ExitPath then
-							d = d - 1e6
-						end
-						if not bestD or d < bestD then
-							best, bestD, bestReach, bestPos = c, d, rc, tp
-						end
-					end
-				end
-			end
-			if not best then
-				break
-			end
-			tried[best] = true
-			slog("walking to " .. best.Name)
-			bestD = math.max(bestD, 0)
-			local speed = math.max(walkSpeed() * 1.1, walkSpeed() * 1.8, 22)
-			local legEnd = os.clock() + math.min(bestD / speed + 1.5, 7)
-			local lastJump = 0
-			while os.clock() < legEnd and os.clock() < deadline and not state.Cancel do
-				if not inBiome() then
-					pcall(function()
-						semi.ExitPath = best:GetFullName()
-					end)
-					slog("out through " .. best.Name)
-					return true
-				end
-				local r = root()
-				local hum = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
-				if not r or not hum then
-					break
-				end
-				local flat = Vector3.new(bestPos.X - r.Position.X, 0, bestPos.Z - r.Position.Z)
-				local dist = (r.Position - bestPos).Magnitude
-				if best:IsA("ProximityPrompt") and dist <= bestReach + 1 then
-					if typeof(fireproximityprompt) == "function" then
-						pcall(fireproximityprompt, best)
-					end
-					local w = 0
-					while w < 1.2 and inBiome() and not state.Cancel do
-						w += RunService.Heartbeat:Wait()
-					end
-					break
-				end
-				pcall(function()
-					hum:MoveTo(bestPos)
-					if flat.Magnitude > 2 then
-						local dir = flat.Unit
-						r.AssemblyLinearVelocity = Vector3.new(dir.X * speed, r.AssemblyLinearVelocity.Y, dir.Z * speed)
-					end
-				end)
-				if os.clock() - lastJump > 0.7 and (dist < 14 or (r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude < 1) then
-					lastJump = os.clock()
-					jumpNow()
-				end
-				RunService.Heartbeat:Wait()
-			end
-		end
-		return not inBiome()
-	end
-	local function walkOut()
-		status("Semi TP: waiting for the return")
-		local t0 = os.clock()
-		while inBiome() and os.clock() - t0 < 5.5 and not state.Cancel do
-			RunService.Heartbeat:Wait()
-		end
-		if not inBiome() then
-			return true
-		end
-		leaveByExits()
-		if not inBiome() then
-			return true
-		end
-		local arrival = root() and root().Position or nil
-		local backDirs = {}
-		do
-			local r = root()
-			if r then
-				local look = r.CFrame.LookVector
-				local flat = Vector3.new(look.X, 0, look.Z)
-				if flat.Magnitude > 0.1 then
-					backDirs[#backDirs + 1] = -flat.Unit
-					backDirs[#backDirs + 1] = flat.Unit
-				end
-			end
-			backDirs[#backDirs + 1] = Vector3.new(-1, 0, 0)
-		end
-		local stepsDone = 0
-		for _, dir in ipairs(backDirs) do
-			for _ = 1, 2 do
-				if not inBiome() or state.Cancel then
-					break
-				end
-				local r = root()
-				if r and arrival then
-					local origin = r.Position
-					local moveEnd = os.clock() + 0.45
-					while inBiome() and os.clock() < moveEnd and not state.Cancel do
-						pcall(function()
-							r.AssemblyLinearVelocity = Vector3.new(dir.X * 110, 0, dir.Z * 110)
-						end)
-						RunService.Heartbeat:Wait()
-						if (r.Position - origin).Magnitude >= 30 or r.Position.Y < arrival.Y - 6 then
-							break
-						end
-					end
-					pcall(function()
-						r.AssemblyLinearVelocity = Vector3.zero
-					end)
-				end
-				stepsDone += 1
-				task.wait(0.15)
-			end
-			if not inBiome() then
-				break
-			end
-			if arrival and root() then
-				placeAt(arrival)
-			end
-		end
-		slog("went back " .. stepsDone .. " times, inBiome=" .. tostring(inBiome()))
-		local t1 = os.clock()
-		while inBiome() and os.clock() - t1 < 8 and not state.Cancel do
-			RunService.Heartbeat:Wait()
-		end
-		return not inBiome()
-	end
-
-	local touchWon, routeReason = nil, nil
-	do
-		status("Dodge: jump to the egg")
-		if not valid() then releaseView(); return false, "Semi TP: cancelled or no character" end
-		touchWon, routeReason = semi.DodgeRoute({ Uid = uid, EggPos = eggPos, LandFor = landFor, Grab = grab })
-		if not valid() then releaseView(); return false, "Semi TP: cancelled or no character" end
-		slog("Dodge route: " .. tostring(touchWon))
-		if not touchWon then
-			releaseView()
-            if not valid() then return false, "cancelled" end
-			local r = root()
-			if r then
-				pcall(function()
-					r.CFrame = startCF
-					r.AssemblyLinearVelocity = Vector3.zero
-					r.AssemblyAngularVelocity = Vector3.zero
-				end)
-			end
-			task.wait(0.2)
-			return false, routeReason or "Dodge: the jump to the egg was not accepted"
-		end
-		semi.Plain = true
-		return true, { Arrived = true, Plain = true }
-	end
-	return true, { Plain = true }
-end
-
-local worldResetTime, lastResetCheck = 0, 0
-runtime.spawn(function()
-	while isAlive() do
-		task.wait(1)
-		if state.Busy and not state.HalloweenOwner then
-			local now = os.clock()
-			if now - lastResetCheck >= 1 then
-				lastResetCheck = now
-				local okClock, clock = pcall(function()
-					return game:GetService("Lighting").ClockTime
-				end)
-				local wt = okClock and tonumber(clock) or 0
-				if wt < 0.5 and worldResetTime > 0 and os.clock() - worldResetTime > 60 then
-					worldResetTime = 0
-					state.Cancel = true
-					status("World reset detected")
-				elseif wt >= 0.5 then
-					worldResetTime = now
-				end
-			end
-		end
-	end
-end)
-
-local DIM_CENTER = Vector3.new(-5800, -200, -6200)
-local function inDimension()
-	if localPlayer:GetAttribute("InHalloweenDimension") ~= true then
-		return false
-	end
-	local r = root()
-	return r == nil or (r.Position - DIM_CENTER).Magnitude < 4000
-end
-
-local function getOffTreadmill()
-	local character = localPlayer.Character
-    local originalRoot = root()
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local routeTrip = state.TripId
-	local function valid()
-		return isAlive() and state.TripId == routeTrip and not state.Cancel
-            and localPlayer.Character == character and originalRoot ~= nil and root() == originalRoot
-            and humanoid ~= nil and humanoid.Health > 0
-	end
-	for _ = 1, 3 do
-		local r = root()
-		if not valid() then return false end
-		if not r.Anchored then return true end
-		local askDoff = remote("RF/Treadmill/AskDoff")
-		if askDoff and askDoff:IsA("RemoteFunction") then
-			runtime.invoke(askDoff, 4)
-		end
-		if not valid() then return false end
-		local held, limit = 0, 1.5 + netPing()
-		while held < limit and valid() do
-			local rr = root()
-			if not rr then return false end
-			if not rr.Anchored then return true end
-			held += RunService.Heartbeat:Wait()
-		end
-	end
-	local r = root()
-	return valid() and r ~= nil and not r.Anchored
-end
-
-runtime.autoTreadmill = (function()
-    local api = { Enabled = true, Active = nil, Running = false, Generation = 0 }
-
-    function api.isEnabled()
-        if not api.Enabled then return false end
-        local setting = options.AutoTreadmill
-        if type(setting) == "function" then
-            local ok, enabled = pcall(setting)
-            return ok and enabled == true
-        end
-        return setting == nil or setting == true
-    end
-    local function finite(position)
-        return typeof(position) == "Vector3" and position.X == position.X and position.Y == position.Y and position.Z == position.Z
-            and math.abs(position.X) < math.huge and math.abs(position.Y) < math.huge and math.abs(position.Z) < math.huge
-    end
-    function api.cancel()
-        api.Generation += 1
-        local token = api.Active
-        api.Active, api.Running = nil, false
-        if token and token.RequestKey then runtime.cancelRequest(token.RequestKey, "Auto treadmill cancelled") end
-    end
-    function api.setEnabled(enabled)
-        enabled = enabled == true
-        if api.Enabled == enabled then return end
-        api.Enabled = enabled
-        api.cancel()
-    end
-    function api.run(tripId, tripChar)
-        if not api.isEnabled() then return false, "Auto treadmill is off" end
-        local previous = api.Active
-        if previous then
-
-            local stale = previous.TripId ~= state.TripId or previous.Character ~= localPlayer.Character
-                or previous.Root ~= root() or previous.Generation ~= api.Generation or not state.Busy
-                or state.Cancel or state.Died or coroutine.status(previous.Thread) == "dead"
-            if stale then api.cancel() else return false, "Auto treadmill is already running" end
-        end
-        local startRoot = root()
-        local token = { Generation = api.Generation, TripId = tripId, Character = tripChar,
-            Root = startRoot, Thread = coroutine.running() }
-        api.Active, api.Running = token, true
-        local function current()
-            if not isAlive() or api.Active ~= token or not api.isEnabled() or api.Generation ~= token.Generation
-                or not state.Busy or state.TripId ~= tripId or state.Cancel or state.Died or state.Carrying
-                or (type(state.TargetUid) == "string" and heldByMe(state.TargetUid))
-                or localPlayer.Character ~= tripChar or startRoot == nil or root() ~= startRoot or viewState then return false end
-            if runtime.bigEggFinder and runtime.bigEggFinder.IsJoining then return false end
-            local hum = tripChar and tripChar:FindFirstChildOfClass("Humanoid")
-            return hum ~= nil and hum.Health > 0
-        end
-        local function request(budget, callback, ...)
-            if not current() or budget <= 0 then return false, "Treadmill return cancelled" end
-            local key = {}
-            token.RequestKey = key
-            local values = table.pack(runtime.call(key, budget, function(...)
-                if not current() then return nil end
-                return callback(...)
-            end, ...))
-            if token.RequestKey == key then token.RequestKey = nil end
-            return table.unpack(values, 1, values.n)
-        end
-        local function cancelledReason()
-            return api.isEnabled() and "Treadmill return cancelled" or "Auto treadmill is off"
-        end
-        local ok, mounted, reason = pcall(function()
-            if not current() then return false, cancelledReason() end
-            local wear = remote("RF/Treadmill/AskWearStill")
-            local snapshotRemote = remote("RF/Treadmill/AskRenderSnapshot")
-            if not wear or not wear:IsA("RemoteFunction") or not snapshotRemote or not snapshotRemote:IsA("RemoteFunction") then
-                return false, "Treadmill remotes unavailable"
-            end
-            local function remotesCurrent()
-                return remote("RF/Treadmill/AskWearStill") == wear
-                    and remote("RF/Treadmill/AskRenderSnapshot") == snapshotRemote
-            end
-            local deadline = os.clock() + 12
-            local function budget(limit) return math.min(limit, math.max(0, deadline - os.clock())) end
-            local checkOk, alreadyMounted = request(budget(1.25), treadmillMounted, budget(1.25), snapshotRemote)
-            if not current() then return false, cancelledReason() end
-            if not remotesCurrent() then return false, "Treadmill changed; try again" end
-            if checkOk and alreadyMounted == true then return true, "On treadmill" end
-            if not checkOk or alreadyMounted == nil then return false, "Treadmill state unavailable" end
-            local found, stand = request(budget(4), treadmillStand)
-            if not current() then return false, cancelledReason() end
-            if not found or not finite(stand) then return false, "Treadmill stand unavailable" end
-            if os.clock() >= deadline then return false, "Treadmill return timed out" end
-            if not remotesCurrent() then
-                return false, "Treadmill changed; try again"
-            end
-
-            place(stand)
-            if not current() then return false, cancelledReason() end
-            local settleUntil = math.min(deadline, os.clock() + 0.15)
-            while current() and os.clock() < settleUntil do RunService.Heartbeat:Wait() end
-            if not current() then return false, cancelledReason() end
-            if not finite(startRoot.Position) or (startRoot.Position - stand).Magnitude > 5 then
-                return false, "Could not reach treadmill"
-            end
-
-            if not remotesCurrent() then return false, "Treadmill changed; try again" end
-            local wore, accepted = request(budget(3), wear.InvokeServer, wear)
-            if not current() then return false, cancelledReason() end
-            if not remotesCurrent() then return false, "Treadmill changed; try again" end
-            if not wore or accepted == false or (type(accepted) == "table" and (accepted.Success == false or accepted.success == false)) then
-                return false, "Treadmill mount was not accepted"
-            end
-            local confirmUntil = math.min(deadline, os.clock() + 3)
-            for _ = 1, 8 do
-                if not current() then return false, cancelledReason() end
-                if not remotesCurrent() then return false, "Treadmill changed; try again" end
-                local remaining = confirmUntil - os.clock()
-                if remaining <= 0 then break end
-                local confirmed, value = request(math.min(1, remaining), treadmillMounted, math.min(1, remaining), snapshotRemote)
-                if not current() then return false, cancelledReason() end
-                if not remotesCurrent() then return false, "Treadmill changed; try again" end
-                if confirmed and value == true and os.clock() <= confirmUntil then return true, "On treadmill" end
-                if not confirmed or value == nil then return false, "Treadmill mount unconfirmed" end
-                local waitUntil = math.min(confirmUntil, os.clock() + 0.2)
-                while current() and os.clock() < waitUntil do RunService.Heartbeat:Wait() end
-            end
-            return false, "Treadmill mount unconfirmed"
-        end)
-        if api.Active == token then api.Active, api.Running = nil, false end
-        if not ok then
-            slog("Auto treadmill: " .. tostring(mounted))
-            return false, "Treadmill return failed"
-        end
-        return mounted == true, reason
-    end
-    return api
-end)()
-
-function runtime.prepareArea(position)
-    if not isAlive() or state.Cancel or typeof(position) ~= "Vector3"
-        or position.X ~= position.X or position.Y ~= position.Y or position.Z ~= position.Z
-        or math.abs(position.X) == math.huge or math.abs(position.Y) == math.huge or math.abs(position.Z) == math.huge then
-        return false
-    end
-    local supported = false
-    pcall(function()
-        supported = workspace.StreamingEnabled == true and type(localPlayer.RequestStreamAroundAsync) == "function"
-    end)
-    if not supported then return false end
-    local character, tripId, originalRoot = localPlayer.Character, state.TripId, root()
-    local function current()
-        return isAlive() and not state.Cancel and state.TripId == tripId
-            and localPlayer.Character == character and originalRoot ~= nil and root() == originalRoot
-    end
-    if not current() then return false end
-    local ok, completed = runtime.call({}, 2.5, function()
-        if not current() then return false end
-        localPlayer:RequestStreamAroundAsync(position, 2)
-        return current()
-    end)
-    return ok and completed == true and current()
-end
-
-semi.DodgeRoute = function(ctx)
-	if type(ctx) ~= "table" or type(ctx.Uid) ~= "string" or type(ctx.EggPos) ~= "function"
-		or type(ctx.LandFor) ~= "function" or type(ctx.Grab) ~= "function" then return false end
-	local character = localPlayer.Character
-    local originalRoot = root()
-	local routeTrip = state.TripId
-    local function finite(point)
-        return typeof(point) == "Vector3" and point.X == point.X and point.Y == point.Y and point.Z == point.Z
-            and math.abs(point.X) < math.huge and math.abs(point.Y) < math.huge and math.abs(point.Z) < math.huge
-    end
-    local function valid()
-        if not isAlive() or state.TripId ~= routeTrip or state.Cancel or localPlayer.Character ~= character
-            or originalRoot == nil or root() ~= originalRoot then return false end
-
-        return not state.Carrying or state.Uid == ctx.Uid
-            or (state.Uid == nil and type(runtime.confirmCarry) == "function" and runtime.confirmCarry(ctx.Uid))
-    end
-	local function held()
-		return valid() and state.Carrying and state.Uid == ctx.Uid
-	end
-	local function near(a, b, d)
-
-        return typeof(a) == "Vector3" and typeof(b) == "Vector3" and (a - b).Magnitude <= d
-	end
-	local function pinFor(point, t, stopWhen)
-		local w = 0
-		while w < t and valid() and not held() do
-			if stopWhen and stopWhen() then
-				return true
-			end
-			local r = root()
-			if r and (r.Position - point).Magnitude > 1 then
-				place(point)
-			end
-			w += RunService.Heartbeat:Wait()
-		end
-		return valid() and stopWhen ~= nil and stopWhen() or false
-	end
-    if not valid() then return false end
-    if held() then return "near" end
-    if not getOffTreadmill() or not valid() then return false end
-	local eggPos = ctx.EggPos()
-    if not valid() then return false end
-    if held() then return "near" end
-    if not finite(eggPos) then return false, "that egg is gone; refresh and try again" end
-	local at = ctx.LandFor(eggPos)
-	if not valid() then return false end
-    if held() then return "near" end
-    if not finite(at) then
-        status("Checking the egg area's ground")
-        runtime.prepareArea(eggPos)
-        if not valid() then return false end
-    if held() then return "near" end
-        local updated = ctx.EggPos()
-        if not valid() then return false end
-    if held() then return "near" end
-        if not finite(updated) then return false, "that egg is gone; refresh and try again" end
-        eggPos = updated
-        at = ctx.LandFor(eggPos)
-        if not valid() then return false end
-    if held() then return "near" end
-    end
-	if not finite(at) then
-		slog("Dodge route: no ground next to the egg")
-        return false, "Dodge: no safe ground near the egg; refresh and try again"
-	end
-	local from = DODGE_BASE
-	place(DODGE_BASE)
-	pinFor(DODGE_BASE, 0.15)
-	if not valid() then return false end
-    if held() then return "near" end
-
-    local latest = ctx.EggPos()
-    if not valid() then return false end
-    if held() then return "near" end
-    if not finite(latest) then return false, "that egg is gone; refresh and try again" end
-    if (latest - eggPos).Magnitude > 1 then
-        eggPos = latest
-        at = ctx.LandFor(eggPos)
-        if not valid() then return false end
-    if held() then return "near" end
-        if not finite(at) then
-            runtime.prepareArea(eggPos)
-            if not valid() then return false end
-    if held() then return "near" end
-            latest = ctx.EggPos()
-            if not valid() then return false end
-    if held() then return "near" end
-            if not finite(latest) then return false, "that egg is gone; refresh and try again" end
-            eggPos = latest
-            at = ctx.LandFor(eggPos)
-            if not valid() then return false end
-    if held() then return "near" end
-        end
-        if not finite(at) then return false, "Dodge: no safe ground near the moved egg" end
-    end
-	local ping = netPing()
-	local r1Wait, r2Wait = DODGE_R1_WAIT + ping, DODGE_R2_WAIT + ping
-	local pickDelay = math.max(DODGE_PICK_DELAY, ping * 2.5)
-	local before = state.PulledAt
-	local jumpAt = os.clock()
-	place(at)
-	progress(0.15, "Jumping onto the egg")
-	slog(string.format("Dodge route: jump of %.0f studs from %.0f %.0f %.0f to %.1f %.1f %.1f", (at - from).Magnitude, from.X, from.Y, from.Z, at.X, at.Y, at.Z))
-	local r1 = pinFor(at, r1Wait, function()
-		return state.PulledAt > before
-	end)
-	if not valid() then return false end
-    if held() then return "near" end
-	local r1At = r1 and state.PulledAt or nil
-	local r2At = nil
-	if r1At then
-		local toStart = state.RelocPos and near(state.RelocPos, at, 25) and "the arrival" or (state.RelocPos and string.format("%.0f %.0f %.0f", state.RelocPos.X, state.RelocPos.Y, state.RelocPos.Z) or "?")
-		slog(string.format("Dodge route: R1 %.2f s after the jump, target %s", r1At - jumpAt, toStart))
-		if state.RelocPos and near(state.RelocPos, at, 25) then
-			r2At = r1At
-		else
-			local tripStart = os.clock()
-			pinFor(DODGE_TRIP, DODGE_TRIP_HOLD)
-			if not valid() then return false end
-    if held() then return "near" end
-			place(at)
-			slog(string.format("Dodge route: round trip held %.2f s, back on the arrival", os.clock() - tripStart))
-			local mark = state.PulledAt
-			pinFor(at, r2Wait, function()
-				if state.PulledAt > mark then
-					mark = state.PulledAt
-					if state.RelocPos and near(state.RelocPos, at, 25) then
-						r2At = state.PulledAt
-						return true
-					end
-				end
-				return false
-			end)
-		end
-	else
-		slog(string.format("Dodge route: no Relocate within %.2f s after the jump (ping %.0f ms)", r1Wait, ping * 1000))
-	end
-	if not valid() then return false end
-    if held() then return "near" end
-	if r2At then
-		slog(string.format("Dodge route: R2 to the arrival %.2f s after R1", r2At - (r1At or r2At)))
-	elseif r1At then
-		slog("Dodge route: no R2 to the arrival: the server did not accept the jump, back to the base")
-		place(DODGE_BASE)
-		return false
-	end
-    local arrivalEgg = ctx.EggPos()
-    if not valid() then return false end
-    if held() then return "near" end
-    if not finite(arrivalEgg) then return false, "that egg is gone; refresh and try again" end
-    if (arrivalEgg - eggPos).Magnitude > 6 then
-        return false, "Egg moved during arrival; retrying with its current position"
-    end
-	progress(0.3, "Jump accepted")
-	plantClown(at)
-	pinFor(at, math.max(0, (r2At or os.clock()) + pickDelay - os.clock()))
-	if not valid() then return false end
-    if held() then return "near" end
-	local since, pickupBy = 1, os.clock() + 2.5
-	while not held() and os.clock() < pickupBy and valid() do
-        local egg = ctx.EggPos()
-		if not valid() then return false end
-    if held() then return "near" end
-        if not finite(egg) then return false, "that egg is gone; refresh and try again" end
-        if (egg - eggPos).Magnitude > 6 then
-            return false, "Egg moved during pickup; retrying with its current position"
-        end
-		local r = root()
-		if r and (r.Position - at).Magnitude > 1.5 then
-			place(at)
-		end
-		local dt = RunService.Heartbeat:Wait()
-		if not valid() then return false end
-    if held() then return "near" end
-		if os.clock() >= pickupBy then break end
-		since += dt
-		if since >= CFG.GrabInterval then
-			since = 0
-			local prompt = promptNear(egg, 12)
-			if prompt then runtime.firePrompt(prompt) end
-			if not valid() or os.clock() >= pickupBy then break end
-			if not state.Carrying then runtime.spawn(takeEgg, ctx.Uid) end
-		end
-	end
-	if not valid() then return false end
-    if held() then return "near" end
-	if not held() then
-		ctx.Grab(ctx.Uid, 1)
-	end
-	if not valid() then return false end
-    if held() then return "near" end
-	if held() then
-		progress(0.4, "Egg taken")
-	end
-	slog(string.format("Dodge route: carrying=%s %.2f s after the jump", tostring(held()), os.clock() - jumpAt))
-	if not held() then
-		place(DODGE_BASE)
-		return false
-	end
-	return "near"
-end
-
-local MAX_ATTEMPTS = 3
-
-local function stealAndDeliver(uid, attempt, autoRun)
-    if runtime.halloween and runtime.halloween.blocksNormal() then
-        status(runtime.halloween.TrainReserved and not runtime.halloween.hasCarry()
-            and "Halloween: use Return home to finish the train session"
-            or "Halloween: stop farming and put down carried items before normal stealing")
-        return false
-    end
-	attempt = attempt or 1
-    if not isAlive() or state.Busy or state.Aborting or type(uid) ~= "string" then return false end
-    if runtime.bigEggFinder and runtime.bigEggFinder.IsJoining then
-        status("Finish joining before stealing")
-        return false
-    end
-    if performance.Restoring then status("Restoring graphics..."); return false end
-    runtime.refreshWatches()
-    local ready, reason = runtime.ready()
-    if not ready then status(reason); return false end
-    local currentRoot = root()
-    local currentChar = localPlayer.Character
-    local currentHum = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
-    if not currentRoot or not currentHum or currentHum.Health <= 0 then
-        status("Wait for your character")
-        return false
-    end
-
-    local initialCarryUid = state.Carrying and state.Uid or nil
-    runtime.cancel(state.TakePending)
-    state.TakePending = nil
-    runtime.cancelRequest("CarryFieldEgg", "Cancelled")
-    runtime.cancelRequest("DropFieldEgg", "Cancelled")
-    state.TripId = (state.TripId or 0) + 1
-    local tripId = state.TripId
-    state.CancelAt = nil
-    state.TripDeadline = os.clock() + 240
-    state.Busy = true
-    state.AutoRun = autoRun
-    state.TripDelivered = false
-    state.PendingAnonymousVerdict = nil
-    state.SeenTargetCarry = state.Carrying and state.Uid == uid and uid or nil
-    state.DeliveryPhase = nil
-    state.TripCharacter = currentChar
-
-    local startupOk, startupError = pcall(function()
-    performance.setStealing(true)
-    state.TargetUid = uid
-    state.Cancel = false
-	state.Died = false
-	progress(0, attempt > 1 and string.format("Retry %d/%d", attempt, MAX_ATTEMPTS) or "Starting")
-    state.Hits = 0
-    state.Ragdoll = false
-    state.DeliveryFailedAt = nil
-	worldResetTime, lastResetCheck = 0, 0
-    blackout.Pet = nil
-    local overlayOk, overlayError = pcall(blackout.on)
-    if not overlayOk then
-        pcall(blackout.off)
-        slog("Blackout unavailable: " .. tostring(overlayError))
-    end
-    end)
-    if not startupOk then
-        if isAlive() and state.TripId == tripId then runtime.abortTrip("Error: " .. tostring(startupError)) end
-        return false
-    end
-    if not isAlive() or state.TripId ~= tripId or not state.Busy then return false end
-    local tripChar = currentChar
-    local function ownsTrip()
-        return isAlive() and state.TripId == tripId
-    end
-    local function activeTrip()
-        if not ownsTrip() or state.Cancel or localPlayer.Character ~= tripChar then return false end
-        if root() ~= currentRoot or currentHum.Health <= 0 then
-            status("Wait for your character")
-            return false
-        end
-        return true
-    end
-	runtime.spawn(function()
-        while state.Busy and isAlive() and state.TripId == tripId do
-            task.wait(0.1)
-            if not isAlive() or not state.Busy or state.TripId ~= tripId then return end
-            if state.Cancel then
-                state.CancelAt = state.CancelAt or os.clock()
-                if os.clock() - state.CancelAt >= 8 then
-                    runtime.abortTrip("Cancelled")
-                    return
-                end
-            elseif os.clock() >= state.TripDeadline then
-                runtime.abortTrip("Trip timed out; try again")
-                return
-            end
-			local now = localPlayer.Character
-			local hum = tripChar and tripChar:FindFirstChildOfClass("Humanoid")
-			if now ~= tripChar or not tripChar or (hum and hum.Health <= 0) then
-				if state.Busy and not state.Cancel then
-					state.Died = true
-					state.Cancel = true
-                    state.CancelAt = os.clock()
-					status("Died: stopped, waiting for the respawn")
-					slog("the body died, the trip is stopped and nothing moves the new body")
-				end
-			end
-		end
-	end)
-	state.TripTask = runtime.spawnOwned(tripId, function()
-		local semiTrip = true
-		local delivered = false
-		local failReason = nil
-        local routeStarted = false
-        local targetMissing = false
-        local carryChanged = false
-        local function checkCarry()
-            if state.Carrying and state.Uid ~= uid then
-                if state.Uid == nil and runtime.confirmCarry(uid) then return true end
-                carryChanged = true
-                failReason = state.Uid == nil and "Held egg is not identified yet" or "Held egg changed; stealing stopped"
-                status(failReason)
-                return false
-            end
-            return true
-        end
-        local function currentEgg(fallback)
-            local cache = { At = 0, Pos = fallback }
-            local position = eggNow(uid, cache)
-            if not activeTrip() or not checkCarry() then return nil end
-
-            if state.Carrying and state.Uid == uid then return position or fallback end
-            if cache.Missing then
-                targetMissing, failReason = true, "that egg is gone"
-                status("That egg is gone")
-                return nil
-            end
-            return position or fallback
-        end
-        local function syncDelivery()
-            if not delivered and ownsTrip() and state.TripDelivered == true then
-                delivered, failReason = true, nil
-                semi.Fails, semi.ResetDone = 0, false
-                status("Delivered")
-                progress(1, "Delivered")
-            end
-            return delivered
-        end
-		local ok, err = pcall(function()
-			status("Looking for the egg")
-            local egg, targetRecord
-            local resumed = state.Carrying and state.Uid == uid
-            local records = resumed and {} or snapshot(true)
-            local selectionAt = os.clock()
-
-            local snapshotError = state.SnapshotError
-            if not activeTrip() then return end
-            if snapshotError and not resumed then
-                failReason = snapshotError
-                status(snapshotError)
-                return
-            end
-            local function allowedTarget()
-                if runtime.rarityFilter and not runtime.rarityFilter.matches(targetRecord) then
-                    failReason = "Selected egg does not match filter"
-                    status(failReason)
-                    return false
-                end
-                return true
-            end
-            for _, record in ipairs(records) do
-                if record.Uid == uid then
-                    if runtime.rarityFilter and not runtime.rarityFilter.matches(record) then
-                        failReason = "Selected egg does not match filter"
-                        status(failReason)
-                        return
-                    end
-                    targetRecord = record
-                    egg = record.BottomCFrame.Position
-                    local info = describe(record)
-
-                    if not activeTrip() then return end
-                    blackout.setPet(info.Name, info.Icon, info.Value)
-                    break
-                end
-            end
-            if resumed and activeTrip() then
-                targetRecord = options.Target or {Uid=uid, State="Carried", BottomCFrame=currentRoot.CFrame}
-                egg = currentRoot.Position
-            end
-            if not activeTrip() or not isAlive() then return end
-			progress(0.04, "Looking for the egg")
-            if not egg then
-                failReason = "that egg is gone"
-                status("That egg is gone")
-                return
-            end
-            if not allowedTarget() then return end
-            if state.Carrying and state.Uid == nil then
-                local confirmUntil = os.clock() + 0.6
-                while state.Carrying and state.Uid == nil and activeTrip() and os.clock() < confirmUntil do
-                    if runtime.confirmCarry(uid) then break end
-                    RunService.Heartbeat:Wait()
-                end
-            end
-            if not activeTrip() or not allowedTarget() then return end
-            if state.Carrying and state.Uid == nil then
-                failReason = "Held egg is not identified yet"
-                status(failReason)
-                return
-            end
-            if state.Carrying and state.Uid ~= uid then
-                checkCarry()
-                return
-            end
-            if not activeTrip() or not allowedTarget() then return end
-            if state.Carrying and state.Uid ~= uid then
-                failReason = "Drop held egg before stealing"
-                status(failReason)
-                return
-            end
-            local preflightRoot = root()
-            if not preflightRoot then
-                failReason = "no character"
-                status("Wait for your character")
-                return
-            end
-            if preflightRoot.Anchored then
-                status("Leaving treadmill...")
-                local leftTreadmill = getOffTreadmill()
-                if not activeTrip() or not allowedTarget() then return end
-                local current = root()
-                if not leftTreadmill or not current or current.Anchored then
-                    failReason = "Leave the treadmill before stealing"
-                    status(failReason)
-                    return
-                end
-            end
-
-            if state.Carrying and state.Uid ~= uid then
-                failReason = state.Uid == nil and "Held egg is not identified yet" or "Drop held egg before stealing"
-                status(failReason)
-                return
-            end
-
-            if os.clock() - selectionAt >= 0.5 and not (state.Carrying and state.Uid == uid) then
-                local latest = snapshot(true)
-                local refreshError = state.SnapshotError
-                if not activeTrip() then return end
-                if refreshError then
-                    failReason = refreshError
-                    status(refreshError)
-                    return
-                end
-                if not checkCarry() then return end
-                local currentRecord
-                for _, record in ipairs(latest) do
-                    if record.Uid == uid then currentRecord = record; break end
-                end
-                if currentRecord then
-                    targetRecord = currentRecord
-                    egg = currentRecord.BottomCFrame.Position
-                elseif not (state.Carrying and state.Uid == uid) then
-                    failReason = "that egg is gone"
-                    status("That egg is gone")
-                    return
-                end
-                if not allowedTarget() then return end
-            end
-            routeStarted = true
-            if resumed and state.Carrying and state.Uid == uid then
-                state.DeliveryPhase = { TripId = tripId, Uid = uid, Character = tripChar }
-                local routeDelivered, deliveryReason = instantTP(uid)
-                if not ownsTrip() then return end
-                if routeDelivered == true then state.TripDelivered = true end
-                delivered = routeDelivered == true or syncDelivery()
-                failReason = delivered and nil or deliveryReason
-                return
-            end
-			state.NestBack = false
-			if semiTrip then
-				local r1 = root()
-				local lineX1 = lineInfo()
-				if r1 and r1.Position.Y < 5000 and not inDimension() and r1.Position.X > lineX1 + 800 and (egg - r1.Position).Magnitude > 100 then
-					slog(string.format("Semi TP: the body stands %.0f studs past the line, hopping back to the base first", r1.Position.X - lineX1))
-					status("Semi TP: hopping back to the base first")
-					returnFront()
-					if not activeTrip() then
-						return
-					end
-				end
-			end
-			status("Going to the egg")
-			progress(0.08, "Going to the egg")
-			local reached
-			if semiTrip then
-				local okSemi, info = semiGo(uid, egg)
-                if not activeTrip() or not checkCarry() then return end
-				if not okSemi then
-					failReason = info
-					status("Could not reach the egg")
-					return
-				end
-				semi.SlowRun = not (info.Plain or semi.Plain)
-				local inHand = state.Carrying and state.Uid == uid
-				local current = egg
-				if not inHand then
-                    current = currentEgg(egg)
-                    if not current then return end
-                    inHand = state.Carrying and state.Uid == uid
-				end
-				if info.Arrived or inHand then
-					reached = true
-				elseif info.Plain then
-					reached = runToEgg(uid, current)
-				elseif info.Decoy then
-					reached = runToEgg(uid, current, { Field = true, Ratio = 1 })
-				else
-					reached = runToEgg(uid, current, { Field = true, Ratio = info.Ratio or 1.1, Height = 50 })
-				end
-			else
-				reached = runToEgg(uid, egg)
-			end
-            if not activeTrip() or not checkCarry() then return end
-			if not reached then
-				failReason = failReason or "could not reach the egg"
-				status("Could not reach the egg")
-				return
-			end
-			local inHandNow = state.Carrying and state.Uid == uid
-			if not inHandNow then
-				status("Taking the egg")
-			end
-			if not inHandNow and not grab(uid, 4) then
-                if not activeTrip() or not checkCarry() then return end
-                local recoveryEgg = currentEgg(egg)
-                if not recoveryEgg then return end
-				local taken = state.Carrying and state.Uid == uid
-				if not taken and activeTrip() and checkCarry() then
-					slog("the egg would not come free: back to the safe zone, treadmill reset, one more try")
-					local safeAt = Vector3.new(RELAY_SAFE.X, groundY(RELAY_SAFE, RELAY_SAFE.Y), RELAY_SAFE.Z)
-					local here = root()
-					if here and here.Position.X > lineInfo() + 100 then
-						returnFront()
-					end
-					if activeTrip() and checkCarry() then
-						place(safeAt)
-						local calm = 0
-						while calm < 0.15 and activeTrip() and checkCarry() do
-							calm += RunService.Heartbeat:Wait()
-						end
-                        if not activeTrip() or not checkCarry() then return end
-						treadmillReset()
-                        if not activeTrip() or not checkCarry() then return end
-						place(safeAt)
-						calm = 0
-						while calm < 0.15 and activeTrip() and checkCarry() do
-							calm += RunService.Heartbeat:Wait()
-						end
-                        local current = currentEgg(recoveryEgg)
-                        if not current then return end
-                        if state.Carrying and state.Uid == uid then
-                            taken = true
-						elseif runToEgg(uid, current, { Field = true, Ratio = RUN_RATIO }) then
-							taken = grab(uid, 4)
-						end
-					end
-				end
-                if not activeTrip() or not checkCarry() then return end
-				if not taken then
-					failReason = "the egg would not come free"
-					status("The egg would not come free")
-					return
-				end
-			end
-            if not activeTrip() or not checkCarry() then return end
-            state.DeliveryPhase = { TripId = tripId, Uid = uid, Character = tripChar }
-            local routeDelivered, deliveryReason = instantTP(uid)
-            if not ownsTrip() then return end
-            if routeDelivered == true then state.TripDelivered = true end
-            delivered = routeDelivered == true or syncDelivery()
-            if not activeTrip() then return end
-            if not delivered and not checkCarry() then return end
-			if not delivered then
-                failReason = deliveryReason or (state.NestBack and "the egg went back to its nest after the drop" or "delivery failed")
-                targetMissing = failReason == "that egg is gone"
-			end
-            status(delivered and "Delivered" or (targetMissing and "That egg is gone" or "Delivery failed"))
-			if delivered then
-				progress(1, "Delivered")
-			end
-		end)
-        if not ownsTrip() then return end
-        syncDelivery()
-        if routeStarted and not delivered and not carryChanged and activeTrip() then checkCarry() end
-		runtime.clearHolds()
-        runtime.cancel(state.TakePending)
-        state.TakePending = nil
-        runtime.cancelRequest("CarryFieldEgg", "Cancelled")
-        runtime.cancelRequest("DropFieldEgg", "Cancelled")
-		fpsOff()
-		dropClone()
-		if state.ReleaseCamera then
-            local release = state.ReleaseCamera
-            state.ReleaseCamera = nil
-            pcall(release)
-		end
-        if not ownsTrip() then return end
-		semi.SlowRun = false
-		semi.AtDrop = false
-		semi.Plain = false
-		if state.Died then
-			local from = os.clock()
-			while ownsTrip() and os.clock() - from < 15 and (localPlayer.Character == tripChar or not root()) do
-				task.wait(0.1)
-			end
-			local calm = os.clock()
-			while ownsTrip() and os.clock() - calm < 2.5 and not (swapped() and os.clock() - calm > 1.5) do
-				task.wait(0.1)
-			end
-            if not ownsTrip() then return end
-			if viewState then
-				releaseView()
-			end
-		elseif viewState and viewState.Forced then
-			slog("H-Claim: the view stays frozen (forced)")
-		elseif viewState then
-			if state.Cancel and semi.Home then
-				releaseBackHome(semi.Home)
-			else
-				releaseView()
-			end
-		end
-        if not ownsTrip() then return end
-		semi.Kind, semi.Home = nil, nil
-		if semi.Rotate then
-			local info = semi.Rotate
-			semi.Rotate = nil
-			pcall(function()
-				info.Hum.AutoRotate = info.Old
-			end)
-		end
-		if not ok then
-			failReason = failReason or tostring(err)
-			status("Error: " .. tostring(err))
-		end
-		slog("delivery " .. (delivered and "DONE" or "NOT done") .. ", " .. tostring(failReason or ""))
-
-        syncDelivery()
-		local why0 = tostring(failReason or "")
-        local permanentFailure = string.find(why0, "no character", 1, true)
-            or string.find(why0, "that egg is gone", 1, true)
-            or string.find(why0, "portal not there", 1, true)
-            or string.find(why0, "Selected egg does not match filter", 1, true)
-
-        local willRetry = not api.HandedOff and routeStarted and not carryChanged and not syncDelivery() and activeTrip() and not state.Died and attempt < MAX_ATTEMPTS and not permanentFailure and checkCarry()
-		if willRetry then
-			status("Delivery failed, treadmill then retry")
-			slog(string.format("attempt %d/%d failed (%s): clean restart through the treadmill", attempt, MAX_ATTEMPTS, why0))
-			local function wait(t)
-				local w = 0
-				while w < t and activeTrip() and checkCarry() and not syncDelivery() do
-					w += RunService.Heartbeat:Wait()
-				end
-			end
-			if state.Carrying and not syncDelivery() then
-				dropEgg()
-				local w = 0
-				while state.Carrying and w < 1 and activeTrip() and checkCarry() and not syncDelivery() do
-					w += RunService.Heartbeat:Wait()
-				end
-			end
-			wait(0.6)
-			local here = root()
-			if here and here.Position.X > lineInfo() + 100 and activeTrip() and checkCarry() and not syncDelivery() then
-				returnFront()
-			end
-			if activeTrip() and checkCarry() and not syncDelivery() then
-				treadmillReset()
-				wait(0.4)
-			end
-			willRetry = activeTrip() and not state.Died and root() ~= nil and checkCarry() and not carryChanged and not syncDelivery()
-		end
-
-        if not ownsTrip() then return end
-        syncDelivery()
-
-		if willRetry then
-			semi.Fails = semi.Fails + 1
-		elseif not api.HandedOff and semiTrip and routeStarted and not carryChanged and not targetMissing then
-			if delivered then
-				semi.Fails, semi.ResetDone = 0, false
-			elseif activeTrip() and checkCarry() and not syncDelivery() then
-				semi.Fails += 1
-				local untilAt = os.clock() + 1.5
-				while os.clock() < untilAt and activeTrip() and checkCarry() and not syncDelivery() do
-					RunService.Heartbeat:Wait()
-				end
-                if not ownsTrip() then return end
-
-                if activeTrip() and checkCarry() and not syncDelivery() then
-					local why = tostring(failReason or "unknown")
-					if string.find(why, "portal not there", 1, true) then
-						status("Semi TP: no portal now. Set Go to Run")
-					elseif not semi.ResetDone then
-						semi.ResetDone = true
-						status("Semi TP failed, going back to the front")
-						returnFront()
-					else
-						status("Semi TP failed again. Press Steal again")
-					end
-                end
-			end
-		end
-        if not ownsTrip() then return end
-        syncDelivery()
-
-        if delivered and not api.HandedOff and activeTrip() and not state.Died
-            and runtime.autoTreadmill and runtime.autoTreadmill.isEnabled() then
-            api.TreadmillAttempted = true
-            state.TripDeadline = math.max(state.TripDeadline or 0, os.clock() + 15)
-            pcall(blackout.off)
-            status("Treadmill: returning after delivery")
-            local returned, mounted, reason = pcall(runtime.autoTreadmill.run, tripId, tripChar)
-            if not ownsTrip() then return end
-            api.TreadmillReturned = returned and mounted == true
-            api.TreadmillReason = returned and tostring(reason or (mounted and "On treadmill" or "Treadmill mount unconfirmed"))
-                or "Treadmill return failed"
-            if type(options.TreadmillReturn) == "function" then
-                pcall(options.TreadmillReturn, api.TreadmillReturned, api.TreadmillReason)
-            end
-            if not ownsTrip() then return end
-            if activeTrip() then
-                if returned and mounted then
-                    status("Treadmill: training after delivery")
-                else
-                    if not returned then slog("Post-delivery treadmill: " .. tostring(mounted)) end
-                    status("Treadmill: " .. (returned and tostring(reason or "not confirmed; egg delivered") or "unavailable; egg delivered"))
-                end
-            end
-        end
-
-        if not ownsTrip() then return end
-		state.Busy = false
-        state.TripCharacter = nil
-    state.DeliveryPhase = nil
-        pcall(performance.setStealing, false)
-		if willRetry then
-			slog(string.format("restarting the steal, attempt %d/%d", attempt + 1, MAX_ATTEMPTS))
-            local restarted = stealAndDeliver(uid, attempt + 1, autoRun)
-            if not restarted and ownsTrip() and not state.Busy then
-
-                state.TargetUid = nil
-                pcall(blackout.off)
-            end
-            if not restarted and runtime.autoSteal then runtime.autoSteal.finish(autoRun, false, failReason, 5) end
-        else
-            state.TargetUid = nil
-            pcall(blackout.off)
-            if state.Cancel and not state.Died then status("Cancelled") end
-            if runtime.autoSteal then runtime.autoSteal.finish(autoRun, delivered, failReason) end
-        end
-    end)
-    return true
-end
-
-runtime.abortTrip = function(message)
-    if runtime.halloween and runtime.halloween.Active then
-        runtime.halloween.cancel(message or "Cancelled")
-        return
-    end
-    if not state.Busy or state.Aborting then return end
-    state.Aborting = true
-    if runtime.autoTreadmill and runtime.autoTreadmill.cancel then runtime.autoTreadmill.cancel() end
-    local autoRun = state.AutoRun
-    state.Cancel = true
-    runtime.clearHolds()
-    runtime.cancel(state.TakePending)
-    state.TakePending = nil
-    runtime.cancelRequest("CarryFieldEgg", "Cancelled")
-    runtime.cancelRequest("DropFieldEgg", "Cancelled")
-    state.TripId = (state.TripId or 0) + 1
-    runtime.cancel(state.TripTask)
-    state.TripTask = nil
-    pcall(fpsOff)
-    if state.ReleaseCamera then
-        local release = state.ReleaseCamera
-        state.ReleaseCamera = nil
-        pcall(release)
-    end
-    pcall(releaseView)
-    pcall(dropClone)
-    pcall(blackout.off)
-    if semi.Rotate then
-        local info = semi.Rotate
-        semi.Rotate = nil
-        pcall(function() info.Hum.AutoRotate = info.Old end)
-    end
-    state.Busy = false
-    state.TripCharacter = nil
-    state.DeliveryPhase = nil
-    pcall(performance.setStealing, false)
-    state.TargetUid = nil
-    semi.SlowRun, semi.AtDrop, semi.Plain = false, false, false
-    semi.Kind, semi.Home = nil, nil
-    state.Aborting = nil
-    if runtime.autoSteal then runtime.autoSteal.finish(autoRun, state.TripDelivered == true, message) end
-    status(message or "Cancelled")
-end
-
-runtime.OnError = function(err, tripId)
-    slog((tripId and ("Trip " .. tostring(tripId)) or "Background") .. " error: " .. tostring(err))
-    if tripId ~= nil and state.Busy and state.TripId == tripId then
-        runtime.abortTrip("Error: " .. tostring(err))
-    end
-end
-
-state.Progress = function(fraction, text)
-    if type(options.Progress) == "function" and isAlive() then pcall(options.Progress, fraction, text) end
-end
-if type(options.AllowTarget) == "function" then
-    runtime.rarityFilter = {matches=function(record)
-        local ok, allowed = pcall(options.AllowTarget, record)
-        return ok and allowed == true
-    end}
-end
-if type(options.InitialCarry) == "table" and options.InitialCarry.IsCarrying == true then
-    state.Carrying = true
-    state.Uid = type(options.InitialCarry.Uid) == "string" and options.InitialCarry.Uid ~= "" and options.InitialCarry.Uid or nil
-    state.HeldSeen, state.CarryAt = os.clock(), os.clock()
-end
-local activeRun
-runtime.autoSteal = {finish=function(token, delivered, reason)
-    if token and token == activeRun and not token.Done then
-        token.Done = true
-        token.Delivered = delivered == true
-        token.Reason = api.HandedOff and "Dropped for a friend" or reason or (token.Delivered and "Delivered" or api.LastStatus)
-    end
-end}
-
-function api:ReadCarry()
-    local uid = state.TargetUid
-    if not state.Carrying and type(uid) == "string" and heldByMe(uid) then
-        state.Carrying, state.Uid = true, uid
-        state.CarryAt, state.HeldSeen = state.CarryAt or os.clock(), os.clock()
-        state.SeenTargetCarry = uid
-    elseif state.Carrying and state.Uid == nil and type(uid) == "string" then
-        runtime.confirmCarry(uid)
-    end
-    return state.Carrying == true, state.Uid
-end
-
-local function confirmAnonymousVerdict()
-    local pending, phase = state.PendingAnonymousVerdict, state.DeliveryPhase
-    if not pending then return end
-    if not state.Busy or not phase or pending.TripId ~= state.TripId
-        or pending.TripId ~= phase.TripId or pending.Uid ~= phase.Uid
-        or pending.Character ~= localPlayer.Character or phase.Character ~= pending.Character
-        or state.SeenTargetCarry ~= pending.Uid or os.clock() - pending.At > 5 then
-        state.PendingAnonymousVerdict = nil
-        return
-    end
-    if state.Carrying or heldByMe(pending.Uid) then return end
-    local current = root()
-    if not current then return end
-    local lineX = lineInfo()
-    local function atBank(bank)
-        if typeof(bank) ~= "Vector3" then return false end
-        local flat = Vector3.new(current.Position.X-bank.X, 0, current.Position.Z-bank.Z)
-        return flat.Magnitude <= 35 and math.abs(current.Position.Y-bank.Y) <= 15
-    end
-    local bank = typeof(semi.Home) == "Vector3" and semi.Home or homePoint()
-
-    if current.Position.X > lineX + 5 or not (atBank(bank) or (semi.Home == nil and atBank(RELAY_SAFE))) then return end
-
-    state.Delivered = os.clock()
-    state.TripDelivered = true
-    state.PendingAnonymousVerdict = nil
-end
-
-runtime.connect(RunService.Heartbeat, function()
-    confirmAnonymousVerdict()
-end)
-
-local function restoreMethod()
-    runtime.clearHolds()
-    pcall(fpsOff)
-    pcall(releaseView)
-    pcall(dropClone)
-    if state.ReleaseCamera then
-        local release = state.ReleaseCamera
-        state.ReleaseCamera = nil
-        pcall(release)
-    end
-    if semi.Rotate then
-        local saved = semi.Rotate
-        semi.Rotate = nil
-        pcall(function() saved.Hum.AutoRotate = saved.Old end)
-    end
-    pcall(shieldStop)
-end
-
-function api:Cancel(reason)
-    if runtime.autoTreadmill then runtime.autoTreadmill.cancel() end
-    if state.Busy then runtime.abortTrip(reason or "Instant Steal cancelled") end
-    state.Cancel = true
-    if activeRun and not activeRun.Done then
-        activeRun.Done, activeRun.Delivered, activeRun.Reason = true, state.TripDelivered == true, reason or "Instant Steal cancelled"
-    end
-    restoreMethod()
-end
-
-function api:Destroy()
-    if not alive then return end
-    alive = false
-    self:Cancel("Instant Steal closed")
-    runtime.stop()
-    self.Running = false
-end
-
-function api:Run(uid)
-    if self.Running then return false, "Instant Steal is already running" end
-    if not isAlive() then return false, "Instant Steal cancelled" end
-    if type(uid) ~= "string" or uid == "" then return false, "No egg selected" end
-    self.Running, self.HandedOff = true, false
-    self.TreadmillAttempted, self.TreadmillReturned, self.TreadmillReason = false, nil, nil
-    local token = {Uid=uid}
-    activeRun = token
-    state.Cancel, state.TargetUid = false, uid
-    state.StartupCarryConflict = nil
-    local function requestedCarryOnly()
-        local carryingNow, carriedNow = self:ReadCarry()
-        local conflict = state.StartupCarryConflict
-        if conflict or (carryingNow and carriedNow ~= uid) then
-            token.Done = true
-            local anonymous = (conflict and conflict.Uid == nil) or (carryingNow and carriedNow == nil)
-            token.Reason = anonymous and "Held egg is not identified yet" or "Held egg changed; stealing stopped"
-            return false
-        end
-        return true
-    end
-    local ok, failure = xpcall(function()
-        if not requestedCarryOnly() then return end
-        local readyBy, ready, reason = os.clock() + 8, false, "Game data not ready"
-        repeat
-            runtime.refreshDependencies()
-            runtime.refreshWatches()
-            ready, reason = runtime.ready()
-            if not requestedCarryOnly() then return end
-            if ready or not isAlive() or os.clock() >= readyBy then break end
-            RunService.Heartbeat:Wait()
-        until false
-        if not isAlive() then token.Done, token.Reason = true, "Instant Steal cancelled"; return end
-        if not ready then token.Done, token.Reason = true, reason; return end
-        local scripts = localPlayer:FindFirstChild("PlayerScripts")
-        local controlModule = scripts and scripts:FindFirstChild("PlayerModule")
-        if controlModule then
-            local gotControls, controls = runtime.call("PlayerControls", 6, function()
-                return require(controlModule):GetControls()
-            end)
-            if not isAlive() then token.Done, token.Reason = true, "Instant Steal cancelled"; return end
-            if not gotControls or type(controls) ~= "table" then
-                token.Done, token.Reason = true, "Player controls are not ready; try again"
-                return
-            end
-            runtime.Controls = controls
-        end
-        if not requestedCarryOnly() then return end
-
-        local shieldOk, shieldError = runtime.call("ShieldStart", 6, shieldStart)
-        if not shieldOk then
-            token.Done, token.Reason = true, "Humanoid shield unavailable: " .. tostring(shieldError)
-            return
-        end
-        if not isAlive() then token.Done, token.Reason = true, "Instant Steal cancelled"; return end
-        if not requestedCarryOnly() then return end
-        local accepted = stealAndDeliver(uid, 1, token)
-        if not accepted then token.Done, token.Reason = true, api.LastStatus; return end
-        local deadline = os.clock() + 730
-        while isAlive() and not token.Done and os.clock() < deadline do
-            RunService.Heartbeat:Wait()
-        end
-        if not token.Done then self:Cancel(isAlive() and "Instant Steal timed out" or "Instant Steal cancelled") end
-    end, debug.traceback)
-    if not ok then
-        token.Reason = "Instant Steal error: " .. tostring(failure)
-        self:Cancel(token.Reason)
-    end
-    if state.Busy then self:Cancel(token.Reason or "Instant Steal stopped") end
-    restoreMethod()
-    self.Running = false
-    self.LastReason = token.Reason or (token.Delivered and "Delivered" or api.LastStatus)
-    activeRun = nil
-    if type(options.CarryChanged) == "function" then
-        local carrying, carriedUid = self:ReadCarry()
-        pcall(options.CarryChanged, carrying, carriedUid)
-    end
-    return token.Delivered == true, self.LastReason
-end
-
-return api
-
-end, debug.traceback)
-if not initialized then
-    alive = false
-    if type(runtime.stop) == "function" then pcall(runtime.stop) end
-    error(created, 0)
-end
-if not isAlive() then created:Destroy() end
-return created
-end
-
-end)()
-
-        end) then
-                warn("[Pilat] Instant engine failed to load")
-        end
-
-        ctx.state.instantRun = function(input, callback, uidMap, swap)
-                local state = ctx.state
-                local localPlayer = ctx.localPlayer
-                local character = localPlayer.Character
-                local eggName = tostring(input.Name or "egg")
-                local factory = state.instantFactory
-
-                local function valid()
-                        if not callback() then
-                                return false
-                        end
-                        if localPlayer.Character ~= character then
-                                return false
-                        end
-                        return ctx.hubSettings.moveTo == "Instant"
-                end
-
-                if type(factory) ~= "function" then
-                        ctx.setStatus("Instant engine unavailable - " .. eggName, "warn")
-                        uidMap[input.Uid] = os.clock() + 15
-                        return
-                end
-
-                if state.instantEngine then
-                        pcall(state.instantEngine.Destroy, state.instantEngine)
-                        state.instantEngine = nil
-                end
-
-                local created, engine = pcall(factory, {
-                        Valid = valid,
-                        Status = function(text)
-                                pcall(ctx.setStatus, "Instant: " .. tostring(text))
-                        end,
-                        HelpFriend = function()
-                                return false
-                        end,
-                        AutoTreadmill = function()
-                                return false
-                        end,
-                })
-                if not created or type(engine) ~= "table" or type(engine.Run) ~= "function" then
-                        warn("[Pilat] Instant engine failed to start: " .. tostring(engine))
-                        ctx.setStatus("Instant engine failed to start - " .. eggName, "warn")
-                        uidMap[input.Uid] = os.clock() + 15
-                        return
-                end
-
-                state.instantEngine = engine
-                local ran, delivered, reason = pcall(engine.Run, engine, input.Uid)
-                if state.instantEngine == engine then
-                        state.instantEngine = nil
-                end
-                pcall(engine.Cancel, engine, "Instant steal finished")
-                pcall(engine.Destroy, engine)
-                state.tpKeep = nil
-
-                if ran and delivered == true then
-                        local pickIdx = table.find(state.pick, input.Uid)
-                        if pickIdx then
-                                table.remove(state.pick, pickIdx)
-                        end
-                        state.tainted = nil
-                        swap.again = nil
-                        ctx.setStatus("Stole " .. eggName .. " (instant)", "ok")
-                        return
-                end
-
-                local why
-                if ran then
-                        why = tostring(reason or "Instant steal not completed")
-                else
-                        why = "Instant steal error"
-                        warn("[Pilat] Instant steal error: " .. tostring(delivered))
-                end
-                if valid() then
-                        local low = why:lower()
-                        local cooldown = 8
-                        if low:find("gone", 1, true) or low:find("taken", 1, true) then
-                                cooldown = 20
-                        end
-                        if low:find("full", 1, true) then
-                                cooldown = 30
-                                swap.full = os.clock() + 30
-                        end
-                        uidMap[input.Uid] = os.clock() + cooldown
-                        ctx.setStatus(why .. " - " .. eggName, "warn")
-                end
-        end
-
-        table.insert(ctx.state.cleanup, function()
-                local engine = ctx.state.instantEngine
-                ctx.state.instantEngine = nil
-                if engine then
-                        pcall(engine.Cancel, engine, "Pilat closed")
-                        pcall(engine.Destroy, engine)
-                end
-        end)
-
+        -- ==== 10_steal#1 part 1/2 ====
         runStep("10_steal#1", function()
                 local ctx2 = {}
                 local amount, networkingSteal = 0, ctx.networking
@@ -15989,12 +10728,7 @@ end)()
                         end
                 end
 
-                hubSettings3 = doStep7(hubSettings, "Move To Egg", "moveTo", {"Walk", "Teleport", "Instant"}, "Walk", function(modeValue)
-                        local applyVis = ctx.state.applyInstantVisibility
-                        if applyVis then
-                                pcall(applyVis, modeValue)
-                        end
-                end)
+                hubSettings3 = doStep7(hubSettings, "Move To Egg", "moveTo", {"Walk", "Teleport", "Instant", "Instant V2"}, "Walk")
                 local doStep7Result, doStep7ResultSteal = doStep7(hubSettings, "Delivery", "insDel", {"Walk",
                         "Instant Steps", "Fast Tween"}, "Walk"):When(hubSettings3, (getValue("Walk"))), doStep7(hubSettings, "Teleport Delivery", "tpDel", {"Walk", "Quick Steps", "Fast Tween"}, "Walk"):When(hubSettings3, (getValue("Teleport")))
 
@@ -16004,46 +10738,18 @@ end)()
 
                 ctx.state.stealMoveCtl, ctx.state.stealDelCtl, ctx.state.stealTpDelCtl = hubSettings3, doStep7Result, doStep7ResultSteal
                 hubSettingsSteal = ctx.state
-                ctx.state.instantHide = {doStep7Result, doStep7ResultSteal}
-                table.insert(ctx.state.instantHide, doStep7(hubSettings, "Teleport Zones", "tpZones", hubSettingsSteal.TZ, {"Titan Temple", "Light Dark",
-                        "Enchanted Forest"}, nil, true):When(hubSettings3, (getValue("Teleport"))))
+                doStep7(hubSettings, "Teleport Zones", "tpZones", hubSettingsSteal.TZ, {"Titan Temple", "Light Dark",
+                        "Enchanted Forest"}, nil, true):When(hubSettings3, (getValue("Teleport")))
 
-                table.insert(ctx.state.instantHide, hubSettings:Slider("Delivery Speed", 80, 110, 100, function(amountSteal)
+                hubSettings:Slider("Delivery Speed", 80, 110, 100, function(amountSteal)
                         local hubSettings4 = ctx.hubSettings
                         hubSettings4.carryK = amountSteal / 100
-                end, "%", 1):When(doStep7Result, (getValue("Walk"))))
+                end, "%", 1):When(doStep7Result, (getValue("Walk")))
 
-                table.insert(ctx.state.instantHide, doStep8(hubSettings, "Step Count", "stepsN", 1, 6, 3, nil, 1):When(doStep7Result,
-                        (getValue("Instant Steps"))))
-                table.insert(ctx.state.instantHide, doStep8(hubSettings, "Fast Tween Speed", "pullSpd", 3000, 4500, 3300, nil, 50):When(doStep7Result,
-                        (getValue("Fast Tween"))))
-
-                ctx.state.applyInstantVisibility = function(modeValue)
-                        local instant = (modeValue or ctx.hubSettings.moveTo) == "Instant"
-                        for _, ctl in ipairs(ctx.state.instantHide or {}) do
-                                pcall(function()
-                                        local shown = false
-                                        if type(ctl.Visible) == "function" then
-                                                ctl:Visible(not instant)
-                                                shown = true
-                                        end
-                                        local raw = ctl._pilat
-                                        if type(raw) == "table" and type(raw.SetVisible) ~= "function" then
-                                                for _, field in ipairs({"Frame", "Root", "Holder", "Main", "Instance", "Gui"}) do
-                                                        local inst = raw[field]
-                                                        if typeof(inst) == "Instance" and inst:IsA("GuiObject") then
-                                                                inst.Visible = not instant
-                                                        end
-                                                end
-                                        end
-                                        return shown
-                                end)
-                        end
-                        local syncChecker = ctx.state.syncChecker
-                        if syncChecker then
-                                pcall(syncChecker)
-                        end
-                end
+                doStep8(hubSettings, "Step Count", "stepsN", 1, 6, 3, nil, 1):When(doStep7Result,
+                        (getValue("Instant Steps")))
+                doStep8(hubSettings, "Fast Tween Speed", "pullSpd", 3000, 4500, 3300, nil, 50):When(doStep7Result,
+                        (getValue("Fast Tween")))
                 local stealFilter, state8 = {}, ctx.state
                 state8.stealFilter = stealFilter
                 local bestMap, hubSettings5 = {["Best Rarity"] = "Best rarity", ["Biggest Weight"] = "Biggest",
@@ -16107,9 +10813,9 @@ end)()
 
                 hubSettings:Dropdown("Target Specific Eggs", hubSettings5.eggList, {}, helperSteal, true)
                 doStepCore(hubSettings, "Steal Missing Index Eggs", "index", false)
-                hubSettings5 = cacheCore["Instant Steal V3"]
-                hubSettings5:Text("Instant Steal V3 Note", "Needs Admin Treadmill")
-                doStepCore(hubSettings5, "Use Instant Steal V3", "adminSteal", true)
+                hubSettings5 = cacheCore["Admin Abuse Boost"]
+                hubSettings5:Text("Admin Abuse Boost Note", "Only works during Admin Abuse (needs Admin Treadmill): goes straight to each egg and straight home")
+                doStepCore(hubSettings5, "Use Admin Abuse Boost", "adminSteal", true)
 
                 ctx2.field = function()
                         local hubSettings4 = ctx.hubSettings
@@ -16519,7 +11225,7 @@ end)()
                                 hubSettings4 = steal
                         else
                                 steal2 = ctx.hubSettings
-                                hubSettings4 = steal2.wisp or steal2.ufo
+                                hubSettings4 = steal2.wisp
                         end
 
                         steal2 = nil
@@ -17267,13 +11973,19 @@ end)()
                 local function teleportToSteal()
                         local hubSettings4 = ctx.hubSettings
 
-                        local stealTp = (hubSettings4.moveTo == "Teleport") and hubSettings4.steal
-                        if not stealTp then
-                                if not hubSettings4.boostOn then
-                                        local stateUfo = ctx.state
-                                        if not (hubSettings4.ufoTp and stateUfo.ufoSteals and stateUfo.ufoSteals()) then
+                        if hubSettings4.moveTo == "Teleport" then
+                                local hubSettings6 = ctx.hubSettings
+
+                                if not (hubSettings6.steal) then
+                                        local hubSettings7 = ctx.hubSettings
+                                        if not (hubSettings7.boostOn) then
                                                 return
                                         end
+                                end
+                        else
+                                local hubSettings6 = ctx.hubSettings
+                                if not (hubSettings6.boostOn) then
+                                        return
                                 end
                         end
 
@@ -20299,6 +15011,215 @@ end)()
                         return false
                 end
 
+                -- ==== Admin Abuse Boost (logic from Gehlee _adminSteal/_adminDeliver, standalone) ====
+                do
+                        local ABS_SAFE = Vector3.new(542.93, 71.5, -405.58)
+                        local absRemote
+
+                        local function absRead(uid)
+                                local ok, rec = pcall(ctx.modules.Egg.ReadFieldEgg, uid)
+                                return (ok and type(rec) == "table") and rec or nil
+                        end
+
+                        local function absCarry(uid)
+                                if absRemote == nil then
+                                        local ok, r = pcall(function()
+                                                return require(game:GetService("ReplicatedStorage").Shared.Remotes).EggWorld.AskFieldEggCarry
+                                        end)
+                                        absRemote = (ok and r) or false
+                                end
+
+                                if absRemote then
+                                        local ok, res = pcall(function()
+                                                return absRemote:InvokeServer({Uid = uid})
+                                        end)
+                                        return ok and res == true
+                                end
+
+                                ctx.callModule("Egg", "CarryFieldEgg", uid)
+                                return false
+                        end
+
+                        local function absFeet(root, hum)
+                                if hum.RigType == Enum.HumanoidRigType.R15 then
+                                        return root.Size.Y * 0.5 + math.max(hum.HipHeight, 0.5)
+                                end
+
+                                return root.Size.Y * 0.5 + 2
+                        end
+
+                        local function absSafeCFrame(root)
+                                local y = ABS_SAFE.Y
+                                local skip = {ctx.localPlayer.Character}
+                                local origin = Vector3.new(ABS_SAFE.X, root.Position.Y + 60, ABS_SAFE.Z)
+
+                                for _ = 1, 10 do
+                                        local params = RaycastParams.new()
+                                        params.FilterType = Enum.RaycastFilterType.Exclude
+                                        params.FilterDescendantsInstances = skip
+                                        params.IgnoreWater = true
+                                        local hit = workspace:Raycast(origin, Vector3.new(0, -300, 0), params)
+
+                                        if not hit then
+                                                break
+                                        end
+
+                                        if hit.Instance.CanCollide then
+                                                y = hit.Position.Y + 3.2
+                                                break
+                                        end
+
+                                        table.insert(skip, hit.Instance)
+                                end
+
+                                return CFrame.new(ABS_SAFE.X, y, ABS_SAFE.Z) * root.CFrame.Rotation
+                        end
+
+                        ctx.adminBoostSteal = function(input, callback)
+                                local uid = input.Uid
+                                local character = ctx.localPlayer.Character
+                                local userId = ctx.localPlayer.UserId
+                                local gotAt
+
+                                local function alive()
+                                        return callback() and ctx.localPlayer.Character == character and ctx.hubSettings.adminSteal == true
+                                end
+
+                                local function carriedByMe(rec)
+                                        return rec ~= nil and rec.State == "Carried" and tonumber(rec.CarrierUserId) == userId
+                                end
+
+                                ctx.setStatus("Admin Abuse Boost: heading to " .. tostring(input.Name))
+
+                                local deadline, inflight = os.clock() + 3, 0
+
+                                while alive() and not gotAt and not carriedByMe(absRead(uid)) do
+                                        if os.clock() >= deadline then
+                                                return false
+                                        end
+
+                                        local rec = absRead(uid)
+
+                                        if not rec or (rec.State ~= "Slot" and rec.State ~= "Dropped") then
+                                                return false
+                                        end
+
+                                        local root, hum = ctx.getRootPart(), ctx.getHumanoid()
+
+                                        if not root or not hum then
+                                                return false
+                                        end
+
+                                        if typeof(rec.BottomCFrame) == "CFrame" then
+                                                local dest = CFrame.new(rec.BottomCFrame.Position + Vector3.new(0, absFeet(root, hum) + 0.15, 0))
+
+                                                if (root.Position - dest.Position).Magnitude > 4 then
+                                                        ctx.teleportRoot(dest)
+                                                        ctx.setStatus("Admin Abuse Boost: securing egg")
+                                                end
+                                        end
+
+                                        if inflight < 3 then
+                                                inflight += 1
+
+                                                task.spawn(function()
+                                                        local ok = absCarry(uid)
+                                                        inflight -= 1
+
+                                                        if ok and not gotAt then
+                                                                gotAt = os.clock()
+                                                        end
+                                                end)
+                                        end
+
+                                        ctx.waitHeartbeat()
+                                end
+
+                                if not alive() then
+                                        return false
+                                end
+
+                                local function banked()
+                                        local rec = absRead(uid)
+                                        return rec == nil or rec.State == "Claimed"
+                                end
+
+                                local function holding()
+                                        local rec = absRead(uid)
+
+                                        if carriedByMe(rec) then
+                                                return true
+                                        end
+
+                                        return gotAt ~= nil and os.clock() - gotAt < 1 and rec ~= nil and rec.State ~= "Claimed"
+                                                and not (rec.State == "Carried" and tonumber(rec.CarrierUserId) ~= userId)
+                                end
+
+                                ctx.setStatus("Admin Abuse Boost: bringing egg home")
+
+                                local endAt = os.clock() + 4
+
+                                while alive() and not banked() and holding() and os.clock() < endAt do
+                                        local root = ctx.getRootPart()
+                                        local cf = root and absSafeCFrame(root)
+
+                                        if cf and (root.Position - cf.Position).Magnitude > 4 then
+                                                ctx.teleportRoot(cf)
+                                                ctx.setStatus("Admin Abuse Boost: waiting for deposit")
+                                        end
+
+                                        ctx.waitHeartbeat()
+                                end
+
+                                return banked()
+                        end
+
+                        -- Gehlee v7647: WalkSpeed x10 loop, only while the Admin Treadmill exists
+                        local abGenv = (getgenv and getgenv()) or _G
+                        local abGen = (abGenv.__PilatABSpeedGen or 0) + 1
+                        abGenv.__PilatABSpeedGen = abGen
+
+                        task.spawn(function()
+                                local base, applied
+
+                                while abGenv.__PilatABSpeedGen == abGen do
+                                        local hum = ctx.getHumanoid()
+                                        local on = ctx.hubSettings.adminSteal == true and workspace:FindFirstChild("AdminTreadmill") ~= nil
+
+                                        if hum and on then
+                                                local ws = hum.WalkSpeed
+
+                                                if base == nil or applied == nil or math.abs(ws - applied) > 0.5 then
+                                                        base = ws > 900 and ws / 10 or ws
+                                                end
+
+                                                if base and base > 0 then
+                                                        applied = base * 10
+                                                        hum.WalkSpeed = applied
+                                                end
+                                        elseif hum and base and applied then
+                                                if math.abs(hum.WalkSpeed - applied) <= 0.5 then
+                                                        pcall(function()
+                                                                hum.WalkSpeed = base
+                                                        end)
+                                                end
+
+                                                base, applied = nil, nil
+                                        else
+                                                base, applied = nil, nil
+                                        end
+
+                                        ctx.waitHeartbeat()
+                                end
+                        end)
+
+                        local abState = ctx.state
+                        abState.cleanup = abState.cleanup or {}
+                        table.insert(abState.cleanup, function()
+                                abGenv.__PilatABSpeedGen = (abGenv.__PilatABSpeedGen or 0) + 1
+                        end)
+                end
+
                 local handler2, uidMap, entries2, amount19, categoryMap, startTime4, tempValue51, categoryMap2, startTime5, state13 = function(input,
                         inputSteal)
                         local state = 1
@@ -20665,6 +15586,430 @@ end)()
                         end
                 end, {}, {}, 0, {}, 0, false, {}, 0, ctx.state
 
+                -- Move To Egg = "Instant V2" (clone swap), no treadmill
+                -- area in state.TZ  -> teleport-mode reach (stage X + Relocate check + walk + carry replies)
+                -- other areas       -> direct tp + carry spam
+                -- flow: grab w/ real hum -> clone hops to forest edge + drop -> real hum parks in safe zone
+                --       -> swap to clone -> carry dropped egg -> bank at safe zone
+                -- returns (ok, reason) like handlerSteal
+                -- simple=true ("Instant"): teleport-mode reach, then carry home on the clone, bank at safe zone (no drop dance)
+                ctx.instantV2 = function(egg, alive, simple)
+                        local HOP_STUDS, HOP_DT, SETTLE_DT, STAGE_WAIT = 500, 0.155, 0.2, 0.8 -- teleport-mode values, tune down if server accepts
+                        local lp, st = ctx.localPlayer, ctx.state
+                        local char, uid = lp.Character, egg.Uid
+                        local v3, cfn, wait = ctx.vector3New, ctx.cFrameNew, ctx.waitHeartbeat
+                        local redeemed, gone, pos = false, false, egg.Pos
+                        local prevBusy = st.invisBusy
+                        local ax = ctx.getAreasPosition().X
+                        local DROP = v3(ax + 15.4, 70.6, -382)   -- forest side of SeparationLine
+                        local SAFE = v3(ax - 11.8, 70.6, -383.3) -- base side (safe zone)
+                        local area = tostring(egg.a)
+                        local tz = table.find(st.TZ or {}, area) ~= nil
+                        local attempt, stageX, stage, target = 0, nil, nil, nil
+                        local relocX, accepting = nil, false
+
+                        local function nearStage(x)
+                                return x ~= nil and stage ~= nil and math.abs(x - stage.X) < 60
+                        end
+
+                        local verdictRE = ctx.networking:FindFirstChild("RE/EggWorld/FieldEggRedeemVerdict")
+                        local verdictConn = verdictRE and verdictRE.OnClientEvent:Connect(function()
+                                redeemed = true
+                        end)
+                        local rigRE = ctx.networking:FindFirstChild("RE/RigSync/Refresh")
+                        local rigConn = rigRE and rigRE.OnClientEvent:Connect(function(data)
+                                local s = tostring(data)
+                                if s:find("\"Relocate\"") then
+                                        relocX = tonumber(s:match("\"Arguments\":%[([%-%d%.e]+)"))
+                                        local r = ctx.getRootPart()
+                                        if accepting and r and relocX and not nearStage(relocX) then
+                                                r.CFrame = ctx2.fieldValue2
+                                        end
+                                end
+                        end)
+
+                        local function ok()
+                                return alive() and lp.Character == char
+                        end
+
+                        local function finish(res, why)
+                                if verdictConn then
+                                        verdictConn:Disconnect()
+                                end
+                                if rigConn then
+                                        rigConn:Disconnect()
+                                end
+                                st.invisBusy = prevBusy
+                                return res, why
+                        end
+
+                        st.v2Cleanup = function()
+                                finish(false)
+                        end
+
+                        local function go(p)
+                                local r = ctx.getRootPart()
+                                if not r then
+                                        return false
+                                end
+                                if r.Anchored and not ctx.waitRootAnchored(alive) then
+                                        return false
+                                end
+                                r = ctx.getRootPart()
+                                if not r then
+                                        return false
+                                end
+                                ctx.teleportRoot(cfn(p) * r.CFrame.Rotation)
+                                return true
+                        end
+
+                        -- teleport-mode runUntilTimeout: re-teleport every heartbeat until t or stop()
+                        local function hold(cf, t, stop)
+                                local t0 = os.clock()
+                                while true do
+                                        ctx.teleportRoot(cf)
+                                        wait()
+                                        if os.clock() - t0 >= t or not ok() or (stop and stop()) then
+                                                break
+                                        end
+                                end
+                        end
+
+                        local function useReal()
+                                st.invisBusy = true
+                                local deadline = os.clock() + 0.6
+                                while ok() and ctx.isRigAttached() and os.clock() < deadline do
+                                        st.swapReal()
+                                        wait()
+                                end
+                        end
+
+                        local function useClone()
+                                st.invisBusy = nil
+                                local deadline = os.clock() + 1
+                                while ok() and not ctx.isRigAttached() and os.clock() < deadline do
+                                        st.swapClone()
+                                        wait()
+                                end
+                                return ctx.isRigAttached()
+                        end
+
+                        local function eggAt()
+                                local okc, r = pcall(ctx.modules.Egg.ReadFieldEgg, uid)
+                                if okc and type(r) == "table" then
+                                        gone = r.State == "Claimed"
+                                        if typeof(r.BottomCFrame) == "CFrame" then
+                                                pos = r.BottomCFrame.Position
+                                        end
+                                else
+                                        gone = true
+                                end
+                                return pos + v3(0, 3, 0)
+                        end
+
+                        -- ===== teleport-mode approach =====
+                        local rayParams = RaycastParams.new()
+                        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                        rayParams.FilterDescendantsInstances = {char}
+
+                        local function ground(x, z, up)
+                                local hit = workspace:Raycast(v3(x, pos.Y + up, z), v3(0, -up - 150, 0), rayParams)
+                                local y = (hit and hit.Position.Y < pos.Y + 40) and hit.Position.Y or pos.Y
+                                return v3(x, y + 3.6, z)
+                        end
+
+                        local function side(sign)
+                                local okc, r = pcall(ctx.modules.Egg.ReadFieldEgg, uid)
+                                if not (okc and type(r) == "table" and typeof(r.BoundsSize) == "Vector3") then
+                                        return nil
+                                end
+                                local c = (typeof(r.BoundsCFrame) == "CFrame" and r.BoundsCFrame.Position) or pos
+                                local sum, n = Vector3.zero, 0
+                                for _, e in pairs(ctx.readFieldEggs()) do
+                                        if type(e) == "table" and e.AreaId == egg.a and e.Uid ~= uid
+                                                and typeof(e.BottomCFrame) == "CFrame" then
+                                                sum = sum + e.BottomCFrame.Position
+                                                n = n + 1
+                                        end
+                                end
+                                local dir = (n > 0) and (c - sum / n) or v3(0, 0, 1)
+                                local flat = v3(dir.X, 0, dir.Z)
+                                local u = (flat.Magnitude > 0.5) and flat.Unit or v3(0, 0, 1)
+                                local p = c + u * sign * (math.max(r.BoundsSize.X, r.BoundsSize.Z) / 2 + 2.5)
+                                return ground(p.X, p.Z, 8)
+                        end
+
+                        local function approach()
+                                local m = attempt % 4
+                                local top = pos + v3(0, 3.6, 0)
+                                if m == 1 then
+                                        return side(1) or top
+                                elseif m == 2 then
+                                        return side(-1) or top
+                                end
+                                return top
+                        end
+
+                        local function prepare()
+                                eggAt()
+                                attempt = (st.tpFails and st.tpFails[uid]) or 0
+                                stageX = ctx2.valueMap and ctx2.valueMap[area]
+                                if stageX and math.abs(stageX - pos.X) > 1000 then
+                                        stageX = nil
+                                end
+                                target = approach()
+                                stage = stageX and ground(stageX, pos.Z, 150) or target
+                        end
+
+                        local function reachStage()
+                                local ghost = ctx2.field2 and select(2, pcall(ctx2.field2, stage))
+                                local good = false
+                                relocX, accepting = nil, true
+                                ctx.teleportRoot(cfn(stage))
+                                for _ = 1, 5 do
+                                        hold(cfn(stage), STAGE_WAIT, function()
+                                                return relocX ~= nil
+                                        end)
+                                        if not ok() then
+                                                break
+                                        end
+                                        if relocX then
+                                                if nearStage(relocX) then
+                                                        good = true
+                                                        break
+                                                end
+                                                relocX = nil
+                                                hold(ctx2.fieldValue2, 0.14, function()
+                                                        return nearStage(relocX)
+                                                end)
+                                                if nearStage(relocX) then
+                                                        good = true
+                                                        break
+                                                end
+                                                ctx.teleportRoot(cfn(stage))
+                                                accepting = false
+                                                hold(cfn(stage), 1.5, function()
+                                                        return nearStage(relocX)
+                                                end)
+                                                if nearStage(relocX) then
+                                                        good = true
+                                                        break
+                                                end
+                                                accepting = true
+                                                relocX = nil
+                                        else
+                                                good = true
+                                                break
+                                        end
+                                end
+                                accepting = false
+                                if type(ghost) == "table" and ctx2.tryCall then
+                                        pcall(ctx2.tryCall, ghost)
+                                end
+                                return good
+                        end
+
+                        local function reachTarget()
+                                if not reachStage() then
+                                        return false
+                                end
+                                if stageX and not ctx2.hasTimedOut(target - v3(0, 0.6, 0), alive) then
+                                        return false
+                                end
+                                return true
+                        end
+
+                        local function carryTZ()
+                                local t0, nextC, msg, retried = os.clock(), 0, nil, 0
+                                while ok() and not ctx.isSelectedUid(uid) and os.clock() - t0 < 3 do
+                                        if nextC <= os.clock() then
+                                                nextC = os.clock() + 0.5
+                                                task.spawn(function()
+                                                        local _, m = ctx.callModule("Egg", "CarryFieldEgg", uid)
+                                                        if type(m) == "string" then
+                                                                msg = m:lower()
+                                                        end
+                                                end)
+                                        end
+                                        if msg then
+                                                local m = msg
+                                                msg = nil
+                                                if m:find("full") then
+                                                        return false
+                                                end
+                                                if m:find("unavailable") then
+                                                        gone = true
+                                                        return false
+                                                end
+                                                if m:find("trusted") and os.clock() - t0 > 1 and retried < 3 then
+                                                        retried = retried + 1
+                                                        if not reachTarget() then
+                                                                return false
+                                                        end
+                                                        t0, nextC = os.clock(), 0
+                                                elseif m:find("closer") then
+                                                        local r = ctx.getRootPart()
+                                                        if r and v3(r.Position.X - pos.X, 0, r.Position.Z - pos.Z).Magnitude > 4 then
+                                                                local m4 = attempt % 4
+                                                                local dst = (m4 == 1 or m4 == 2) and r.Position:Lerp(target, 0.5) or target
+                                                                ctx.teleportRoot(cfn(dst))
+                                                                nextC = math.min(nextC, os.clock() + 0.1)
+                                                        end
+                                                end
+                                        end
+                                        wait()
+                                end
+                                return ctx.isSelectedUid(uid)
+                        end
+
+                        -- ===== direct grab (non-TZ areas, and re-carry next to the base) =====
+                        local function grab()
+                                for _ = 1, 3 do
+                                        if ctx.isSelectedUid(uid) then
+                                                return true
+                                        end
+                                        local deadline, nextTry = os.clock() + 2.5, 0
+                                        while ok() and os.clock() < deadline do
+                                                go(eggAt())
+                                                if ctx.isSelectedUid(uid) then
+                                                        return true
+                                                end
+                                                if gone then
+                                                        return false
+                                                end
+                                                if nextTry <= os.clock() then
+                                                        nextTry = os.clock() + 0.05
+                                                        task.spawn(ctx.callModule, "Egg", "CarryFieldEgg", uid)
+                                                end
+                                                wait()
+                                        end
+                                        if gone or not ok() then
+                                                return false
+                                        end
+                                end
+                                return ctx.isSelectedUid(uid)
+                        end
+
+                        local function grabFirst()
+                                local good
+                                if tz then
+                                        prepare()
+                                        good = (not gone) and reachTarget() and carryTZ()
+                                        if st.tpFails then
+                                                st.tpFails[uid] = ((not good) and not gone) and (attempt + 1) or nil
+                                        end
+                                else
+                                        good = grab()
+                                end
+                                return good
+                        end
+
+                        -- teleport-mode bring-home: hop HOP_STUDS at y=110.5, settle on dest
+                        local function hop(dest, untilDropped)
+                                local r = ctx.getRootPart()
+                                if not r then
+                                        return
+                                end
+                                local rot = r.CFrame.Rotation
+                                local cur = v3(r.Position.X, 110.5, r.Position.Z)
+                                local home = v3(dest.X, 110.5, dest.Z)
+                                local function stop()
+                                        return untilDropped and not ctx.isSelectedUid(uid)
+                                end
+                                while (home - cur).Magnitude > HOP_STUDS and ok() and not stop() do
+                                        cur = cur + (home - cur).Unit * HOP_STUDS
+                                        hold(cfn(cur) * rot, HOP_DT, stop)
+                                end
+                                if ok() then
+                                        hold(cfn(dest) * rot, SETTLE_DT, stop)
+                                end
+                        end
+
+                        local function dropAtForest()
+                                hop(DROP, true)
+                                for _ = 1, 3 do
+                                        if not ctx.isSelectedUid(uid) then
+                                                break
+                                        end
+                                        task.spawn(ctx.callModule, "Egg", "DropFieldEgg", "PlayerRequest")
+                                        local deadline = os.clock() + 0.5
+                                        while ok() and ctx.isSelectedUid(uid) and os.clock() < deadline do
+                                                wait()
+                                        end
+                                end
+                                return not ctx.isSelectedUid(uid)
+                        end
+
+                        local function settle()
+                                local deadline = os.clock() + 0.3
+                                while ok() and os.clock() < deadline do
+                                        local okc, r = pcall(ctx.modules.Egg.ReadFieldEgg, uid)
+                                        if okc and type(r) == "table" and r.State == "Dropped" then
+                                                break
+                                        end
+                                        wait()
+                                end
+                                eggAt()
+                        end
+
+                        local function bankAtSafe(timeout)
+                                local deadline = os.clock() + timeout
+                                while ok() and not redeemed and ctx.isSelectedUid(uid) and os.clock() < deadline do
+                                        go(SAFE)
+                                        wait()
+                                end
+                        end
+
+                        if lp:GetAttribute("InEnchantedTree") and st.leaveTree then
+                                st.leaveTree()
+                        end
+                        if not ctx.waitRootAnchored(alive) then
+                                return finish(false, "Stuck on treadmill")
+                        end
+
+                        -- 1. real humanoid: reach egg like teleport mode, carry
+                        useReal()
+                        if not grabFirst() then
+                                hop(SAFE, false)
+                                return finish(false, gone and "Egg is gone" or "Could not grab")
+                        end
+
+                        if simple then
+                                useClone()
+                                hop(SAFE, true)
+                                bankAtSafe(1.5)
+                                local done = redeemed or not ctx.isSelectedUid(uid)
+                                return finish(done, (not done) and "Dropped on the way" or nil)
+                        end
+
+                        -- 2. clone humanoid: hop to forest edge, drop (clone stays at the egg)
+                        useClone()
+                        if not dropAtForest() then
+                                bankAtSafe(1.5)
+                                local done = redeemed or not ctx.isSelectedUid(uid)
+                                return finish(done, (not done) and "Dropped on the way" or nil)
+                        end
+                        settle()
+
+                        -- 3. real humanoid parked in safe zone
+                        useReal()
+                        local hold2 = os.clock() + 0.1
+                        while ok() and os.clock() < hold2 do
+                                go(SAFE)
+                                wait()
+                        end
+
+                        -- 4. swap back to clone, carry the dropped egg, bank at safe zone
+                        useClone()
+                        if not grab() then
+                                go(SAFE)
+                                return finish(false, "Dropped on the way")
+                        end
+                        bankAtSafe(1.5)
+                        local done = redeemed or not ctx.isSelectedUid(uid)
+                                return finish(done, (not done) and "Dropped on the way" or nil)
+                end
+
                 state13.indexMissing = function()
                         if os.clock() > startTime5 then
                                 startTime5, categoryMap2 = os.clock() + 30, {}
@@ -20828,15 +16173,8 @@ end)()
                         if pos2 then
                                 pos3 = pos2
                         else
-                                local stealOn = ctx.hubSettings.steal
                                 inputSteal = ctx.matchesCriteria
-                                local isFilter = inputSteal(stealFilter, fieldValue)
-                                pos3 = (stealOn and isFilter and "filter") or nil
-
-                                if not pos3 then
-                                        local stateUfo = ctx.state
-                                        pos3 = (stateUfo.ufoEgg and stateUfo.ufoEgg(fieldValue, uid)) or (isFilter and "filter") or nil
-                                end
+                                pos3 = inputSteal(stealFilter, fieldValue) and "filter"
                         end
 
                         pos2, input = pos ~= nil
@@ -20853,11 +16191,11 @@ end)()
                                         local zones = tempValueSteal.zones
                                         local isNegated = not zones
 
-                                        if zones and pos3 ~= "ufo" then
+                                        if zones then
                                                 local hubSettings4 = ctx.hubSettings
                                                 input = hubSettings4.zones[tostring(firstValue.AreaId):gsub("%s", "")]
                                         else
-                                                input = true
+                                                input = isNegated
                                         end
                                 else
                                         input = conditionalValue
@@ -20891,14 +16229,6 @@ end)()
                         fieldValue.Name = name
                         fieldValue.b = input
                         fieldValue.lo = tg2
-
-                        if fieldValue.tg then
-                                if pos3 == "ufo" then
-                                        local ufoData = ctx.state.UFO
-                                        ufoData = ufoData and ufoData.st.Ufo
-                                        fieldValue.b = fieldValue.b + ((9000 - math.abs(fieldValue.Pos.X - ((ufoData and ufoData.Position.X) or 0))) / 10)
-                                end
-                        end
 
                         if input2 == "near" then
                                 pos = nil
@@ -21107,8 +16437,6 @@ end)()
                                                                         elseif checkState2Result.kind == "wisp" then
                                                                                 list3[#list3 + 1] = checkState2Result
                                                                         elseif checkState2Result.kind == "pick" then
-                                                                                list3[#list3 + 1] = checkState2Result
-                                                                        elseif checkState2Result.kind == "ufo" then
                                                                                 list3[#list3 + 1] = checkState2Result
                                                                         end
                                                                 end
@@ -21869,13 +17197,6 @@ end)()
                         local state = ctx.state
                         state.stealKind = input.kind
 
-                        if input.kind == "ufo" then
-                                local ufoData = state.UFO
-                                if ufoData then
-                                        ufoData.d0 = ufoData.st.Delivered or 0
-                                end
-                        end
-
                         if input.hw then
                                 state = ctx.state
                                 state.curUid = nil
@@ -21957,10 +17278,6 @@ end)()
                                 state.greenLight(input.Uid, callback)
                         end
 
-                        if ctx.hubSettings.moveTo == "Instant" and type(ctx.state.instantRun) == "function" then
-                                return ctx.state.instantRun(input, callback, uidMap, doStep9ResultSwap)
-                        end
-
                         player = ctx.localPlayer
                         local character2, callbackSteal, tempValue5, player2, tempValue6, isEnabled = player.Character, callback, false
                         state = ctx.state
@@ -21985,7 +17302,11 @@ end)()
                         end
 
                         if player then
-                                player2 = handler2(input, callback)
+                                if ctx.hubSettings.adminSteal and ctx.adminBoostSteal then
+                                        player2 = ctx.adminBoostSteal(input, callback)
+                                else
+                                        player2 = handler2(input, callback)
+                                end
 
                                 if player2 then
                                         adminSteal = ctx.setStatus
@@ -22039,7 +17360,7 @@ end)()
                                 tempValue6 = "Taken by someone"
                         else
                                 state = ctx.hubSettings
-                                player, adminSteal = (input.kind ~= "ufo") and (state.moveTo == "Teleport")
+                                player, adminSteal = state.moveTo == "Teleport"
 
                                 if player then
                                         adminSteal2 = nil
@@ -22057,7 +17378,24 @@ end)()
                                         pos = adminSteal
                                 end
 
-                                if pos or ((input.kind == "ufo") and ctx.state.ufoTP and ctx.state.ufoTP(input)) then
+                                if (ctx.hubSettings.moveTo == "Instant" or ctx.hubSettings.moveTo == "Instant V2") and ctx.instantV2 then
+                                        local state4 = ctx.state
+                                        isEnabled = true
+                                        state4.tpKeep = input.Uid
+                                        local okc, res, why = pcall(ctx.instantV2, input, callback, ctx.hubSettings.moveTo == "Instant")
+
+                                        if okc then
+                                                player2, tempValue6 = res, why
+                                        else
+                                                warn("[instant v2] " .. tostring(res))
+
+                                                if state4.v2Cleanup then
+                                                        pcall(state4.v2Cleanup)
+                                                end
+
+                                                player2, tempValue6 = false, "Instant V2 error"
+                                        end
+                                elseif pos then
                                         local state4 = ctx.state
                                         isEnabled = true
                                         state4.tpKeep = input.Uid
@@ -22166,7 +17504,7 @@ end)()
                                                 end
 
                                                 local state4 = ctx.state
-                                                state4.tainted = ((if state then not state else input.kind ~= "ufo") and ((adminSteal2 == "Egg went back to its nest") or (adminSteal2 == "Dropped on the way"))) or nil
+                                                state4.tainted = (if state then not state else (adminSteal2 == "Egg went back to its nest") or (adminSteal2 == "Dropped on the way")) or nil
 
                                                 if state then
                                                         player2, tempValue6 = state, adminSteal2
@@ -22207,7 +17545,7 @@ end)()
 
                                         if player.Character == character2 then
                                                 state = ctx.setStatus
-                                                state("Admin treadmill is up, switching to Instant steal")
+                                                state("Admin treadmill is up, switching to Admin Abuse Boost")
                                                 return doStep9ResultSwap.run(input, callbackSteal)
                                         end
                                 end
@@ -22233,14 +17571,6 @@ end)()
                         if isEnabled then
                                 adminSteal = ctx.state
                                 adminSteal.tpOk = player2
-                        end
-
-                        if ctx.hubSettings.steal then
-                                if not player2 then
-                                        if input.kind ~= "ufo" then
-                                                ctx.state.stealRetry = os.clock() + 6
-                                        end
-                                end
                         end
 
                         if player2 then
@@ -22395,6 +17725,7 @@ end)()
                 end
         end)
 
+        -- ==== 10_steal#2 part 2/2 ====
         runStep("10_steal#2", function()
                 local ctx2 = {}
                 local state = ctx.state
@@ -23043,7 +18374,7 @@ end)()
 
                         if antiGuard then
                                 hubSettingsSteal = ctx.hubSettings
-                                local tempValue6, steal = (ctx.state.stealKind ~= "ufo") and (hubSettingsSteal.moveTo == "Teleport")
+                                local tempValue6, steal = hubSettingsSteal.moveTo == "Teleport"
 
                                 if tempValue6 then
                                         local hubSettings2 = ctx.hubSettings
@@ -23235,6 +18566,7 @@ end)()
                 Rainbow = Color3.fromRGB(255, 120, 220), Scrambled = Color3.fromRGB(186, 120,
                 255), Boss = Color3.fromRGB(255, 104, 104), Enchanted = Color3.fromRGB(104, 236, 255), Sakura = Color3.fromRGB(255, 166, 214), GreatBloom = Color3.fromRGB(176, 255, 166), Monstrous = Color3.fromRGB(150, 255, 110), Nitro = Color3.fromRGB(255, 150, 64), Spectral = Color3.fromRGB(110, 235, 220)}
 
+        -- ==== 12_hud#1 ====
         runStep("12_hud#1", function()
                 local UserInputService, localPlayerHud, RunService2, networkingHud, ReplicatedStorage2, setmetatableFn, entries = getService("UserInputService"), ctx.localPlayer, ctx.RunService, ctx.networking, ReplicatedStorage, setmetatable, {__index = function(data, keyName)
                         data = ctx.state
@@ -23295,7 +18627,7 @@ end)()
                                 local stateHud, state3, bestValue = ctx.state, ctx.state, 0
 
                                 for index, item in ipairs((stateHud.stealSort(state3.allEggs()))) do
-                                        if item.tg and item.kind ~= "ufo" then
+                                        if item.tg then
                                                 if uidMap[item.Uid] then
                                                 else
                                                         if bestValue < 8 then
@@ -23312,7 +18644,7 @@ end)()
                         end
 
                         uidMap = ctx.state
-                        return uids, (uidMap.stealKind ~= "ufo" and uidMap.curUid) or nil
+                        return uids, uidMap.curUid
                 end
 
                 local function scanItemsHud(input)
@@ -23587,6 +18919,8 @@ end)()
                                 color3FromRGB(206, 212, 224)}, {0.42, color3FromRGB(74, 80, 94)}, {0.58, color3FromRGB(42, 46,
                                 56)}, {0.78, color3FromRGB(158, 166, 182)}, {1, color3FromRGB(250, 252, 255)}}), {}
 
+
+                        -- Pilat soft theme: calm down the neon chrome of the cloned panel (keeps whites/greys and rarity colors)
                         function state.pilatSoft(c)
                                 local h, s, v = c:ToHSV()
                                 if s > 0.5 then
@@ -25215,11 +20549,12 @@ end)()
                                 equipBest = header:FindFirstChildOfClass("UIGradient")
 
                                 if equipBest then
-
+                                        -- Steal panel: blue gradient
                                         equipBest.Color = scanTable3({{0, color3FromRGB(92, 170, 255)}, {0.53, color3FromRGB(52, 124, 255)}, {1,
                                                 color3FromRGB(30, 92, 224)}})
                                 end
 
+                                -- Steal panel: any other near-black surface in the panel -> blue (text stays white)
                                 if not descendants:GetAttribute("PilatBlue") then
                                         descendants:SetAttribute("PilatBlue", true)
                                         pcall(function()
@@ -25248,8 +20583,9 @@ end)()
                                         end)
                                 end
 
+                                -- Steal panel logo: replace with a white Common Egg icon
                                 pcall(function()
-                                        local COMMON_EGG_ICON = "rbxassetid://8601111810"
+                                        local COMMON_EGG_ICON = "rbxassetid://8601111810" -- white egg icon
                                         for _, child in ipairs(header:GetDescendants()) do
                                                 if child:IsA("ImageLabel") or child:IsA("ImageButton") then
                                                         local name = tostring(child.Name):lower()
@@ -25731,6 +21067,7 @@ end)()
                 end)()
         end)
 
+        -- ==== 14_pred#1 ====
         runStep("14_pred#1", function()
                 local labelMap3 = {EggState = "Egg", EggRecords = "Rec", Assets = "Assets", Save = "Save",
                         FuseKernel = "Fuse", Mutations = "Mut"}
@@ -25772,13 +21109,13 @@ end)()
                 end
 
                 local ReplicatedStorage2 = ReplicatedStorage
-                local eggPredictor = ctx.pilat.egg or cacheCore["Egg Predictor"]
-                local fusePredictor, statePred = ctx.pilat.fuse or cacheCore["Fuse Predictor"], {}
-                statePred.Page = ctx.pilat.page or entries4.Predictor.page
+                local eggPredictor = ctx.chilli.egg or cacheCore["Egg Predictor"]
+                local fusePredictor, statePred = ctx.chilli.fuse or cacheCore["Fuse Predictor"], {}
+                statePred.Page = ctx.chilli.page or entries4.Predictor.page
                 local state3 = {};
 
                 (function()
-                        state3.Ready = (ctx.pilat.egg ~= nil) and (type(ctx.pilat.egg.CreateCanvas) == "function")
+                        state3.Ready = (ctx.chilli.egg ~= nil) and (type(ctx.chilli.egg.CreateCanvas) == "function")
                         state3.Bullet = utf8.char(8226)
                         state3.Color = {Text = "#FFFFFF", Income = "#4DFF7A", Clock = "#FFC24D", Ready = "#4DFF7A",
                                 Growing = "#FFC24D", Inventory = "#7FD8FF", Weight = "#CDE7FF", Scale = "#FFDF8A", Separator = "#7A8CC0", Hint = "#9FB8FF"}
@@ -26057,6 +21394,7 @@ end)()
                 state.GM = setmetatableFnResult
         end)
 
+        -- ==== 15_hop#1 ====
         runStep("15_hop#1", function()
                 local autoHopPath = "PilatLibrary/SAE_AutoHop.json"
                 local tempValueHop = uiLibrary.dec(uiLibrary.rd(autoHopPath)) or {}
@@ -26858,14 +22196,6 @@ end)()
                                 end
                         end
 
-                        stateHop = ctx.state
-
-                        if stateHop.ufoWants then
-                                if stateHop.ufoWants() then
-                                        return doStep12("UFO in this server, hop waits", "star")
-                                end
-                        end
-
                         local steal, hubSettingsHop, pos, checkState8Result, pairsFn, readFieldEggs = checkState7(), ctx.hubSettings, table.find(nameList,
                                 ctx.hubSettings.hopRare) or 7, checkState8(), pairs, ctx.readFieldEggs
                         local packedArgs, tempValue8, startTimeHop, bestValue, tempValue9 = table.pack(readFieldEggs()), false, 0, 0
@@ -27041,6 +22371,7 @@ end)()
                 return input
         end
 
+        -- ==== 20_farm#1 part 1/7 ====
         runStep("20_farm#1", function()
                 local doStep9ResultFarm = doStep9({name = "Place", mover = true, gap = 8, pri = 4, soft = true, bad = {}})
                 local autoPlaceEgg = cacheCore["Auto Place Egg"]
@@ -27459,6 +22790,7 @@ end)()
                 end
         end)
 
+        -- ==== 20_farm#2 part 2/7 ====
         runStep("20_farm#2", function()
                 local doStep9ResultFarm = doStep9({name = "Hatch", gap = 2, bad = {}, info = true})
                 local autoHatchEquip = cacheCore["Auto Hatch & Equip"]
@@ -27609,6 +22941,7 @@ end)()
                 return false
         end
 
+        -- ==== 20_farm#3 part 3/7 ====
         runStep("20_farm#3", function()
                 local labelMap3 = {Boss = "Fractured", Scrambled = "Scrambled", Enchanted = "Enchanted", Nitro = "Nitro",
                         Spectral = "Spectral"}
@@ -27932,6 +23265,7 @@ end)()
                 end
         end)
 
+        -- ==== 20_farm#4 part 4/7 ====
         runStep("20_farm#4", function()
                 local doStep9ResultFarm = doStep9({name = "Treadmill", mover = true, gap = 2, pri = 9, soft = true})
 
@@ -28221,14 +23555,7 @@ end)()
                 end
 
                 doStep9ResultFarm.ready = function()
-                        local stateUfo = ctx.state
-                        local busy
-                        if stateUfo.ufoBusy then
-                                busy = stateUfo.ufoBusy()
-                        else
-                                busy = stateUfo.ufoBusy
-                        end
-                        return not busy
+                        return true
                 end
 
                 local autoProgression, ctx2 = cacheCore["Auto Progression"], {}
@@ -28508,6 +23835,7 @@ end)()
                 return numVals, numVals2
         end
 
+        -- ==== 20_farm#5 part 5/7 ====
         runStep("20_farm#5", function()
                 local doStep9ResultFarm, autoSell, onlyList = doStep9({name = "Sell", gap = 5,
                         info = true}), cacheCore["Auto Sell"], {"Rarity Only", "Value Only", "Rarity And Value", "Rarity Or Value"}
@@ -28588,6 +23916,11 @@ end)()
                         end
                 end)
 
+                -- ── scanItemsFarm (Chilli logic) ─────────────────────────────────────────
+                -- Filters items by rule, rarity, value, blacklist, and keepMutated flag.
+                -- items   : flat array with fields .r .v .m .n .uid .cat
+                -- state   : sell-rule table  {rule, mx, v, no}
+                -- keyName : "sellPetsKeep" | "sellEggsKeep"  (hubSettings key)
                 local function scanItemsFarm(items, state, keyName)
                         local uids = {}
                         local hs   = ctx.hubSettings
@@ -28605,7 +23938,7 @@ end)()
                                 if passes then
                                         if not (state.no and state.no[item.n]) then
                                                 if hs[keyName] then
-
+                                                        -- keepMutated ON: skip items that have mutations
                                                         if not (#item.m > 0) then
                                                                 uids[#uids + 1] = item.uid
                                                         end
@@ -28619,14 +23952,18 @@ end)()
                         return uids
                 end
 
+                -- ── scanItems3 (Chilli scanAndSell, adapted for pila ctx) ─────────────────
                 local function scanItems3(input)
                         local save = ctx.peekSave()
                         if not save then return 0, 0 end
 
                         local pets, eggs = ctx.scanInventory(save)
 
+                -- FIX: read bag eggs the same way pilatSae does (Egg.ReadOwnerEggs) and keep a breakdown
+                -- so the preview can say WHY an egg is skipped.
                 local dbg = {read = 0, placed = 0, held = 0, err = 0}
-
+                -- FIX: the UI library does not always fire the input callback, so read the typed limit
+                -- straight from the on-screen TextBox that sits next to the "... Sell Value" label.
                 local function findBox(title)
                         local roots = {}
                         pcall(function() if gethui then roots[#roots + 1] = gethui() end end)
@@ -28703,6 +24040,7 @@ end)()
                         local petUids = scanItemsFarm(pets, Pet,  "sellPetsKeep")
                         local eggUids = scanItemsFarm(eggs, Egg, "sellEggsKeep")
 
+                        -- count Halloween eggs among candidates
                         local hwCount = 0
                         for _, egg in ipairs(eggs) do
                                 if cache[egg.cat] and table.find(eggUids, egg.uid) then
@@ -28710,6 +24048,7 @@ end)()
                                 end
                         end
 
+                        -- price preview
                         local petValue, eggValue = 0, 0
                         local AssetItems
 
@@ -28752,6 +24091,7 @@ end)()
                                 tempValue7:Set(("Egg matches  -  %d eggs (%d Halloween) for %s  |  bag %d, placed %d, held %d, err %d  |  rule %s, limit %s, box %s"):format(#eggUids, hwCount, formatCompact(eggValue), dbg.read, dbg.placed, dbg.held, dbg.err, tostring(Egg.rule), formatCompact(Egg.v or 0), Egg.box and ("\""..tostring(Egg.box.Text).."\"") or "not found"))
                         end)
 
+                        -- respect enabled flags / one-type run
                         if input == "pets" then
                                 eggUids = {}
                         elseif input == "eggs" then
@@ -28762,6 +24102,7 @@ end)()
                                 if not hs.sellEggs then eggUids = {} end
                         end
 
+                        -- fire in batches of 50
                         for i = 1, math.max(#petUids, #eggUids), 50 do
                                 fireServer2("RE/PetSatchel/SellSelection", {
                                         Assets = {table.unpack(petUids, i, math.min(i + 49, #petUids))},
@@ -28789,6 +24130,10 @@ end)()
                 doStepFarm.sellRun = scanItems3
         end)
 
+        -- (dead ported pilatSae sell engine removed: it read an undefined pilatV4Config and never ran;
+        --  selling is handled by the native scanItems3 loop above)
+
+        -- ==== 20_farm#6 part 6/7 ====
         runStep("20_farm#6", function()
                 local doStep9ResultFarm = doStep9({name = "Favorite", gap = 3, pend = {}})
                 local autoFavorite = cacheCore["Auto Favorite"]
@@ -29071,6 +24416,7 @@ end)()
                 end
         end)
 
+        -- ==== 20_farm#7 part 7/7 ====
         runStep("20_farm#7", function()
                 local ctx2 = {}
                 local doStep9ResultFarm = doStep9({name = "Fuse", gap = 2, bad = {}, info = true})
@@ -29614,6 +24960,7 @@ end)()
                 end
         end)
 
+        -- ==== 21_eggchecker#1 (Egg Checker window, ported from pilatSae) ====
         runStep("21_eggchecker#1", function()
                 local UserInputService = game:GetService("UserInputService")
                 local ReplicatedStorage2 = game:GetService("ReplicatedStorage")
@@ -29629,6 +24976,7 @@ end)()
                 local W, H = 420, 540
                 local checker = {sort = "value", rarity = "All", picked = {}, rows = {}}
 
+                -- ===== helpers =====
                 local function fmtNum(n)
                         n = tonumber(n) or 0
                         local units = {{1e15, "Qa"}, {1e12, "T"}, {1e9, "B"}, {1e6, "M"}, {1e3, "K"}}
@@ -29676,7 +25024,8 @@ end)()
                 local iconCache = setmetatable({}, {__mode = "k"})
 
                 local function iconOf(d, rec)
-
+                        -- FIX: show the EGG picture (same source as the steal panel), not the pet's.
+                        -- EggIcon can yield, so it runs in its own thread and never blocks the scan.
                         if rec then
                                 local cached = iconCache[rec]
                                 if cached == nil then
@@ -29771,6 +25120,7 @@ end)()
                         return tonumber(kg) or 0
                 end
 
+                -- ===== scan field eggs (same filter as pilatSae egg checker) =====
                 local function scan()
                         local out = {}
                         local dbg = {records = 0, noCF = 0, state = 0, carried = 0, first = 0}
@@ -29788,7 +25138,7 @@ end)()
                                         elseif rec.CarrierUserId then dbg.carried += 1
                                         elseif tostring(rec.Uid or key):find("FirstAreaEgg") then dbg.first += 1 end
                                 end
-
+                                -- FIX: records are keyed by uid; many have no .Uid field (the steal code uses item.Uid or key)
                                 local recUid = type(rec) == "table" and (rec.Uid or key) or nil
                                 if type(rec) == "table" and type(recUid) == "string" and rec.State ~= "Claimed" and rec.State ~= "Carried"
                                         and not rec.CarrierUserId and typeof(rec.BottomCFrame) == "CFrame"
@@ -29816,6 +25166,9 @@ end)()
                         return out
                 end
 
+                -- FIX v2: Refresh must ALWAYS rescan and ALWAYS show something.
+                -- Step 1 reads the field directly (instant, no yielding); step 2 enriches with the steal panel's list
+                -- (exact rates). Step 1 is published in checker.partial, so a hung step 2 can never blank the window.
                 local scanLegacy = scan
                 scan = function()
                         local out, seen = {}, {}
@@ -29882,6 +25235,7 @@ end)()
                         return out
                 end
 
+                -- ===== queue picked eggs into the steal queue (same as HUD "Steal now") =====
                 local function queueEggs(uids)
                         local state = ctx.state
                         local n = 0
@@ -29908,7 +25262,8 @@ end)()
                         return n
                 end
 
-                local MOVE_OPTS = {{"Teleport", "Teleport"}, {"Walk", "Tween"}, {"Instant", "Instant"}}
+                -- ===== steal-setting bridge (movement / delivery / teleport delivery) =====
+                local MOVE_OPTS = {{"Teleport", "Teleport"}, {"Walk", "Tween"}, {"Instant", "Instant"}, {"Instant V2", "Instant V2"}}
                 local DEL_OPTS = {{"Walk", "Walk"}, {"Instant Steps", "Instant Steps"}, {"Fast Tween", "Fast Tween"}}
                 local TPDEL_OPTS = {{"Walk", "Walk"}, {"Quick Steps", "Quick Steps"}, {"Fast Tween", "Fast Tween"}}
 
@@ -29918,12 +25273,10 @@ end)()
                                 pcall(ctl.Set, ctl, value)
                         end
                         ctx.hubSettings[key] = value
-                        if key == "moveTo" and ctx.state.applyInstantVisibility then
-                                pcall(ctx.state.applyInstantVisibility, value)
-                        end
                         pcall(checkState3)
                 end
 
+                -- ===== UI =====
                 local function corner(inst, r)
                         local c = Instance.new("UICorner")
                         c.CornerRadius = UDim.new(0, r or 8)
@@ -30083,6 +25436,7 @@ end)()
                         scale.Scale = math.clamp(math.min(1, (vp.X * 0.94) / W, (vp.Y * 0.92) / H), 0.6, 1)
                         frame.Position = UDim2.fromOffset(math.floor(vp.X / 2), math.floor(vp.Y / 2))
 
+                        -- header (drag handle)
                         local header = Instance.new("Frame")
                         header.BackgroundTransparency = 1
                         header.Size = UDim2.new(1, 0, 0, 38)
@@ -30124,6 +25478,7 @@ end)()
                                 dragConn:Disconnect()
                         end)
 
+                        -- rarity filter (scrolling chips)
                         local rarOpts, seen = {{"All", "All"}}, {}
                         pcall(function()
                                 local items = {}
@@ -30148,6 +25503,7 @@ end)()
                                 checker.refresh(true)
                         end, true)
 
+                        -- sort + clear
                         checker.sortSeg = makeSeg(frame, UDim2.fromOffset(14, 76), UDim2.new(1, -96, 0, 28),
                                 {{"value", "Best value"}, {"weight", "Best weight"}, {"rarity", "Rarity"}}, function(v)
                                         checker.sort = v
@@ -30158,6 +25514,7 @@ end)()
                                 checker.paintRows()
                         end)
 
+                        -- steal settings box
                         local box = Instance.new("Frame")
                         box.BackgroundColor3 = C.panel
                         box.BorderSizePixel = 0
@@ -30187,6 +25544,7 @@ end)()
                                 checker.syncSettings()
                         end, false)
 
+                        -- list
                         checker.headLbl = label(frame, "Tap eggs to pick them", 11, C.muted)
                         checker.headLbl.Position = UDim2.fromOffset(16, 190)
                         checker.headLbl.Size = UDim2.new(1, -32, 0, 16)
@@ -30213,6 +25571,7 @@ end)()
                         checker.emptyLbl.Size = UDim2.new(1, -28, 0, 30)
                         checker.emptyLbl.Visible = false
 
+                        -- bottom bar
                         checker.refreshBtn = makeButton(frame, "Refresh", UDim2.new(0, 14, 1, -46), UDim2.fromOffset(96, 34), false, function()
                                 checker.refresh(true)
                         end)
@@ -30237,6 +25596,7 @@ end)()
                                 checker.refresh(true)
                         end)
 
+                        -- row pool
                         local function newRow()
                                 local row = {}
                                 local b = Instance.new("TextButton")
@@ -30341,19 +25701,16 @@ end)()
                                 return
                         end
                         local hs = ctx.hubSettings
-                        local move = (hs.moveTo == "Teleport" and "Teleport") or (hs.moveTo == "Instant" and "Instant") or "Walk"
+                        local move = (hs.moveTo == "Teleport" and "Teleport") or (hs.moveTo == "Instant" and "Instant") or (hs.moveTo == "Instant V2" and "Instant V2") or "Walk"
                         checker.moveSeg.set(move)
                         checker.delSeg.set(hs.insDel or "Walk")
                         checker.tpDelSeg.set(hs.tpDel or "Walk")
                         local tp = (move == "Teleport")
-                        local ins = (move == "Instant")
-                        checker.delSeg.holder.Visible = not tp and not ins
+                        checker.delSeg.holder.Visible = (move == "Walk")
                         checker.tpDelSeg.holder.Visible = tp
-                        checker.detLbl.Visible = not ins
                         checker.detLbl.Text = tp and "Teleport Delivery" or "Delivery"
                         checker.detLbl.TextSize = tp and 10 or 11
                 end
-                ctx.state.syncChecker = checker.syncSettings
 
                 local function safeNum(x)
                         x = tonumber(x) or 0
@@ -30363,6 +25720,7 @@ end)()
                         return x
                 end
 
+                -- draws a list of eggs (or an error) into the window. Never yields.
                 checker.render = function(eggs, errText)
                         if not (checker.gui and checker.gui.Parent) then
                                 return
@@ -30377,6 +25735,7 @@ end)()
                         end
                         eggs = copy
 
+                        -- drop picks for eggs that left the field
                         local alive = {}
                         for _, e in ipairs(eggs) do
                                 alive[tostring(e.uid)] = true
@@ -30397,6 +25756,7 @@ end)()
                                 eggs = f
                         end
 
+                        -- strict ordering (NaN-safe, uid tiebreak) so table.sort can never throw "invalid order function"
                         table.sort(eggs, function(a, b)
                                 local first, second
                                 if checker.sort == "weight" then
@@ -30462,6 +25822,7 @@ end)()
                         end)
                         checker.paintRows()
 
+                        -- header line = live status, so you can see Refresh really ran
                         if checker.headLbl then
                                 if checker.rowErr then
                                         checker.headLbl.Text = "row err: " .. checker.rowErr:sub(1, 70)
@@ -30478,6 +25839,7 @@ end)()
                         end
                 end
 
+                -- Refresh: non-blocking. manual=true (button / open) always starts a fresh scan; the 1.5s auto-loop never stacks scans.
                 checker.refresh = function(manual)
                         if not (checker.gui and checker.gui.Parent) then
                                 return
@@ -30531,7 +25893,7 @@ end)()
                                         done(checker.partial, "scan error: " .. tostring(res))
                                 end
                         end)
-
+                        -- watchdog: if the steal-list step hangs, still show the direct field scan
                         task.delay(4, function()
                                 if not finished then
                                         done(checker.partial, "steal list timed out - showing field scan")
@@ -30563,6 +25925,7 @@ end)()
                 end
                 ctx.state.openEggChecker = openChecker
 
+                -- ===== Farm tab button =====
                 local sec = cacheCore["Egg Checker"]
                 if sec then
                         sec:Button("Egg Checker", "Open Egg Checker", function()
@@ -30571,6 +25934,7 @@ end)()
                 end
         end)
 
+        -- ==== 21_eggs#1 ====
         runStep("21_eggs#1", function()
                 local function getEntry(keyName)
                         return labelMap2[keyName] or keyName
@@ -30582,8 +25946,8 @@ end)()
                         return HttpService:GenerateGUID(false):gsub("-", ""):sub(1, 14)
                 end
 
-                local eggPredictor = ctx.pilat.egg or cacheCore["Egg Predictor"]
-                local fusePredictor = ctx.pilat.fuse or cacheCore["Fuse Predictor"];
+                local eggPredictor = ctx.chilli.egg or cacheCore["Egg Predictor"]
+                local fusePredictor = ctx.chilli.fuse or cacheCore["Fuse Predictor"];
                 ({}).Page = entries4.Predictor.page
                 local position
                 local doStep9ResultEggs = doStep9({name = "GoTo", mover = true, gap = 0.5, pri = 0, soft = true})
@@ -32136,14 +27500,15 @@ end)()
                                 eggPredictor:CreateText({Name = "Egg Predictor", Text = "Egg Predictor window could not be created."})
                         end
 
+                        -- Pilat main window: short note + button that opens the predictor window
                         do
                                 local pilatEggSection = cacheCore["Egg Predictor"]
 
                                 if pilatEggSection and (pilatEggSection ~= eggPredictor) then
                                         pilatEggSection:CreateText({Name = "Egg Predictor", Text = "Egg cards for every egg you own (placed and in your bag): the egg, its name, rarity and mutations, then the weight in kg (yellow) above the money per second (green) it gives once hatched. Opens in its own window (RightCtrl also toggles it)."})
                                         pilatEggSection:Button("Open Egg Predictor", "Open Egg Predictor", function()
-                                                if ctx.pilat and ctx.pilat.open then
-                                                        ctx.pilat.open()
+                                                if ctx.chilli and ctx.chilli.open then
+                                                        ctx.chilli.open()
                                                 end
                                         end, "Opens the egg predictor window. Sort by value, rarity or time left, filter ready / growing / in bag, and search by name.")
                                 end
@@ -32841,17 +28206,10 @@ end)()
                 end)()
         end)
 
+        -- ==== 22_prio#1 ====
         runStep("22_prio#1", function()
-                local priorityConfig = {Default = {"StealFilter", "Star", "UFO", "Hollow", "Train", "PumpkinBoss", "HwPumpkin",
-                        "HwBlood", "Butterfly", "StealWisp", "HwIndex", "StealIndex", "Place", "Essence", "HwDog", "HwMonsters", "HwFishing", "Treadmill"}, Labels = {Star = "Shooting Star", UFO = "UFO Sightings", Hollow = "The Hollow Race", StealIndex = "Steal Missing Index Eggs", HwIndex = "Steal Missing Halloween Index", StealFilter = "Steal Filter Eggs", Place = "Auto Place Egg", Treadmill = "Treadmill", Butterfly = "Butterfly Bloom", Essence = "Auto Mutate", StealWisp = "Steal Wisp Quest Eggs", Train = "Phantom Express", PumpkinBoss = "Pumpkin Boss", HwPumpkin = "Pumpkin Moon", HwBlood = "Farm Monsters In Blood Moon", HwDog = "Ghost Dog Quest", HwMonsters = "Farm Monsters", HwFishing = "Fishing"}, Order = {}, Rank = {}, Listeners = {}, Path = "PilatLibrary/SAE_Priority.json"}
-
-                for _, hwKey in ipairs({"PumpkinBoss", "HwPumpkin", "HwBlood", "HwIndex", "HwDog", "HwMonsters", "HwFishing", "Train"}) do
-                        priorityConfig.Labels[hwKey] = nil
-                        local hwPos = table.find(priorityConfig.Default, hwKey)
-                        if hwPos then
-                                table.remove(priorityConfig.Default, hwPos)
-                        end
-                end
+                local priorityConfig = {Default = {"StealFilter", "Star", "Hollow", "Train", "PumpkinBoss", "HwPumpkin",
+                        "HwBlood", "Butterfly", "StealWisp", "HwIndex", "StealIndex", "Place", "Essence", "HwDog", "HwMonsters", "HwFishing", "Treadmill"}, Labels = {Star = "Shooting Star", Hollow = "The Hollow Race", StealIndex = "Steal Missing Index Eggs", HwIndex = "Steal Missing Halloween Index", StealFilter = "Steal Filter Eggs", Place = "Auto Place Egg", Treadmill = "Treadmill", Butterfly = "Butterfly Bloom", Essence = "Auto Mutate", StealWisp = "Steal Wisp Quest Eggs", Train = "Phantom Express", PumpkinBoss = "Pumpkin Boss", HwPumpkin = "Pumpkin Moon", HwBlood = "Farm Monsters In Blood Moon", HwDog = "Ghost Dog Quest", HwMonsters = "Farm Monsters", HwFishing = "Fishing"}, Order = {}, Rank = {}, Listeners = {}, Path = "PilatLibrary/SAE_Priority.json"}
 
                 local function saveFile2()
                         if type(writefile) ~= "function" then
@@ -32986,8 +28344,6 @@ end)()
                         248, 255), Color3.fromRGB(160, 170, 190)}, {Color3.fromRGB(255, 200, 150), Color3.fromRGB(190, 110, 50)}}
                 local colorPalette2 = {Color3.fromRGB(96, 100, 124), Color3.fromRGB(52, 54, 70)}
                 local state = {}
-                state.UFO = {Sub = "Board the UFO, decode the signal, and collect debris", Icon = "rbxassetid://119740573002066",
-                        Color = Color3.fromRGB(105, 255, 173)}
                 state.Star = {Sub = "Catch your Shooting Star when one lands", Icon = "rbxassetid://118070800707365",
                         Color = Color3.fromRGB(255, 238, 140)}
                 state.Hollow = {Sub = "Race The Hollow for the win prizes", Icon = "rbxassetid://76336013947157",
@@ -33338,7 +28694,7 @@ end)()
                 end})
 
                 local labelMap3, eggMap, labelMap4, statePrio = {StealIndex = "Steal:index", HwIndex = "Steal:hwindex",
-                        StealWisp = "Steal:wisp", StealFilter = "Steal:filter", Star = "Star", UFO = "UFO", Hollow = "Hollow", Butterfly = "Bloom", Essence = "Mutate", Place = "Place", Train = "Train", PumpkinBoss = "PumpkinBoss", Treadmill = "Treadmill", HwPumpkin = "HwPump", HwBlood = "HwBlood", HwDog = "HwDog", HwMonsters = "HwMon", HwFishing = "HwFish"}, {pick = "picked egg", index = "missing index egg", wisp = "wisp egg", filter = "filter egg", hwfilter = "Halloween egg", hwindex = "missing Halloween egg", carry = "carried egg", wait = "egg at daybreak"}, {Hollow = "The Hollow Race", UFO = "UFO Sightings", Star = "Shooting Star", Place = "Auto Place Egg", Mutate = "Auto Mutate", Bloom = "Butterfly Bloom", WispGo = "Wisp quest", Train = "Phantom Express", PumpkinBoss = "Pumpkin Boss", PumpkinDrops = "Pumpkin drops", Machine = "Butterfly machine", HwPump = "Pumpkin Moon", HwBlood = "Farm Monsters In Blood Moon", HwDog = "Ghost Dog Quest", HwMon = "Farm Monsters", HwFish = "Fishing", Ghouler = "Ghouler boss", IslandWars = "Cursed Island Wars", Capture = "Capture The Egg", Stage = "Wait for the field", NightHome = "Night, safe zone", GoTo = "Go to egg", Combat = "Auto hit", Banjo = "Banjo cricket"}, ctx.state
+                        StealWisp = "Steal:wisp", StealFilter = "Steal:filter", Star = "Star", Hollow = "Hollow", Butterfly = "Bloom", Essence = "Mutate", Place = "Place", Train = "Train", PumpkinBoss = "PumpkinBoss", Treadmill = "Treadmill", HwPumpkin = "HwPump", HwBlood = "HwBlood", HwDog = "HwDog", HwMonsters = "HwMon", HwFishing = "HwFish"}, {pick = "picked egg", index = "missing index egg", wisp = "wisp egg", filter = "filter egg", hwfilter = "Halloween egg", hwindex = "missing Halloween egg", carry = "carried egg", wait = "egg at daybreak"}, {Hollow = "The Hollow Race", Star = "Shooting Star", Place = "Auto Place Egg", Mutate = "Auto Mutate", Bloom = "Butterfly Bloom", WispGo = "Wisp quest", Train = "Phantom Express", PumpkinBoss = "Pumpkin Boss", PumpkinDrops = "Pumpkin drops", Machine = "Butterfly machine", HwPump = "Pumpkin Moon", HwBlood = "Farm Monsters In Blood Moon", HwDog = "Ghost Dog Quest", HwMon = "Farm Monsters", HwFish = "Fishing", Ghouler = "Ghouler boss", IslandWars = "Cursed Island Wars", Capture = "Capture The Egg", Stage = "Wait for the field", NightHome = "Night, safe zone", GoTo = "Go to egg", Combat = "Auto hit", Banjo = "Banjo cricket"}, ctx.state
                 statePrio.rank = {}
 
                 local function scanItems3(itemsPrio)
@@ -33353,7 +28709,6 @@ end)()
 
                         local state4, state5, rank, tempValuePrio, tempValue2, tempValue10 = ctx.state
                         state5, rank, tempValuePrio, tempValue2, tempValue10, state4.rank["Steal:hwfilter"], ctx.state.rank["Steal:pick"], ctx.state.rank["Steal:carry"], ctx.state.rank.Combat = ctx.state, ctx.state, ctx.state, ctx.state, ctx.state, ctx.state.rank["Steal:filter"], 0, -1, ctx.state.rank.Treadmill - 0.5
-                        ctx.state.rank["Steal:ufo"] = (ctx.state.rank.UFO or 99) - 0.1
                         rank, state4, tempValue2, state5 = ctx.state
                         state4, tempValue2, state5, rank.rank.Machine, ctx.state.rank.WispGo = ctx.state, ctx.state, ctx.state, ctx.state.rank.Bloom + 0.1, ctx.state.rank["Steal:wisp"] + 0.1
                         state5 = ctx.state
@@ -33701,6 +29056,7 @@ end)()
                 return swapT, math.max(kMap[getAttribute(swapT)] or 0, 0)
         end
 
+        -- ==== 31_bloom#1 part 1/2 ====
         runStep("31_bloom#1", function()
                 local labelMap3, valueMap2 = {Radiant = "Golden", Amethyst = "Purple", Sapphire = "Blue",
                         Emerald = "Green"}, {Green = 1, Blue = 2, Purple = 3, Golden = 4}
@@ -33756,6 +29112,7 @@ end)()
                         end)
                 end})
 
+                -- Butterflies Caught: status + icon grid with owned counts (same idea as pilatSae)
                 do
                         local bfNames = {Green = "Emerald", Blue = "Sapphire", Purple = "Amethyst", Golden = "Radiant"}
                         local bfMeta = {}
@@ -34980,6 +30337,7 @@ end)()
                 end
         end)
 
+        -- ==== 31_bloom#2 part 2/2 ====
         runStep("31_bloom#2", function()
                 local doStep9ResultBloom, butterflyBloom = doStep9({name = "Wisp", gap = 3}), cacheCore["Butterfly Bloom"]
                 local getSetResult = getSet("wt", butterflyBloom:Text("Wisp Status", "Off"))
@@ -35479,6 +30837,7 @@ end)()
                 end
         end)
 
+        -- ==== 33_hollow#1 part 1/2 ====
         runStep("33_hollow#1", function()
                 local valueMap2, state = {drop = 0, n = 0}, ctx.state
                 state.HL = valueMap2
@@ -35823,6 +31182,7 @@ end)()
                 end
         end)
 
+        -- ==== 33_hollow#2 part 2/2 ====
         runStep("33_hollow#2", function()
                 local theHollow = cacheCore["The Hollow"]
                 local hlSt = getSet("hlSt", theHollow:Text("The Hollow Status", "Off"))
@@ -35869,6 +31229,7 @@ end)()
                 end
         end)
 
+        -- ==== 34_star#1 ====
         runStep("34_star#1", function()
                 local state, shootingStar = {pay = nil, caught = 0, slipped = 0, askAt = 0, jumped = {}}, ctx.state
                 shootingStar.SS = state
@@ -36294,573 +31655,7 @@ end)()
                 end
         end)
 
-        runStep("39_ufo#1", function()
-                local ufo = {st = {}, sus = {}, no = 0, left = nil, eggs = 0}
-                local ufoPlan, ufoStealPending
-                local doStep9ResultUfo = doStep9({name = "UFO", mover = true, gap = 1, pri = 3, soft = true,
-                        vis = function(s) return s ~= "hold" end})
-                local ufoSightings = cacheCore["UFO Sightings"]
-                local ufoStatus = getSet("ufo", ufoSightings:Text("UFO Status", "Off"))
-
-                doStepCore(ufoSightings, "Auto UFO", "ufo", false, function(input)
-                        if not input then
-                                doStep10(doStep9ResultUfo)
-                        end
-                end)
-                doStepCore(ufoSightings, "Collect UFO Debris", "ufoRocks", false)
-                doStepCore(ufoSightings, "Farm Rare UFO", "ufoRare", true)
-                doStepCore(ufoSightings, "Auto Trade Debris", "ufoTrade", false)
-                doStepCore(ufoSightings, "Teleport If Far From Egg", "ufoTp", false)
-
-                local function applyUfoState(st)
-                        if type(st) ~= "table" then return end
-                        ufo.st = st
-                        ufo.sus = {}
-                        for _, uid in ipairs(st.Suspicious or {}) do
-                                ufo.sus[uid] = true
-                        end
-                end
-
-                local networking = ctx.networking
-                local reState = networking:FindFirstChild("RE/UFOSightings/State")
-                if reState then
-                        trackConnection(reState.OnClientEvent, applyUfoState)
-                end
-
-                task.spawn(function()
-                        local ok, result = ctx.invokeServer("RF/UFOSightings/Fetch")
-                        if ok and type(result) == "table" then
-                                applyUfoState(result)
-                        end
-                end)
-
-                local state = ctx.state
-                state.UFO = ufo
-
-                state.ufoIn = function()
-                        local interior = ufo.st.Interior
-                        return (interior ~= nil) and ((tonumber(interior.EndsAt) or 0) > 0)
-                end
-
-                state.ufoSteals = function()
-                        local hs, st = ctx.hubSettings, ufo.st
-                        return hs.ufo and ((st.Event and st.Decoded) and not st.Complete) and (st.Event.Variant ~= "Rare")
-                end
-
-                state.ufoWants = function()
-                        local hs, st = ctx.hubSettings, ufo.st
-                        if not hs.ufo then return false end
-                        local hasRocks = hs.ufoRocks and st.Rocks and (#st.Rocks.List > 0)
-                        return (st.Event ~= nil and not st.Complete) or (st.Reward ~= nil) or hasRocks or false
-                end
-
-                state.ufoEgg = function(eggData, uid)
-                        local hs = ctx.hubSettings
-                        if not hs.ufo then return nil end
-                        local st = ufo.st
-                        if not ((st.Event and st.Decoded) and not st.Complete) then return nil end
-                        if st.Event.Variant == "Rare" then return nil end
-                        if ufo.sus[uid] then
-                                return "ufo"
-                        elseif next(ufo.sus) == nil then
-                                if eggData.a == st.Biome then return "ufo" end
-                        end
-                        return nil
-                end
-
-                state.ufoTP = function(eggEntry)
-                        local hs = ctx.hubSettings
-                        local root = ctx.getRootPart()
-                        if not ((hs.ufoTp == true) and (root ~= nil)) then return false end
-                        if table.find(state.TZ, tostring(eggEntry.a)) == nil then return false end
-                        return (root.Position - eggEntry.Pos).Magnitude >= 1000
-                end
-
-                state.ufoBusy = function()
-                        return ctx.hubSettings.ufo and ufoPlan and (ufoPlan() ~= nil)
-                end
-
-                local prevCmode = state.cmode
-                state.cmode = function(arg)
-                        if state.stealKind == "ufo" then return "Tween" end
-                        return prevCmode and prevCmode(arg)
-                end
-
-                doStep9ResultUfo.on = function()
-                        return ctx.hubSettings.ufo
-                end
-
-                local function ufoRockList()
-                        local rocks = ufo.st.Rocks
-                        return (ctx.hubSettings.ufoRocks and rocks and #rocks.List > 0 and rocks) or nil
-                end
-
-                ufoStealPending = function()
-                        local want = state.stealWants and state.stealWants()
-                        if want then
-                                return os.clock() < (state.stealRetry or 0)
-                        end
-                        return want
-                end
-
-                ufoPlan = function()
-                        local st = ufo.st
-                        if not st.Available then return end
-                        if st.SpeedLocked then return end
-                        if st.Tutorial then return end
-                        if ctx.isSelectedUid() then return end
-                        if state.ufoIn() then return "inside" end
-                        if hasTimedOut() <= 0 then return end
-
-                        local hs = ctx.hubSettings
-                        local ready = os.clock() >= (ufo.no or 0)
-                        if not st.Unlocked then return (ready and "repair") or nil end
-                        if st.Reward then return "reward" end
-                        if ufoRockList() then return "rocks" end
-                        if hs.ufoTrade and (st.SpaceRocks or 0) >= (st.RockCost or math.huge) and ready then
-                                return "trade"
-                        end
-                        if st.Event then
-                                if st.Event.Variant == "Rare" then
-                                        if st.Decoded then
-                                                return ((hs.ufoRare and st.Event.Id ~= ufo.left) and "board") or nil
-                                        end
-                                end
-                                if st.Required and not st.Decoded and not st.Complete then
-                                        return "decode"
-                                end
-                        end
-                        if state.ufoSteals() then return "hold" end
-                end
-
-                doStep9ResultUfo.ready = function()
-                        local pending = ufoStealPending()
-                        if pending then return not pending end
-                        return ufoPlan() ~= nil
-                end
-
-                doStep9ResultUfo.want = function()
-                        if not ufoStealPending() then
-                                return ufoPlan()
-                        end
-                end
-
-                local function ufoRefresh()
-                        local ok, result = ctx.invokeServer("RF/UFOSightings/Fetch")
-                        if ok and type(result) == "table" then
-                                applyUfoState(result)
-                        end
-                end
-
-                local function ufoWait(sec, alive)
-                        local untilAt = os.clock() + sec
-                        while os.clock() < untilAt do
-                                if not alive() then return false end
-                                ctx.waitHeartbeat()
-                        end
-                        return true
-                end
-
-                local function ufoGo(target, alive, radius, far)
-                        local char = ctx.localPlayer.Character
-                        local function chk()
-                                return alive() and ctx.localPlayer.Character == char
-                        end
-                        if not ctx.waitRootAnchored(chk) then return false end
-                        if not ctx.leaveFuse(chk) then return false end
-                        local root = ctx.getRootPart()
-                        if root and ctx.isBeforeAreas(root.Position) then
-                                if not ctx.retryUntil(chk, "UFO") then return false end
-                        end
-                        root = ctx.getRootPart()
-                        if root and (root.Position - target).Magnitude > (far or 300) then
-                                ragTo(target + ctx.vector3New(0, 3, 0), chk)
-                        end
-                        return chk() and hasTimedOutCore(target, chk, radius or 8, 40)
-                end
-
-                local function ufoSettle(pos, alive)
-                        local untilAt = os.clock() + 1.2
-                        while os.clock() < untilAt and alive() do
-                                ctx.teleportRoot(ctx.cFrameNew(pos + ctx.vector3New(0, 1, 2)))
-                                ctx.waitHeartbeat()
-                        end
-                        return alive()
-                end
-
-                local function ufoDecoder()
-                        local lp = ctx.localPlayer
-                        for _, holder in ipairs({lp.Character, lp:FindFirstChildOfClass("Backpack")}) do
-                                for _, tool in ipairs(holder and holder:GetChildren() or {}) do
-                                        if tool:IsA("Tool") and tool:GetAttribute("UFOSignalDecoder") == true then
-                                                return tool
-                                        end
-                                end
-                        end
-                end
-
-                local function ufoPrompt(prompt)
-                        if prompt then
-                                pcall(function()
-                                        prompt.HoldDuration = 0
-                                        fireproximityprompt(prompt)
-                                end)
-                        end
-                end
-
-                local pipeMask = {Straight = 5, Elbow = 3, Cross = 15}
-                local pipeDirs = {{1, -1, 0, 4}, {2, 0, 1, 8}, {4, 1, 0, 1}, {8, 0, -1, 2}}
-
-                local function pipeRot(mask, n)
-                        for _ = 1, n do
-                                mask = bit32.band(bit32.bor(bit32.lshift(mask, 1), bit32.rshift(mask, 3)), 15)
-                        end
-                        return mask
-                end
-
-                local function solvePipes(seed)
-                        local grid = require(ReplicatedStorage.Shared.Modules.UFOSightingsPipePuzzle).Generate(seed)
-                        local seen, rot = {}, {}
-                        for r = 1, 5 do
-                                for c = 1, 5 do
-                                        rot[((r - 1) * 5) + c] = grid[r][c].Rotation
-                                end
-                        end
-
-                        local function walk(r, c, need)
-                                local idx = ((r - 1) * 5) + c
-                                seen[idx] = true
-                                for n = 0, 3 do
-                                        local mask = pipeRot(pipeMask[grid[r][c].Piece], n)
-                                        if bit32.band(mask, need) ~= 0 then
-                                                rot[idx] = n
-                                                if r == 4 and c == 5 and bit32.band(mask, 2) ~= 0 then
-                                                        return true
-                                                end
-                                                for _, d in ipairs(pipeDirs) do
-                                                        local nr, nc = r + d[2], c + d[3]
-                                                        if d[1] ~= need and bit32.band(mask, d[1]) ~= 0
-                                                                and nr >= 1 and nr <= 5 and nc >= 1 and nc <= 5
-                                                                and not seen[((nr - 1) * 5) + nc] then
-                                                                if walk(nr, nc, d[4]) then
-                                                                        return true
-                                                                end
-                                                        end
-                                                end
-                                        end
-                                end
-                                seen[idx] = nil
-                                return false
-                        end
-
-                        return (walk(2, 1, 8) and rot) or nil
-                end
-
-                local ufoAct = {}
-
-                ufoAct.repair = function(alive)
-                        local camp = workspace:FindFirstChild("UFOSightingsCamp")
-                        if not camp then return end
-
-                        if not ufo.st.MetChaser then
-                                local pos = camp.AlienChaser.HumanoidRootPart.Position
-                                if not (ufoGo(pos, alive) and ufoSettle(pos, alive)) then return end
-                                ctx.invokeServer("RF/UFOSightings/Talk")
-                                ufoRefresh()
-                        end
-
-                        local pos = camp.Root.RepairPoint.WorldPosition
-                        if not (ufoGo(pos, alive) and ufoSettle(pos, alive)) then return end
-
-                        local ok, okServer, puzzle = ctx.invokeServer("RF/UFOSightings/Repair", "Begin")
-                        if not (ok and okServer and type(puzzle) == "table") then return end
-
-                        local rotations = solvePipes(puzzle.Seed)
-                        if not rotations then return end
-                        if not ufoWait(3.4, alive) then return end
-
-                        local _, result = ctx.invokeServer("RF/UFOSightings/Repair", "Finish", {Id = puzzle.Id, Rotations = rotations})
-                        ctx.setStatus((result and "UFO decoder ready") or "UFO repair failed", (result and "ok") or "err")
-                        ufoRefresh()
-                        return true
-                end
-
-                ufoAct.reward = function(alive)
-                        local reward = ufo.st.Reward
-                        if not reward then return end
-                        if not (ufoGo(reward.Position, alive, 8, 500) and ufoSettle(reward.Position, alive)) then return end
-                        if ctx.invokeServer("RF/UFOSightings/Collect", reward.Id) then
-                                ctx.setStatus("Collected " .. tostring(reward.Name or "reward"), "ok")
-                        end
-                        ufoRefresh()
-                        return true
-                end
-
-                ufoAct.rocks = function(alive)
-                        local rocks = ufoRockList()
-                        if not rocks then return end
-                        if not ufoGo(rocks.List[1].Position, alive, 16, 500) then return end
-
-                        for _, rock in ipairs(rocks.List) do
-                                if not alive() then return end
-                                local root = ctx.getRootPart()
-                                if root and (root.Position - rock.Position).Magnitude > 20 then
-                                        hasTimedOutCore(rock.Position, alive, 12, 6)
-                                end
-                                fireServer2("RE/UFOSightings/CollectRock", rocks.Id, rock.Index)
-                        end
-
-                        ufoWait(0.5, alive)
-                        ufoRefresh()
-                        return true
-                end
-
-                ufoAct.trade = function(alive)
-                        local camp = workspace:FindFirstChild("UFOSightingsCamp")
-                        local pos = camp and camp.AlienChaser.HumanoidRootPart.TradePoint.WorldPosition
-                        if not pos then return end
-                        if not (ufoGo(pos, alive) and ufoSettle(pos, alive)) then return end
-
-                        while alive() and (ufo.st.SpaceRocks or 0) >= (ufo.st.RockCost or math.huge) do
-                                if not ctx.invokeServer("RF/UFOSightings/Trade", ufo.st.RockCost) then return end
-                                ufoRefresh()
-                                task.wait(0.3)
-                        end
-                        return true
-                end
-
-                ufoAct.decode = function(alive)
-                        local tool, hum = ufoDecoder(), ctx.getHumanoid()
-                        local bad
-                        if tool and hum then
-                                bad = not ctx.waitRootAnchored(alive)
-                        else
-                                bad = true
-                        end
-                        if not bad then bad = not ctx.leaveFuse(alive) end
-                        if bad then
-                                doStep9ResultUfo.at = os.clock() + 2
-                                return
-                        end
-
-                        local root = ctx.getRootPart()
-                        if root and ctx.isBeforeAreas(root.Position) then
-                                if not ctx.retryUntil(alive, "UFO") then return end
-                        end
-
-                        local deadline, nextEquip = os.clock() + 60, 0
-                        local bestSig, bestX, dir = 0, 0, 1
-
-                        while true do
-                                local go = alive() and os.clock() < deadline and ufo.st.Event and not ufo.st.Decoded
-                                if go then go = not state.better(doStep9ResultUfo) end
-                                if not go then break end
-
-                                root = ctx.getRootPart()
-                                if not root then return end
-
-                                if os.clock() >= nextEquip then
-                                        nextEquip = os.clock() + 0.5
-                                        tool, hum = ufoDecoder() or tool, ctx.getHumanoid() or hum
-                                        if tool.Parent ~= ctx.localPlayer.Character then
-                                                pcall(hum.EquipTool, hum, tool)
-                                        end
-                                end
-
-                                local sig, x = ufo.st.Signal or 0, root.Position.X
-                                if sig > bestSig then bestSig, bestX = sig, x end
-
-                                if x > 6950 and dir > 0 then
-                                        dir = -dir
-                                elseif x < 650 and dir < 0 then
-                                        dir = -dir
-                                end
-
-                                local sp = doStep2() * 0.95
-                                local vx = dir * ((sig < 2 and sp) or math.min(sp, 120))
-
-                                if bestSig >= 4 then
-                                        vx = math.clamp((bestX - x) * 5, -60, 60)
-                                elseif sig < bestSig then
-                                        if math.abs(bestX - x) < 20 then
-                                                bestSig, dir = sig, -dir
-                                        else
-                                                vx = math.sign(bestX - x) * math.min(sp, 120)
-                                        end
-                                end
-
-                                root.AssemblyLinearVelocity = ctx.vector3New(vx, root.AssemblyLinearVelocity.Y, (-365 - root.Position.Z) * 5)
-                                ctx.waitHeartbeat()
-                        end
-
-                        hum = ctx.getHumanoid()
-                        if hum then pcall(hum.UnequipTools, hum) end
-                        return true
-                end
-
-                ufoAct.hold = function(alive)
-                        local root = ctx.getRootPart()
-                        if root then root.AssemblyLinearVelocity = ctx.vector end
-                        while alive() and state.ufoSteals() and not state.better(doStep9ResultUfo) do
-                                ctx.waitHeartbeat()
-                        end
-                        return true
-                end
-
-                ufoAct.board = function(alive)
-                        local ufoPos = ufo.st.Ufo and ufo.st.Ufo.Position
-                        if not ufoPos then return end
-                        if not ufoGo(ufoPos - ctx.vector3New(0, 85, 0), alive, 20, 400) then return end
-
-                        local deadline = os.clock() + 8
-                        while alive() and os.clock() < deadline and not state.ufoIn() do
-                                ctx.waitHeartbeat()
-                        end
-                        return true
-                end
-
-                ufoAct.inside = function(alive)
-                        local interior = workspace:FindFirstChild("RareUFOInterior")
-                        local capsules = interior and interior.Interactables:FindFirstChild("Capsules")
-
-                        while alive() and state.ufoIn() do
-                                local rocks, broken, bat = ufoRockList(), {}, state.bat()
-
-                                for _, rock in ipairs((rocks and rocks.List) or {}) do
-                                        fireServer2("RE/UFOSightings/CollectRock", rocks.Id, rock.Index)
-                                end
-                                for _, name in ipairs((ufo.st.Interior and ufo.st.Interior.Broken) or {}) do
-                                        broken[name] = true
-                                end
-
-                                local target
-                                for _, model in ipairs((capsules and capsules:GetChildren()) or {}) do
-                                        if model:IsA("Model") and not broken[model.Name] then
-                                                target = model
-                                                break
-                                        end
-                                end
-                                if not target then break end
-
-                                local hum = ctx.getHumanoid()
-                                if bat and hum then
-                                        hasTimedOutCore(target:GetPivot().Position, alive, 8, 5)
-                                        if bat.Parent ~= ctx.localPlayer.Character then
-                                                pcall(hum.EquipTool, hum, bat)
-                                        end
-                                        pcall(bat.Activate, bat)
-                                end
-
-                                ufoWait(0.4, alive)
-                        end
-
-                        ufo.left = ufo.st.Event and ufo.st.Event.Id
-
-                        local vault, int = interior and interior.Interactables:FindFirstChild("Vault"), ufo.st.Interior
-                        if vault and int and not int.VaultClaimed and alive() then
-                                local keypad = vault:FindFirstChild("Keypad", true)
-                                if keypad and not int.VaultOpen and hasTimedOutCore(keypad.Position, alive, 6, 8) then
-                                        ufoWait(0.5, alive)
-                                        for _, code in ipairs({"4827", "0327"}) do
-                                                local ok, res = ctx.invokeServer("RF/UFOSightings/VaultCode", code)
-                                                if ok and res then break end
-                                        end
-                                        ufoWait(3.5, alive)
-                                end
-
-                                local staff = vault:FindFirstChild("AlienStaff")
-                                local staffRoot = staff and staff:FindFirstChild("Root")
-                                if staffRoot and ufo.st.Interior and ufo.st.Interior.VaultOpen
-                                        and hasTimedOutCore(staffRoot.Position, alive, 6, 8) then
-                                        ufoWait(0.5, alive)
-                                        ctx.invokeServer("RF/UFOSightings/VaultClaim")
-                                end
-                        end
-
-                        local leave = interior and interior:FindFirstChild("LeavePart")
-                        if leave and alive() and state.ufoIn() then
-                                hasTimedOutCore(leave.Position, alive, 9, 8)
-                                ufoPrompt(leave:FindFirstChild("LeaveUFO"))
-                                local deadline = os.clock() + 5
-                                while alive() and state.ufoIn() and os.clock() < deadline do
-                                        ctx.waitHeartbeat()
-                                end
-                        end
-
-                        ufoRefresh()
-                        return true
-                end
-
-                doStep9ResultUfo.run = function(plan, alive)
-                        local act = ufoAct[plan]
-                        if not act then return end
-                        local result = act(alive)
-                        if (plan == "repair" or plan == "trade") and not result and alive() then
-                                ufo.no = os.clock() + 60
-                        end
-                        return result
-                end
-
-                state.ufoDone = function(uid, alive)
-                        local base = ufo.d0 or 0
-                        local ufoPos = ufo.st.Ufo
-
-                        if ufoPos and ctx.isSelectedUid(uid) and (ufo.st.Delivered or 0) <= base then
-                                hasTimedOutCore(ufoPos.Position, function()
-                                        return alive() and ctx.isSelectedUid(uid) and ((ufo.st.Delivered or 0) <= base)
-                                end, 4, 10, 0.95)
-                        end
-
-                        local deadline = os.clock() + 6
-                        while os.clock() < deadline and (ufo.st.Delivered or 0) <= base and ctx.isSelectedUid(uid) do
-                                ctx.waitHeartbeat()
-                        end
-
-                        local waited = 0
-                        while waited < 1.5 and (ufo.st.Delivered or 0) <= base do
-                                waited += ctx.waitHeartbeat()
-                        end
-
-                        if (ufo.st.Delivered or 0) > base then
-                                ufo.eggs += 1
-                                return true
-                        end
-                        return false, (ctx.isSelectedUid(uid) and "UFO did not take the egg") or "Dropped on the way"
-                end
-
-                local doStep9ResultUfoInfo = doStep9({name = "UFOInfo", gap = 1})
-                doStep9ResultUfoInfo.on = function()
-                        return ctx.hubSettings.ufo or getOpen("Event")
-                end
-
-                doStep9ResultUfoInfo.fn = function()
-                        local st, now = ufo.st, getServerTimeNow()
-                        ufo.tick = (ufo.tick or 0) + 1
-
-                        if state.ufoWants() then
-                                state.keepVis = math.max(state.keepVis, os.clock() + 3)
-                        end
-
-                        if (ufo.tick % 20) == 1 then
-                                ufoRefresh()
-                        end
-
-                        local endsAt = st.Event and tonumber(st.Event.EndsAt)
-                        local on = ctx.hubSettings.ufo
-                        local why = ((if on then not on else "Off") or (st.Tutorial and "Finish the tutorial first"))
-                                or (st.SpeedLocked and ("Needs " .. (clampValue3(st.SpeedNeeded or 0) .. " speed")))
-
-                        if not why then
-                                if not st.Available then why = "Not available yet" end
-                        end
-
-                        ufoStatus:Set((why or (endsAt and ((((st.Event.Variant == "Rare") and "Rare UFO") or "UFO")
-                                .. (" live, " .. (clampValue2(math.max(endsAt - now, 0)) .. (" left, eggs "
-                                .. (tostring(st.Delivered or 0) .. ("/" .. tostring(st.Required or "?"))))))))
-                                or ("Next UFO in " .. clampValue2(1800 - (now % 1800)))))
-                end
-        end)
-
+        -- ==== 35_stage#1 ====
         runStep("35_stage#1", function()
                 local doStep9ResultStage = doStep9({name = "Stage", mover = true, gap = 0.5, pri = 50, soft = true,
                         aux = true, where = function(input)
@@ -36886,13 +31681,6 @@ end)()
                                 if starWants.bloomWants then
                                         state = ctx.state
                                         if state.bloomWants() then
-                                                return "field"
-                                        end
-                                end
-
-                                state = ctx.state
-                                if state.ufoWants then
-                                        if state.ufoWants() then
                                                 return "field"
                                         end
                                 end
@@ -37033,6 +31821,7 @@ end)()
                 end
         end)
 
+        -- ==== 36_admin#1 ====
         runStep("36_admin#1", function()
                 local function tryCallAdmin(keyName)
                         local callResult, result = pcall(function()
@@ -37939,6 +32728,7 @@ end)()
                 end
         end)
 
+        -- ==== 37_banjo#1 ====
         runStep("37_banjo#1", function()
                 local items, itemsBanjo, vector3NewBanjo, reBanjoCricketEffect, vector3New2, vector3New3, vector3New4 = {listen = 0,
                         wrong = 0, acks = {}, next = 0}, {}, ctx.vector3New, ctx.vector3New, ctx.vector3New, ctx.vector3New, ctx.vector3New
@@ -38421,6 +33211,7 @@ end)()
                 end
         end)
 
+        -- ==== 38_halloween#1 ====
         runStep("38_halloween#1", function()
                 local CollectionService, stateHalloween, state3, state4, enabledFlags, enabledFlags2, enabledFlags3, dogList, valueMap2 = getService("CollectionService"), {wl = {},
                         bad = {}, fish = 0, buyAt = 0, fishAt = 0, dogAt = 0, doing = "Off", known = {}}, {pc = {}, miss = {}, at = 0}, {cd = {}, shot = 0, at = 0}, {Prep = true, Match = true, SuddenDeath = true}, {Intro = true, Reveal = true, Prep = true, Match = true, SuddenDeath = true, Win = true, Outro = true}, {Boarded = true, Departing = true, Returning = true, Respawning = true}, {"Meet the dog", "Find 4 memories", "Talk to the fisherman", "Catch the ghost dog", "Done"}, {["x1.2"] = 1, ["x1.1"] = 0.5, ["x1.0 Fastest"] = 0.02}
@@ -39074,12 +33865,6 @@ end)()
                                 return "IslandWars"
                         end
 
-                        if ctx.state.ufoIn then
-                                if ctx.state.ufoIn() then
-                                        return "UFO"
-                                end
-                        end
-
                         if readAttribute2() then
                                 return "Train"
                         end
@@ -39094,7 +33879,6 @@ end)()
                 state10.realHum = function()
                         return (((((enabledFlags3[hasTimedOut6()] == true) or state4.held()) or inDim()) or (readAttributeHalloween("RaceId") ~= nil)) or ((readAttributeHalloween("InPumpkinArena") == true) and (workspace:FindFirstChild("PumpkinArena") ~= nil)))
                                 or (readAttributeHalloween("InSewerCave") == true)
-                                or ((state10.ufoIn ~= nil) and state10.ufoIn())
                 end
 
                 local state12 = ctx.state
@@ -43721,7 +38505,7 @@ end)()
                                         getHumanoidHalloween()
                                 else
                                         doStep13("Riding the Phantom Express")
-
+                                        -- Fly 10 studs above ground while riding
                                         pcall(function()
                                                 local hs2 = ctx.hubSettings
                                                 if hs2 and hs2.trainFly then
@@ -44066,6 +38850,7 @@ end)()
                         mj = doStep9Result2, bm = doStep9Result3, pj = doStep9Result4, dj = doStep9Result5, fj = doStep9Result6, tj = tempValue14, gj = doStep9Result10, iw = doStep9Result13, knock = tryInput, dogState = toNumberOrDefault4, boardOpen = toNumberOrDefault6, trainPhase = hasTimedOut6, riding = readAttribute2, carrying = hwCarrying, save = doStepHalloween, day = hasTimedOutHalloween, say = doStep13, posOf = isPartHalloween, flat = doStep12, monBat = scanTableHalloween, equip = tryCall4, near = checkState2, wfor = hasTimedOut3, pause = clampValue, dimOk = checkState6, map = findFirstChild}
         end)
 
+        -- ==== 38_pumpkin#1 ====
         runStep("38_pumpkin#1", function()
                 local statePumpkin = ctx.state
                 local fieldValue = statePumpkin.HW
@@ -45107,6 +39892,7 @@ end)()
                 statePumpkin.HW.PB = state3
         end)
 
+        -- ==== 39_hwui#1 ====
         runStep("39_hwui#1", function()
                 local halloweenDimension = ctx.state
                 local fieldValue = halloweenDimension.HW
@@ -45658,6 +40444,7 @@ end)()
                         end
                 end)
 
+                -- Fly 10 studs toggle for Phantom Express
                 doStepCore(halloweenDimension, "Fly While Riding (10 studs)", "trainFly", false,
                         "Lifts your character 10 studs while riding the Phantom Express.")
 
@@ -45874,6 +40661,7 @@ end)()
                 end
         end)
 
+        -- ==== 40_esp#1 part 1/2 ====
         runStep("40_esp#1", function()
                 local esp, state = cacheCore.ESP, ctx.state
                 local fieldValue, player, RunService2, ReplicatedStorage2, networkingEsp = state.GM, ctx.localPlayer, ctx.RunService, ReplicatedStorage, ctx.networking
@@ -47951,6 +42739,7 @@ end)()
                 end)()
         end)
 
+        -- ==== 40_esp#2 part 2/2 ====
         runStep("40_esp#2", function()
                 local font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.ExtraBold)
 
@@ -48274,6 +43063,7 @@ end)()
                 end
         end)
 
+        -- ==== 41_move#1 part 1/2 ====
         runStep("41_move#1", function()
                 local movement, tempValueMove = cacheCore.Movement, false
 
@@ -48741,6 +43531,7 @@ end)()
                         tryCall3(false)
                 end)
 
+                -- ==== Misc > Utility : No Knockback (silences the RigSync/Refresh client handlers) ====
                 local nkb = {conns = {}}
 
                 local function nkbApply(on)
@@ -48772,7 +43563,7 @@ end)()
                                                 if pcall(c.Disable, c) then
                                                         nkb.conns[#nkb.conns + 1] = c
                                                 elseif pcall(c.Disconnect, c) then
-
+                                                        -- executor can't Disable: permanent until rejoin
                                                 end
                                         end
                                 end
@@ -48808,6 +43599,7 @@ end)()
                         nkbApply(false)
                 end)
 
+                -- ==== Misc > Utility : Stop Priority (read by the task scheduler: halts all tasks while ON) ====
                 nkb.sp = doStepCore(cacheCore.Utility, "Stop Priority", "stopPrio", false, nil,
                         "ON: stops every running task and starts nothing new. OFF: the queue picks the highest-priority task again and carries on.")
 
@@ -48847,6 +43639,7 @@ end)()
                 end)
         end)
 
+        -- ==== 41_move#2 part 2/2 ====
         runStep("41_move#2", function()
                 local stateMove = ctx.state
                 local prot, tempValueMove = stateMove.prot
@@ -49408,6 +44201,7 @@ end)()
                 end
         end)
 
+        -- ==== 42_combat#1 ====
         runStep("42_combat#1", function()
                 local combat, hubSettings, hubSettingsCombat, hubSettings2, hubSettings3, hubSettings4 = cacheCore.Combat, ctx.hubSettings, ctx.hubSettings, ctx.hubSettings, ctx.hubSettings, ctx.hubSettings
                 hubSettings.skipFr = true
@@ -50035,6 +44829,7 @@ end)()
                 end
         end)
 
+        -- ==== 47_farmhud#1 ====
         runStep("47_farmhud#1", function()
                 local fieldValue = uiLibrary.N
                 local color3FromRGB, uDim2New = Color3.fromRGB, UDim2.new
@@ -51414,7 +46209,7 @@ end)()
                                 local ImageLabel = createInstanceFarmhud("ImageLabel", {BackgroundTransparency = 1, Image = assetId2,
                                         ScaleType = Enum.ScaleType.Crop, Size = UDim2.fromScale(1, 1)}, Frame2)
                                 createInstanceFarmhud("UICorner", {CornerRadius = UDim.new(0, 12)}, ImageLabel)
-                                getUIGradient2(doStep18(Frame, true, 24, {Text = "PILAT HUB", Position = UDim2.fromOffset(64, 8),
+                                getUIGradient2(doStep18(Frame, true, 24, {Text = "CHILLI HUB", Position = UDim2.fromOffset(64, 8),
                                         Size = UDim2.fromOffset(200, 26)}), Color3.fromRGB(255, 226, 120), Color3.fromRGB(255, 80, 40), 90)
                                 doStep18(Frame, false, 12, {Text = "FARM STATS  |  STEAL AN EGG", TextColor3 = color4,
                                         Position = UDim2.fromOffset(65, 36), Size = UDim2.fromOffset(200, 16)})
@@ -52117,6 +46912,7 @@ end)()
                 fieldValue3(UIScale2, {Scale = 1}, 0.45, back)
         end)
 
+        -- ==== 50_system#1 part 1/5 ====
         runStep("50_system#1", function()
                 local server, queueOnTeleport, textValue = cacheCore.Server, ((queue_on_teleport or queueonteleport) or (syn and syn.queue_on_teleport)) or (fluxus and fluxus.queue_on_teleport), "local ok, on = pcall(function() return game:GetService(\"TeleportService\"):GetTeleportSetting(\"__PilatAutoLoadScriptEnabled\") end)\nif ok and on == true then\n  if not game:IsLoaded() then game.Loaded:Wait() end\n  loadstring(game:HttpGet(\"https://raw.githubusercontent.com/roawrr/pilatt/refs/heads/main/pilatSae.lua\"))()\nend"
 
@@ -52259,8 +47055,9 @@ end)()
                 end)
         end)
 
+        -- ==== 50_system#2 part 2/5 ====
         runStep("50_system#2", function()
-                local discordWebhook, losslessUrl = cacheCore["Discord Webhook"], "https://media.discordapp.net/attachments/1181785068637790221/1551685385665380432/pilat.png?ex=6ab2df20&is=6ab18da0&hm=5ca4b16854493c689912c068c29354752a0f2ea0490d5b22cbd9acf7d26ed7eb&=&format=webp&quality=lossless"
+                local discordWebhook, losslessUrl = cacheCore["Discord Webhook"], "https://media.discordapp.net/attachments/1181785068637790221/1551685385665380432/chilli.png?ex=6ab2df20&is=6ab18da0&hm=5ca4b16854493c689912c068c29354752a0f2ea0490d5b22cbd9acf7d26ed7eb&=&format=webp&quality=lossless"
 
                 local tempValueSystem = discordWebhook:Input("Webhook URL", "https://discord.com/api/webhooks/...",
                         function(input)
@@ -52805,6 +47602,1126 @@ end)()
                 end
         end)
 
+        -- ==== Startup Boost / Boost FPS / Uncap FPS (logic ported from Gehlee, standalone) ====
+        pcall(function()
+        local genv = (getgenv and getgenv()) or _G
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local RunService = game:GetService("RunService")
+        local gehleeV4Config = {}
+        local t1 = {}
+
+        genv.__PilatGBSession = t1
+
+        local function v20()
+                return genv.__PilatGBSession == t1
+        end
+
+        local function v14()
+                return workspace:FindFirstChild("World") or workspace:FindFirstChild("__OBJECTS")
+        end
+
+        -- the game renamed PlotState; the boost code still calls the old names
+        pcall(function()
+                local PS = require(ReplicatedStorage.Client.PlotState)
+                PS.GetMySlot = PS.GetMySlot or PS.ResolveLocalSlot
+                PS.GetPlotsFolder = PS.GetPlotsFolder or PS.ResolveFolder
+        end)
+
+
+if type(genv.__PilatGBDecomBoostCleanup) == "function" then
+	pcall(genv.__PilatGBDecomBoostCleanup)
+end
+
+local t21, v788, v789
+
+do
+	local t22 = {}
+	local u791 = false
+
+	genv.__PilatGBDecomBoostCleanup = function()
+		for a, a in ipairs(t22) do
+			pcall(function()
+				a:Disconnect()
+			end)
+		end
+
+		table.clear(t22)
+		u791 = false
+	end
+
+	local function v794()local a=workspace:FindFirstChild("\u{043}li\u{0065}n\x74Ren\x64\u{65}\u{072}\101d\x41\u{73}s\101\u{0074}\u{0073}");if not a then return;end;for S,S in ipairs(a:GetChildren())do pcall(function()S.Parent=nil;end);end;end
+	local function v798(a)
+		return string.sub(a.Name, 1, #tostring(LocalPlayer.UserId) + 1) == tostring(LocalPlayer.UserId) .. "_"
+	end
+	local function v799()
+		for a, a in ipairs(workspace:GetChildren()) do
+			if a.Name == "PlacedEggRenders" then
+				for F, F in ipairs(a:GetChildren()) do
+					pcall(function()
+						if not F:FindFirstChildOfClass("ProximityPrompt") and not v798(F) then
+							F.Parent = nil
+						end
+					end)
+				end
+			end
+		end
+	end
+	local function v804()for a,a in ipairs({'Tran\zsi\101\110\116','\u{005F}_\x44EB\82I\S'})do local S=workspace:FindFirstChild(a);if S then for a,a in ipairs(S:GetChildren())do if a.Name=='P\108a\z \u{0079}e\114T\114\u{61}p'or a.Name:lower():find("\116\u{072}ap")then pcall(function()a:Destroy();end);end;end;end;end;end
+	local function v810(a)if a:FindFirstAncestor("GehleeVisualBack")or a:FindFirstAncestor("GehleeVisualRemote")or a:FindFirstAncestor("GehleeRodSkin")then return true;end;local S=a:FindFirstAncestorWhichIsA("Too\u{006C}");return S~=nil and S:GetAttribute("GehleeVisual")~=nil;end
+
+	t21 = {
+		effects = {},
+		parts = {},
+		decals = {},
+		snapshot = nil
+	}
+
+	local t23 = {
+		PlusOne = true,
+		SpeedGainPopup = true,
+		SellPayout = true,
+		SyncedIncomeCash = true
+	}
+	local t24 = {
+		PlayerPlotSign = true,
+		CanUpgrade = true,
+		AlertGui = true,
+		OfflineMoneyClaimBillboard = true
+	}
+	local t25 = {
+		ParticleEmitter = true,
+		Trail = true,
+		Beam = true,
+		Sparkles = true,
+		Fire = true,
+		Smoke = true
+	}
+
+	local function v815(a)
+		local _, s = a.Name, a.ClassName
+
+		if t23[_] then
+			if not v810(a) then
+				a:Destroy()
+			end
+
+			return
+		end
+
+		if not ((s == "BillboardGui" and t24[_]) or t25[s] or a:IsA("PostEffect")) then
+			return
+		end
+
+		if v810(a) then
+			return
+		end
+
+		if a.Enabled then
+			t21.effects[a] = true
+		end
+
+		a.Enabled = false
+	end
+	local function v818(a)
+		pcall(v815, a)
+	end
+
+	t21.prune = function()
+		local a = genv.__PilatGBDimPark and genv.__PilatGBDimPark.parked or {}
+		local F = os.clock()
+
+		for R, R in ipairs({ t21.effects, t21.parts, t21.decals }) do
+			for S in pairs(R) do
+				local z, L = pcall(S.IsDescendantOf, S, game)
+
+				if z and not L then
+					local z = S
+
+					while z.Parent do
+						z = z.Parent
+					end
+
+					L = a[z] == true
+				end
+
+				if not L then
+					R[S] = nil
+				end
+
+				if os.clock() - F > 0.003 then
+					task.wait()
+					F = os.clock()
+				end
+			end
+		end
+	end
+
+	local function v827()
+		if u791 then
+			return
+		end
+
+		u791 = true
+
+		local a = {}
+
+		t21.pruneToken = a
+		task.spawn(function()
+			while t21.pruneToken == a and u791 and v20() do
+				task.wait(60)
+
+				if t21.pruneToken == a and u791 then
+					pcall(t21.prune)
+				end
+			end
+		end)
+		table.insert(t22, game.DescendantAdded:Connect(v818))
+		table.insert(t22, workspace.ChildAdded:Connect(function(a)
+			if a.Name == "ClientRenderedAssets" then
+				v794()
+				table.insert(t22, a.ChildAdded:Connect(function(R)
+					pcall(function()
+						R.Parent = nil
+					end)
+				end))
+			elseif a.Name == "PlacedEggRenders" then
+				v799()
+				table.insert(t22, a.ChildAdded:Connect(function(S)
+					pcall(function()
+						if not S:FindFirstChildOfClass("ProximityPrompt") and not v798(S) then
+							S.Parent = nil
+						end
+					end)
+				end))
+			elseif a.Name == "__DEBRIS" or a.Name == "Transient" then
+				table.insert(t22, a.ChildAdded:Connect(function(a)
+					if a.Name == "PlayerTrap" or a.Name:lower():find("trap") then
+						pcall(function()
+							a:Destroy()
+						end)
+					end
+				end))
+			end
+		end))
+
+		local a = workspace:FindFirstChild("ClientRenderedAssets")
+
+		if a then
+			table.insert(t22, a.ChildAdded:Connect(function(a)
+				pcall(function()
+					a.Parent = nil
+				end)
+			end))
+		end
+
+		for a, a in ipairs(workspace:GetChildren()) do
+			if a.Name == "PlacedEggRenders" then
+				table.insert(t22, a.ChildAdded:Connect(function(a)
+					pcall(function()
+						if not a:FindFirstChildOfClass("ProximityPrompt") and not v798(a) then
+							a.Parent = nil
+						end
+					end)
+				end))
+			end
+		end
+	end
+
+	local u832 = false
+
+	v788 = function()
+		if u832 then
+			return
+		end
+
+		u832 = true
+
+		local a = game:GetService("Lighting")
+
+		if not t21.snapshot then
+			local I = {}
+
+			pcall(function()
+				I.quality = settings().Rendering.QualityLevel
+				I.throttle = settings().Physics.PhysicsEnvironmentalThrottle
+				I.technology = a.Technology
+				I.shadows = a.GlobalShadows
+				I.fogEnd = a.FogEnd
+				I.brightness = a.Brightness
+				I.ambient = a.Ambient
+				I.outdoorAmbient = a.OutdoorAmbient
+			end)
+
+			local Q = workspace:FindFirstChildOfClass("Terrain")
+
+			if Q then
+				pcall(function()
+					I.terrain = { WaterWaveSize = Q.WaterWaveSize, WaterWaveSpeed = Q.WaterWaveSpeed, WaterReflectance = Q.WaterReflectance, WaterTransparency = Q.WaterTransparency, Decoration = Q.Decoration }
+				end)
+				pcall(function()
+					local T = Q:FindFirstChildOfClass("Clouds")
+
+					if T then
+						I.cloudGehleebled = T.Enabled
+					end
+				end)
+			end
+
+			pcall(function()
+				local Q = ReplicatedStorage.Shared:FindFirstChild("Preferences")
+
+				if Q then
+					Q = require(Q)
+					I.prefs = { HideOtherPets = Q.IsOn("HideOtherPets"), DisableVideos = Q.IsOn("DisableVideos") }
+				end
+			end)
+
+			if I.quality == Enum.QualityLevel.Level01 then
+				I.quality = Enum.QualityLevel.Automatic
+			end
+
+			t21.snapshot = genv.__PilatGBDecomSnapshot or I
+			genv.__PilatGBDecomSnapshot = t21.snapshot
+		end
+
+		pcall(function()
+			settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+			settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Always
+			a.Technology = Enum.Technology.Compatibility
+			a.GlobalShadows = false
+			a.FogEnd = 9e9
+			a.Brightness = 2
+			a.Ambient = Color3.new(1, 1, 1)
+			a.OutdoorAmbient = Color3.new(1, 1, 1)
+		end)
+
+		local L = os.clock()
+
+		for I, I in ipairs({ workspace, a }) do
+			for a, a in ipairs(I:GetDescendants()) do
+				if v810(a) then
+					continue
+				elseif a:IsA("BasePart") then
+					pcall(function()
+						if not t21.parts[a] then
+							t21.parts[a] = { a.Material, a.CastShadow }
+						end
+
+						a.Material = Enum.Material.SmoothPlastic
+						a.CastShadow = false
+					end)
+				elseif a:IsA("Decal") or a:IsA("Texture") then
+					pcall(function()
+						if a.Texture ~= "" and not t21.decals[a] then
+							t21.decals[a] = a.Texture
+						end
+
+						a.Texture = ""
+					end)
+				else
+					v818(a)
+				end
+
+				if os.clock() - L > 0.004 then
+					task.wait()
+					L = os.clock()
+				end
+			end
+		end
+
+		local a = workspace:FindFirstChildOfClass("Terrain")
+
+		if a then
+			pcall(function()
+				a.WaterWaveSize = 0
+				a.WaterWaveSpeed = 0
+				a.WaterReflectance = 0
+				a.WaterTransparency = 1
+				a.Decoration = false
+
+				local S = a:FindFirstChildOfClass("Clouds")
+
+				if S then
+					S.Enabled = false
+				end
+			end)
+		end
+
+		pcall(function()
+			local a = ReplicatedStorage.Shared
+			local S = a:FindFirstChild("Preferences")
+
+			if S then
+				S = require(S)
+				S.Set("HideOtherPets", true)
+				S.Set("DisableVideos", true)
+			else
+				local S = require(a.SettingsCmds)
+
+				S.Write("HideOtherPets", true)
+				S.Write("DisableVideos", true)
+			end
+		end)
+		v794()
+		v799()
+		v804()
+		v827()
+		u832 = false
+	end
+	t21.revert = function()
+		for a, a in ipairs(t22) do
+			pcall(function()
+				a:Disconnect()
+			end)
+		end
+
+		table.clear(t22)
+		u791 = false
+
+		local a = t21.snapshot
+		local F = game:GetService("Lighting")
+
+		if a then
+			pcall(function()
+				settings().Rendering.QualityLevel = a.quality or Enum.QualityLevel.Automatic
+			end)
+			pcall(function()
+				settings().Physics.PhysicsEnvironmentalThrottle = a.throttle
+			end)
+			pcall(function()
+				F.Technology = a.technology
+				F.GlobalShadows = a.shadows
+				F.FogEnd = a.fogEnd
+				F.Brightness = a.brightness
+				F.Ambient = a.ambient
+				F.OutdoorAmbient = a.outdoorAmbient
+			end)
+
+			local F = workspace:FindFirstChildOfClass("Terrain")
+
+			if F and a.terrain then
+				for R, L in pairs(a.terrain) do
+					pcall(function()
+						F[R] = L
+					end)
+				end
+
+				if a.cloudGehleebled ~= nil then
+					pcall(function()
+						local R = F:FindFirstChildOfClass("Clouds")
+
+						if R then
+							R.Enabled = a.cloudGehleebled
+						end
+					end)
+				end
+			end
+
+			if a.prefs then
+				pcall(function()
+					local F = require(ReplicatedStorage.Shared.Preferences)
+
+					for R, z in pairs(a.prefs) do
+						F.Set(R, z)
+					end
+				end)
+			end
+		end
+
+		local a = 0
+
+		for F, R in pairs(t21.parts) do
+			if F.Parent then
+				pcall(function()
+					F.Material = R[1]
+					F.CastShadow = R[2]
+				end)
+			end
+
+			a += 1
+
+			if a % 400 == 0 then
+				task.wait()
+			end
+		end
+
+		for a, F in pairs(t21.decals) do
+			if a.Parent then
+				pcall(function()
+					a.Texture = F
+				end)
+			end
+		end
+
+		for a in pairs(t21.effects) do
+			if a.Parent then
+				pcall(function()
+					a.Enabled = true
+				end)
+			end
+		end
+
+		t21.parts, t21.decals, t21.effects = {}, {}, {}
+		t21.snapshot = nil
+	end
+	genv.__PilatGBDecomBoostUndo = t21
+
+	local u865 = false
+
+	local function v866(a)
+		if not a or not a:IsA("Model") then
+			return
+		end
+
+		local F = a.Name:match("^(%d+)_")
+		local R = F and tonumber(F)
+
+		if not R or R == LocalPlayer.UserId then
+			return
+		end
+
+		for S, S in ipairs(a:GetDescendants()) do
+			if S:IsA("BasePart") then
+				S.Transparency = 1
+				S.CanCollide = false
+			elseif S:IsA("Decal") or S:IsA("Texture") then
+				S.Transparency = 1
+			elseif S:IsA("ParticleEmitter") or S:IsA("Trail") or S:IsA("Beam") then
+				S.Enabled = false
+			elseif S:IsA("BillboardGui") or S:IsA("SurfaceGui") then
+				S.Enabled = false
+			end
+		end
+	end
+	local function v871()
+		if gehleeV4Config._fpsEggsReady then
+			return true
+		end
+
+		local a = false
+		local z, L = pcall(function()
+			local _ = require(ReplicatedStorage.Shared.Eggs.PlacedEggRenderer)
+			local F = _.GetRenderFolder()
+
+			if not F then
+				return
+			end
+
+			local _ = F:GetChildren()
+
+			for s, s in ipairs(_) do
+				v866(s)
+			end
+
+			t1[#t1 + 1] = F.ChildAdded:Connect(function(S)
+				task.defer(v866, S)
+			end)
+			a = true
+		end)
+
+		if not z then
+			warn("[FPSBoost] Gagal hide egg pemain lain:", L)
+
+			return false
+		end
+
+		return a
+	end
+	local function v880(a)if not a then return;end;pcall(function()a.Parent=nil;end);end
+	local function v881()
+		if gehleeV4Config._fpsPetsReady then
+			return true
+		end
+
+		local a
+		local F, z = pcall(function()
+			local L = game:GetService("ReplicatedStorage").Shared
+			local _ = L:FindFirstChild("Preferences")
+
+			if _ then
+				_ = require(_)
+				_.Set("HideOtherPets", true)
+				a = _.IsOn
+			else
+				local _ = require(L.SettingsCmds)
+
+				_.Write("HideOtherPets", true)
+				a = _.Allows
+			end
+		end)
+		local L = false
+
+		if F and a then
+			local _, s = pcall(a, "HideOtherPets")
+
+			L = _ and s == true
+		end
+
+		if not F or not L then
+			warn("[FPSBoost] Gagal set HideOtherPets bawaan game:", z or "setting belum aktif")
+
+			return false
+		end
+
+		local a = false
+		local F, z = pcall(function()
+			local L = workspace:FindFirstChild("ClientRenderedAssets") or workspace:WaitForChild("ClientRenderedAssets", 10)
+
+			if not L then
+				return
+			end
+
+			local _ = L:GetChildren()
+
+			for s, s in ipairs(_) do
+				v880(s)
+			end
+
+			t1[#t1 + 1] = L.ChildAdded:Connect(function(R)
+				task.defer(v880, R)
+			end)
+			a = true
+		end)
+
+		if not F then
+			warn("[FPSBoost] Gagal hide pet (manual):", z)
+
+			return false
+		end
+
+		return a
+	end
+	local function v898()
+		if type(genv.__PilatGBSetCapFps) == "function" then
+			pcall(genv.__PilatGBSetCapFps, 1000)
+		end
+
+		pcall(function()
+			settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+		end)
+		pcall(function()
+			UserSettings():GetService("UserGameSettings").SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
+		end)
+		pcall(function()
+			local a = require(ReplicatedStorage.Client.LightingsController)
+
+			a:SetModifier("FPSBoost", function(a)
+				local S = table.clone(a)
+
+				S.Bloom = nil
+				S.ColorCorrection = nil
+				S.SunRays = nil
+				S.DepthOfField = nil
+				S.Blur = nil
+				S.Clouds = nil
+				S.Atmosphere = nil
+				S.ShadowSoftness = 1
+
+				return S
+			end, 100, 0)
+		end)
+		pcall(function()
+			local a = game:GetService("Lighting")
+
+			a.GlobalShadows = false
+			a.Technology = Enum.Technology.Compatibility
+			a.FogEnd = 9e9
+			a.Brightness = 2
+		end)
+		pcall(function()
+			local a = workspace:FindFirstChildOfClass("Terrain")
+
+			if a then
+				a.WaterWaveSize = 0
+				a.WaterWaveSpeed = 0
+				a.WaterReflectance = 0
+				a.WaterTransparency = 1
+				a.Decoration = false
+			end
+		end)
+		pcall(function()
+			local a = workspace:FindFirstChild("__DEBRIS")
+
+			if a then
+				for S, S in ipairs(a:GetChildren()) do
+					if S.Name == "PlayerTrap" then
+						pcall(function()
+							S:Destroy()
+						end)
+					end
+				end
+			end
+		end)
+	end
+
+	local color3 = Color3.fromRGB(120, 120, 120)
+
+	local function v907(a)
+		if not a or not a:IsA("BasePart") then
+			return
+		end
+
+		a.Material = Enum.Material.SmoothPlastic
+		a.Color = color3
+		a.CastShadow = false
+	end
+	local function v908(a)if a:IsA("\z Pa\x72\116\z \105c\x6C\e\u{45}m\z \105t\z  t\x65\114")then a.Enabled=false;a.Rate=0;pcall(function()a:Clear();end);elseif a:IsA("\84\x72\x61i\z\l")or a:IsA("B\101\x61m")or a:IsA('\z Smoke')or a:IsA("Fire")or a:IsA("S\112ark\x6Ces")or a:IsA("\80o\z s\z  \u{0074}\x45\u{066}\z  \x66\ect")or a:IsA("Ligh\116")or a:IsA("H\x69gh\108i\z \x67\104\u{074}")or a:IsA('\C\zl\z\111\117d\115')then a.Enabled=false;elseif a:IsA('A\u{74}mos\u{070}\x68\101r\z e')then a.Density=0;a.Haze=0;a.Glare=0;elseif a:IsA("\z\69\zx\x70lo\s\u{69}\u{06F}\u{006E}")then pcall(function()a.Visible=false;end);end;end
+	local function v909()
+		if gehleeV4Config._fpsWorldReady then
+			return true
+		end
+
+		local a = false
+		local R = {}
+		local _, s = pcall(function()
+			local function W(d)
+				if v810(d) then
+					return
+				end
+
+				v907(d)
+				v908(d)
+			end
+
+			local S = { workspace, game:GetService("Lighting") }
+
+			for z, z in ipairs(S) do
+				table.insert(R, z.DescendantAdded:Connect(function(z)
+					task.defer(W, z)
+				end))
+			end
+
+			local z = {}
+
+			for L, L in ipairs(S) do
+				for S, S in ipairs(L:GetChildren()) do
+					table.insert(z, S)
+				end
+			end
+
+			local S = 0
+
+			while #z > 0 do
+				local L = table.remove(z)
+
+				W(L)
+
+				for W, W in ipairs(L:GetChildren()) do
+					table.insert(z, W)
+				end
+
+				S = S + 1
+
+				if S >= 250 and #z > 0 then
+					S = 0
+					RunService.Heartbeat:Wait()
+				end
+			end
+
+			a = true
+		end)
+
+		if not _ then
+			for S, S in ipairs(R) do
+				S:Disconnect()
+			end
+
+			warn("[FPSBoost] Gagal flatten material workspace:", s)
+
+			return false
+		end
+
+		return a
+	end
+	local function v929()
+		if gehleeV4Config._fpsAreasReady then
+			return true
+		end
+
+		local a = v14()
+		local R = a and a:FindFirstChild("Areas")
+		local L = R and R:FindFirstChild("GuardAreas")
+		local R = a and a:FindFirstChild("Build")
+
+		if not L or not R then
+			return false
+		end
+
+		for a, a in ipairs(L:GetChildren()) do
+			local L = a:FindFirstChild("RequiredSpeedSign")
+
+			if L then
+				pcall(function()
+					L:Destroy()
+				end)
+			end
+		end
+
+		local a = R:FindFirstChild("MainMap")
+		local L = a and a:FindFirstChild("Bases")
+
+		local function a(_)
+			if L and _:IsDescendantOf(L) then
+				return _.Size.Y <= 5 and not string.find(string.upper(_.Name), "WALL", 1, true)
+			end
+
+			local L = _
+
+			while L and L ~= R do
+				local _ = string.upper(L.Name)
+
+				if string.find(_, "BOTTOM", 1, true) then
+					return true
+				end
+
+				L = L.Parent
+			end
+
+			return false
+		end
+
+		local L = { "ENCHANTED", "FUSEBIOME", "WISP", "BUTTERFLY", "MARKERS", "PORTAL", "TRIGGER" }
+
+		local function _(s)
+			if s:FindFirstChildOfClass("TouchTransmitter") or s:FindFirstChildWhichIsA("ProximityPrompt", true) then
+				return true
+			end
+
+			local W = s
+
+			while W and W ~= R do
+				local s = string.upper(W.Name)
+
+				for d, d in ipairs(L) do
+					if string.find(s, d, 1, true) then
+						return true
+					end
+				end
+
+				W = W.Parent
+			end
+
+			return false
+		end
+		local function L(s)
+			if not s:IsA("BasePart") then
+				return
+			end
+
+			if _(s) then
+				return
+			end
+
+			if a(s) then
+				v907(s)
+			else
+				pcall(function()
+					s:Destroy()
+				end)
+			end
+		end
+
+		local a = R.DescendantAdded:Connect(function(z)
+			task.defer(L, z)
+		end)
+		local z = 0
+		local _ = 0
+
+		for s, s in ipairs(R:GetDescendants()) do
+			local R = s.Parent ~= nil
+
+			L(s)
+
+			if R and s.Parent == nil then
+				_ = _ + 1
+			end
+
+			z = z + 1
+
+			if z >= 250 then
+				z = 0
+				RunService.Heartbeat:Wait()
+			end
+		end
+
+		gehleeV4Config._fpsAreaListener = a
+		gehleeV4Config._fpsAreaDeleted = _
+		gehleeV4Config._fpsAreasReady = true
+
+		return true
+	end
+	local function v955()
+		if gehleeV4Config._fpsPlotsReady then
+			return true
+		end
+
+		local a = false
+		local S, z = pcall(function()
+			local L = require(ReplicatedStorage.Client.PlotState)
+			local R = L.GetMySlot()
+
+			if R == nil then
+				warn("[FPSBoost] Slot plot kita belum ke-resolve, skip delete plot dulu (biar aman).")
+
+				return
+			end
+
+			local function R(_)
+				local s = L.GetMySlot()
+
+				return s ~= nil and _.Name == tostring(s)
+			end
+
+			local _ = L.GetPlotsFolder() or workspace:WaitForChild("Plots", 10)
+
+			if not _ then
+				warn("[FPSBoost] workspace.Plots gak ketemu sama sekali.")
+
+				return
+			end
+
+			local L = _:GetChildren()
+			local s = 0
+
+			for W, W in ipairs(L) do
+				if not R(W) then
+					local L = pcall(function()
+						W:Destroy()
+					end)
+
+					if L then
+						s = s + 1
+					end
+				end
+			end
+
+			t1[#t1 + 1] = _.ChildAdded:Connect(function(F)
+				task.defer(function()
+					if F.Parent and not R(F) then
+						pcall(function()
+							F:Destroy()
+						end)
+					end
+				end)
+			end)
+			a = true
+		end)
+
+		if not S then
+			warn("[FPSBoost] Gagal delete plot pemain lain:", z)
+
+			return false
+		end
+
+		return a
+	end
+	local function v969()
+		if gehleeV4Config._fpsTreadmillsReady then
+			return true
+		end
+
+		local a = false
+		local R, z = pcall(function()
+			local L = require(ReplicatedStorage.Client.PlotState)
+			local _
+			local s = ReplicatedStorage.Client:FindFirstChild("Modules") or ReplicatedStorage.Client:WaitForChild("Modules", 10)
+			local F = s and (s:FindFirstChild("RuntimeInstanceRegistry") or s:WaitForChild("RuntimeInstanceRegistry", 10))
+
+			if F then
+				local s, W = pcall(require, F)
+
+				if s then
+					_ = W
+				end
+			end
+
+			local F = workspace:FindFirstChild("__ClientTreadmillRenders") or workspace:WaitForChild("__ClientTreadmillRenders", 10)
+
+			if not F then
+				return
+			end
+
+			local function s()
+				local W = L.GetMySlot()
+
+				if W == nil then
+					return nil
+				end
+
+				local d = F:FindFirstChild("TreadmillRender_" .. tostring(W))
+
+				if d then
+					return d
+				end
+
+				local d = _ and (_.Peek or _.Get)
+
+				if not d then
+					return nil
+				end
+
+				local _, M = pcall(d, "TreadmillPlotRender", tostring(W))
+
+				if _ then
+					return M
+				end
+
+				return nil
+			end
+			local function _(W)
+				local d = s()
+
+				if d and W == d then
+					return true
+				end
+
+				local s, d = pcall(function()
+					return W:GetPivot().Position
+				end)
+
+				if not s then
+					return true
+				end
+
+				local s, W = pcall(L.IsWorldPositionWithinLocalPlotBounds, d)
+
+				return s and W
+			end
+
+			local L = F:GetChildren()
+			local s = 0
+
+			for W, W in ipairs(L) do
+				if W:IsA("Model") and not _(W) then
+					local L = pcall(function()
+						W:Destroy()
+					end)
+
+					if L then
+						s = s + 1
+					end
+				end
+			end
+
+			t1[#t1 + 1] = F.ChildAdded:Connect(function(S)
+				task.defer(function()
+					if S.Parent and S:IsA("Model") and not _(S) then
+						pcall(function()
+							S:Destroy()
+						end)
+					end
+				end)
+			end)
+			a = true
+		end)
+
+		if not R then
+			warn("[FPSBoost] Gagal delete treadmill pemain lain:", z)
+
+			return false
+		end
+
+		return a
+	end
+
+	v789 = function()
+		if u865 or gehleeV4Config._fpsBoostApplying then
+			return
+		end
+
+		gehleeV4Config._fpsBoostApplying = true
+
+		local q, d = pcall(function()
+			v898()
+			gehleeV4Config._fpsPlotsReady = v955() == true
+			gehleeV4Config._fpsTreadmillsReady = v969() == true
+			gehleeV4Config._fpsAreasReady = v929() == true
+			gehleeV4Config._fpsWorldReady = v909() == true
+			gehleeV4Config._fpsPetsReady = v881() == true
+			gehleeV4Config._fpsEggsReady = v871() == true
+			u865 = gehleeV4Config._fpsEggsReady and gehleeV4Config._fpsPetsReady and gehleeV4Config._fpsWorldReady and gehleeV4Config._fpsPlotsReady and gehleeV4Config._fpsTreadmillsReady and gehleeV4Config._fpsAreasReady
+		end)
+
+		gehleeV4Config._fpsBoostApplying = nil
+
+		if not q then
+			warn("[FPSBoost] Gagal menerapkan FPS Boost:", d)
+		end
+	end
+end
+
+        local startupOn, startupArmed = false, false
+
+        local function setStartup(q)
+                local was = startupOn
+                startupOn = q == true
+
+                if not startupOn then
+                        startupArmed = false
+
+                        if was or t21.snapshot then
+                                task.spawn(t21.revert)
+                        end
+
+                        return
+                end
+
+                if not startupArmed then
+                        startupArmed = true
+
+                        task.spawn(function()
+                                task.wait(1.5)
+
+                                if v20() and startupOn then
+                                        v788()
+                                end
+
+                                task.wait(4)
+
+                                if v20() and startupOn then
+                                        v788()
+                                end
+                        end)
+                end
+        end
+
+        local function setCap(n)
+                local cap = math.clamp(math.floor(tonumber(n) or 240), 1, 1000)
+                local fn = rawget(_G, "setfpscap") or rawget(_G, "set_fps_cap") or (type(setfpscap) == "function" and setfpscap)
+
+                if type(fn) == "function" then
+                        return pcall(fn, cap)
+                end
+
+                return false
+        end
+
+        genv.__PilatV4SetCapFps = setCap
+        genv.__PilatGB = {
+                setStartup = setStartup,
+                boostFps = function()
+                        task.spawn(v789)
+                end,
+                setCap = setCap,
+        }
+
+        local gbState = ctx.state
+        gbState.cleanup = gbState.cleanup or {}
+        table.insert(gbState.cleanup, function()
+                startupOn = false
+                pcall(t21.revert)
+                pcall(genv.__PilatGBDecomBoostCleanup)
+                genv.__PilatGB = nil
+
+                if genv.__PilatGBSession == t1 then
+                        genv.__PilatGBSession = nil
+                end
+        end)
+        end)
+
+        -- ==== 50_system#3 part 3/5 ====
         runStep("50_system#3", function()
                 local performance = cacheCore.Performance
 
@@ -53201,16 +49118,13 @@ end)()
                         return nextIndex + 1
                 end
 
-                optimizer = doStepCore(performance, "Optimizer", "opt", false, checkState8)
+                optimizer = doStepCore(performance, "Optimizer", "opt", false, function(on)
+                        local gb = ((getgenv and getgenv()) or _G).__PilatGB
 
-                performance:Dropdown("Optimizer Mode", {"Balanced", "Strong", "Max"}, "Strong", function(input)
-                        textValue = input
-                        input = ctx.hubSettings
-
-                        if input.opt then
-                                checkState8()
+                        if gb then
+                                gb.setStartup(on == true)
                         end
-                end, false, nil, optimizer):When(optimizer)
+                end, "Startup Boost (Gehlee logic): lowers graphics, kills effects and hides other players' eggs. Turn it off to restore.")
 
                 local function checkState9(input)
                         local state = ctx.state
@@ -53698,6 +49612,7 @@ end)()
                 weakCacheSystem.fpsShow(ctx.hubSettings.fpsHud ~= false)
         end)
 
+        -- ==== 50_system#4 part 4/5 ====
         runStep("50_system#4", function()
                 local valueMap2 = {["Target Areas"] = 1, ["Target Specific Eggs"] = 1, ["Place Rarities"] = 1,
                         ["Place Specific Eggs"] = 1, ["Hatch Specific Eggs"] = 1, ["Blacklist Sell Pets"] = 1, ["Blacklist Sell Eggs"] = 1, ["Specific Species to Fuse"] = 1, ["Favorite Mutations"] = 1, ["Always Favorite Species"] = 1, ["Catch Butterflies"] = 1, ["Mutate Target Eggs"] = 1, ["ESP Show Info"] = 1, ["ESP Player Info"] = 1, ["Webhook Eggs"] = 1, ["HUD Items"] = 1}
@@ -53715,18 +49630,22 @@ end)()
         mainWindow.QuickDefaults = {pins = {"Player > Movement > Speed Boost", "Player > Movement > Boost Speed"},
                 keys = {["Player > Movement > Speed Boost"] = "Q"}, groups = {}, hud = true}
 
+        -- ==== quickbar ====
         runStep("quickbar", function()
                 mainWindow:Quick()
         end)
 
+        -- ==== configtab ====
         runStep("configtab", function()
                 mainWindow:ConfigTab()
         end)
 
+        -- ==== float ====
         runStep("float", function()
                 mainWindow:Float()
         end)
 
+        -- ==== 50_system#5 part 5/5 ====
         runStep("50_system#5", function()
                 local text = (function()
                         return {Url = "https://chillihub.pro/roblox-mcp/egg", Token = "chp-7E0Yzx4yddoAozc9VNLsqTnA",
@@ -54122,6 +50041,8 @@ end)()
                 end
         end)
 
+
+        -- ==== 53_promo#1 part 1/2 ====
         runStep("53_promo#1", function()
                 local community, cJK4bs2mgTUrl, inviteUrl, assetId, textValue, factor, factorPromo, factor2, factor3, factor4, factor5, amount, factor6, factor7, amountPromo, factor8, amount4, factor9, items = cacheCore.Community, "https://discord.gg/CJK4bs2mgT", "discord.gg/CJK4bs2mgT", "rbxassetid://128961717706452", "180K+", 0.5, 0.0909, 0.2, 5.4, 4.2, 5.2, 6, 3.6, 6.4, 2, 11.4, 3, 0.35, {{Color = "#FF6A55", Title = "New Scripts &amp; Updates", Text = "Patch notes and new game scripts are posted there first."}, {Color = "#FFB054", Title = "Giveaways", Text = "Member giveaways and events are announced in the server."}, {Color = "#9AA3FF", Title = "Support", Text = "Ask for help, report bugs and get answers from the team."}, {Color = "#6EE49C", Title = "Suggestions", Text = "Request features and vote on what gets added next."}}
                 local tempValuePromo = ((factor8 + (#items * 3.35)) + 2.4) + 0.4
@@ -54229,6 +50150,7 @@ end)()
                 community:Button("Copy Discord Link", nil, tryCallPromo)
         end)
 
+        -- ==== 53_promo#2 part 2/2 ====
         runStep("53_promo#2", function()
                 local venyx, venyxHubUrl, textValue, factor, amount, hexColor, hexColorPromo, hexColor2, RunService2 = cacheCore.Venyx, "https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub", "loadstring(game:HttpGet(\"https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub\"))()", 0.0909, 0, "#FFFFFF", "#E4E6EC", "#14151A", "rbxasset://fonts/families/Montserrat.json"
                 local font = Font.new(RunService2, Enum.FontWeight.ExtraBold)
@@ -54638,6 +50560,7 @@ end)()
                         174, 184), TextColor = Color3.fromRGB(255, 255, 255), TextStrokeTransparency = 1}, Build = helper})
         end)
 
+        -- ==== 90_run#1 ====
         runStep("90_run#1", function()
                 local enabledFlags = {Mutate = true, Bloom = true, Combat = true, Machine = true, Banjo = true}
 
@@ -54986,7 +50909,7 @@ end)()
                                         local stopAllTasks = (hsStop and hsStop.stopPrio) and true or false
 
                                         if stopAllTasks then
-
+                                                -- Stop Priority ON: halt the running task and start nothing new
                                                 local curMV = ctx.lastMV
 
                                                 if curMV then
@@ -55327,635 +51250,31 @@ end)()
                 end)
         end
 
+        -- ==== Settings tab (same as pilatSae) ====
         pcall(function()
                 local settingsTab = mainWindow:Tab("Settings", nil, "Settings")
                 local Performance = settingsTab:Section("Performance")
-
-                local Boost = (function()
-                        local RS = game:GetService("ReplicatedStorage")
-                        local RunSvc = game:GetService("RunService")
-                        local Lighting = game:GetService("Lighting")
-                        local me = game:GetService("Players").LocalPlayer
-                        local dead = false
-                        local snap, parts, decals, effects = nil, {}, {}, {}
-                        local decomConns, fpsConns = {}, {}
-                        local listening, busy = false, false
-                        local fpsBusy, fpsAll = false, false
-                        local ready = {}
-                        local B = {}
-
-                        local function setCap(n)
-                                n = math.clamp(math.floor(tonumber(n) or 240), 1, 1000)
-                                local fn = rawget(_G, "setfpscap") or rawget(_G, "set_fps_cap") or (type(setfpscap) == "function" and setfpscap)
-                                if type(fn) == "function" then return pcall(fn, n) end
-                                return false
-                        end
-                        genv.__PilatV4SetCapFps = setCap
-
-                        local function prefsModule()
-                                local Shared = RS:FindFirstChild("Shared")
-                                local P = Shared and Shared:FindFirstChild("Preferences")
-                                if P then return require(P), "Set", "IsOn" end
-                                local SC = Shared and Shared:FindFirstChild("SettingsCmds")
-                                if SC then return require(SC), "Write", "Allows" end
-                        end
-                        local function setPref(name, val)
-                                pcall(function()
-                                        local m, set = prefsModule()
-                                        if m then m[set](name, val) end
-                                end)
-                        end
-
-                        local DESTROY = {PlusOne = true, SpeedGainPopup = true, SellPayout = true, SyncedIncomeCash = true}
-                        local BB = {PlayerPlotSign = true, CanUpgrade = true, AlertGui = true, OfflineMoneyClaimBillboard = true}
-                        local FX = {ParticleEmitter = true, Trail = true, Beam = true, Sparkles = true, Fire = true, Smoke = true}
-                        local function handleEffect(a)
-                                local name, cls = a.Name, a.ClassName
-                                if DESTROY[name] then a:Destroy() return end
-                                if not ((cls == "BillboardGui" and BB[name]) or FX[cls] or a:IsA("PostEffect")) then return end
-                                if a.Enabled then effects[a] = true end
-                                a.Enabled = false
-                        end
-                        local function onAdded(a) pcall(handleEffect, a) end
-
-                        local function clearCRA()
-                                local f = workspace:FindFirstChild("ClientRenderedAssets")
-                                if not f then return end
-                                for _, c in ipairs(f:GetChildren()) do pcall(function() c.Parent = nil end) end
-                        end
-                        local function isOwnEgg(a)
-                                local id = tostring(me.UserId)
-                                return string.sub(a.Name, 1, #id + 1) == id .. "_"
-                        end
-                        local function dropForeignEgg(e)
-                                pcall(function()
-                                        if not e:FindFirstChildOfClass("ProximityPrompt") and not isOwnEgg(e) then e.Parent = nil end
-                                end)
-                        end
-                        local function clearEggRenders()
-                                for _, f in ipairs(workspace:GetChildren()) do
-                                        if f.Name == "PlacedEggRenders" then
-                                                for _, e in ipairs(f:GetChildren()) do dropForeignEgg(e) end
-                                        end
-                                end
-                        end
-                        local function isTrap(c) return c.Name == "PlayerTrap" or c.Name:lower():find("trap") ~= nil end
-                        local function clearTraps()
-                                for _, n in ipairs({"Transient", "__DEBRIS"}) do
-                                        local f = workspace:FindFirstChild(n)
-                                        if f then
-                                                for _, c in ipairs(f:GetChildren()) do
-                                                        if isTrap(c) then pcall(function() c:Destroy() end) end
-                                                end
-                                        end
-                                end
-                        end
-
-                        local function prune()
-                                local t0 = os.clock()
-                                for _, tbl in ipairs({effects, parts, decals}) do
-                                        for inst in pairs(tbl) do
-                                                local ok, inGame = pcall(inst.IsDescendantOf, inst, game)
-                                                if ok and not inGame then tbl[inst] = nil end
-                                                if os.clock() - t0 > 0.003 then task.wait() t0 = os.clock() end
-                                        end
-                                end
-                        end
-
-                        local function listen()
-                                if listening then return end
-                                listening = true
-                                local token = {}
-                                B.pruneToken = token
-                                task.spawn(function()
-                                        while B.pruneToken == token and listening and not dead do
-                                                task.wait(60)
-                                                if B.pruneToken == token and listening then pcall(prune) end
-                                        end
-                                end)
-                                local function add(c) table.insert(decomConns, c) end
-                                add(game.DescendantAdded:Connect(onAdded))
-                                add(workspace.ChildAdded:Connect(function(a)
-                                        if a.Name == "ClientRenderedAssets" then
-                                                clearCRA()
-                                                add(a.ChildAdded:Connect(function(c) pcall(function() c.Parent = nil end) end))
-                                        elseif a.Name == "PlacedEggRenders" then
-                                                clearEggRenders()
-                                                add(a.ChildAdded:Connect(dropForeignEgg))
-                                        elseif a.Name == "__DEBRIS" or a.Name == "Transient" then
-                                                add(a.ChildAdded:Connect(function(c)
-                                                        if isTrap(c) then pcall(function() c:Destroy() end) end
-                                                end))
-                                        end
-                                end))
-                                local cra = workspace:FindFirstChild("ClientRenderedAssets")
-                                if cra then add(cra.ChildAdded:Connect(function(c) pcall(function() c.Parent = nil end) end)) end
-                                for _, f in ipairs(workspace:GetChildren()) do
-                                        if f.Name == "PlacedEggRenders" then add(f.ChildAdded:Connect(dropForeignEgg)) end
-                                end
-                        end
-
-                        function B.apply()
-                                if busy or dead then return end
-                                busy = true
-                                if not snap then
-                                        local I = {}
-                                        pcall(function()
-                                                I.quality = settings().Rendering.QualityLevel
-                                                I.throttle = settings().Physics.PhysicsEnvironmentalThrottle
-                                                I.technology = Lighting.Technology
-                                                I.shadows = Lighting.GlobalShadows
-                                                I.fogEnd = Lighting.FogEnd
-                                                I.brightness = Lighting.Brightness
-                                                I.ambient = Lighting.Ambient
-                                                I.outdoorAmbient = Lighting.OutdoorAmbient
-                                        end)
-                                        local T = workspace:FindFirstChildOfClass("Terrain")
-                                        if T then
-                                                pcall(function()
-                                                        I.terrain = {WaterWaveSize = T.WaterWaveSize, WaterWaveSpeed = T.WaterWaveSpeed,
-                                                                WaterReflectance = T.WaterReflectance, WaterTransparency = T.WaterTransparency,
-                                                                Decoration = T.Decoration}
-                                                end)
-                                                pcall(function()
-                                                        local C = T:FindFirstChildOfClass("Clouds")
-                                                        if C then I.cloudsOn = C.Enabled end
-                                                end)
-                                        end
-                                        pcall(function()
-                                                local m, _, get = prefsModule()
-                                                if m then I.prefs = {HideOtherPets = m[get]("HideOtherPets"), DisableVideos = m[get]("DisableVideos")} end
-                                        end)
-                                        if I.quality == Enum.QualityLevel.Level01 then I.quality = Enum.QualityLevel.Automatic end
-
-                                        snap = genv.__PilatDecomSnapshot or I
-                                        genv.__PilatDecomSnapshot = snap
-                                end
-
-                                pcall(function()
-                                        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-                                        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Always
-                                        Lighting.Technology = Enum.Technology.Compatibility
-                                        Lighting.GlobalShadows = false
-                                        Lighting.FogEnd = 9e9
-                                        Lighting.Brightness = 2
-                                        Lighting.Ambient = Color3.new(1, 1, 1)
-                                        Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-                                end)
-
-                                local t0 = os.clock()
-                                for _, root in ipairs({workspace, Lighting}) do
-                                        for _, d in ipairs(root:GetDescendants()) do
-                                                if d:IsA("BasePart") then
-                                                        pcall(function()
-                                                                if not parts[d] then parts[d] = {d.Material, d.CastShadow} end
-                                                                d.Material = Enum.Material.SmoothPlastic
-                                                                d.CastShadow = false
-                                                        end)
-                                                elseif d:IsA("Decal") or d:IsA("Texture") then
-                                                        pcall(function()
-                                                                if d.Texture ~= "" and not decals[d] then decals[d] = d.Texture end
-                                                                d.Texture = ""
-                                                        end)
-                                                else
-                                                        onAdded(d)
-                                                end
-                                                if os.clock() - t0 > 0.004 then task.wait() t0 = os.clock() end
-                                        end
-                                end
-
-                                local T = workspace:FindFirstChildOfClass("Terrain")
-                                if T then
-                                        pcall(function()
-                                                T.WaterWaveSize = 0
-                                                T.WaterWaveSpeed = 0
-                                                T.WaterReflectance = 0
-                                                T.WaterTransparency = 1
-                                                T.Decoration = false
-                                                local C = T:FindFirstChildOfClass("Clouds")
-                                                if C then C.Enabled = false end
-                                        end)
-                                end
-                                setPref("HideOtherPets", true)
-                                setPref("DisableVideos", true)
-                                clearCRA()
-                                clearEggRenders()
-                                clearTraps()
-                                listen()
-                                busy = false
-                        end
-
-                        function B.revert()
-                                for _, c in ipairs(decomConns) do pcall(function() c:Disconnect() end) end
-                                table.clear(decomConns)
-                                listening = false
-                                B.pruneToken = nil
-
-                                local s = snap
-                                if s then
-                                        pcall(function() settings().Rendering.QualityLevel = s.quality or Enum.QualityLevel.Automatic end)
-                                        pcall(function() settings().Physics.PhysicsEnvironmentalThrottle = s.throttle end)
-                                        pcall(function()
-                                                Lighting.Technology = s.technology
-                                                Lighting.GlobalShadows = s.shadows
-                                                Lighting.FogEnd = s.fogEnd
-                                                Lighting.Brightness = s.brightness
-                                                Lighting.Ambient = s.ambient
-                                                Lighting.OutdoorAmbient = s.outdoorAmbient
-                                        end)
-                                        local T = workspace:FindFirstChildOfClass("Terrain")
-                                        if T and s.terrain then
-                                                for k, v in pairs(s.terrain) do pcall(function() T[k] = v end) end
-                                                if s.cloudsOn ~= nil then
-                                                        pcall(function()
-                                                                local C = T:FindFirstChildOfClass("Clouds")
-                                                                if C then C.Enabled = s.cloudsOn end
-                                                        end)
-                                                end
-                                        end
-                                        if s.prefs then
-                                                for k, v in pairs(s.prefs) do setPref(k, v) end
-                                        end
-                                end
-
-                                local n = 0
-                                for p, data in pairs(parts) do
-                                        if p.Parent then pcall(function() p.Material = data[1] p.CastShadow = data[2] end) end
-                                        n += 1
-                                        if n % 400 == 0 then task.wait() end
-                                end
-                                for d, tex in pairs(decals) do
-                                        if d.Parent then pcall(function() d.Texture = tex end) end
-                                end
-                                for e in pairs(effects) do
-                                        if e.Parent then pcall(function() e.Enabled = true end) end
-                                end
-                                parts, decals, effects = {}, {}, {}
-                                snap = nil
-                                genv.__PilatDecomSnapshot = nil
-                        end
-
-                        local GRAY = Color3.fromRGB(120, 120, 120)
-                        local function flatten(p)
-                                if not p or not p:IsA("BasePart") then return end
-                                p.Material = Enum.Material.SmoothPlastic
-                                p.Color = GRAY
-                                p.CastShadow = false
-                        end
-                        local function killFx(a)
-                                if a:IsA("ParticleEmitter") then
-                                        a.Enabled = false
-                                        a.Rate = 0
-                                        pcall(function() a:Clear() end)
-                                elseif a:IsA("Trail") or a:IsA("Beam") or a:IsA("Smoke") or a:IsA("Fire") or a:IsA("Sparkles")
-                                        or a:IsA("PostEffect") or a:IsA("Light") or a:IsA("Highlight") or a:IsA("Clouds") then
-                                        a.Enabled = false
-                                elseif a:IsA("Atmosphere") then
-                                        a.Density = 0
-                                        a.Haze = 0
-                                        a.Glare = 0
-                                elseif a:IsA("Explosion") then
-                                        pcall(function() a.Visible = false end)
-                                end
-                        end
-
-                        local function gfx()
-                                pcall(setCap, 1000)
-                                pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
-                                pcall(function()
-                                        UserSettings():GetService("UserGameSettings").SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
-                                end)
-                                pcall(function()
-                                        local LC = require(RS.Client.LightingsController)
-                                        LC:SetModifier("PilatFPSBoost", function(st)
-                                                local c = table.clone(st)
-                                                c.Bloom = nil
-                                                c.ColorCorrection = nil
-                                                c.SunRays = nil
-                                                c.DepthOfField = nil
-                                                c.Blur = nil
-                                                c.Clouds = nil
-                                                c.Atmosphere = nil
-                                                c.ShadowSoftness = 1
-                                                return c
-                                        end, 100, 0)
-                                end)
-                                pcall(function()
-                                        Lighting.GlobalShadows = false
-                                        Lighting.Technology = Enum.Technology.Compatibility
-                                        Lighting.FogEnd = 9e9
-                                        Lighting.Brightness = 2
-                                end)
-                                pcall(function()
-                                        local T = workspace:FindFirstChildOfClass("Terrain")
-                                        if T then
-                                                T.WaterWaveSize = 0
-                                                T.WaterWaveSpeed = 0
-                                                T.WaterReflectance = 0
-                                                T.WaterTransparency = 1
-                                                T.Decoration = false
-                                        end
-                                end)
-                                pcall(clearTraps)
-                        end
-
-                        local function doPlots()
-                                if ready.plots then return true end
-                                local done = false
-                                local ok, err = pcall(function()
-                                        local PS = require(RS.Client.PlotState)
-                                        if PS.GetMySlot() == nil then return end
-                                        local function foreign(p)
-                                                local s = PS.GetMySlot()
-                                                return s ~= nil and p.Name ~= tostring(s)
-                                        end
-                                        local folder = PS.GetPlotsFolder() or workspace:WaitForChild("Plots", 10)
-                                        if not folder then return end
-                                        for _, p in ipairs(folder:GetChildren()) do
-                                                if foreign(p) then pcall(function() p:Destroy() end) end
-                                        end
-                                        table.insert(fpsConns, folder.ChildAdded:Connect(function(p)
-                                                task.defer(function()
-                                                        if p.Parent and foreign(p) then pcall(function() p:Destroy() end) end
-                                                end)
-                                        end))
-                                        done = true
-                                end)
-                                if not ok then warn("[PilatBoost] plots:", err) return false end
-                                ready.plots = done
-                                return done
-                        end
-
-                        local function doTreads()
-                                if ready.treads then return true end
-                                local done = false
-                                local ok, err = pcall(function()
-                                        local PS = require(RS.Client.PlotState)
-                                        local reg
-                                        local mods = RS.Client:FindFirstChild("Modules") or RS.Client:WaitForChild("Modules", 10)
-                                        local regInst = mods and (mods:FindFirstChild("RuntimeInstanceRegistry") or mods:WaitForChild("RuntimeInstanceRegistry", 10))
-                                        if regInst then
-                                                local okr, m = pcall(require, regInst)
-                                                if okr then reg = m end
-                                        end
-                                        local renders = workspace:FindFirstChild("__ClientTreadmillRenders") or workspace:WaitForChild("__ClientTreadmillRenders", 10)
-                                        if not renders then return end
-                                        local function myRender()
-                                                local slot = PS.GetMySlot()
-                                                if slot == nil then return nil end
-                                                local d = renders:FindFirstChild("TreadmillRender_" .. tostring(slot))
-                                                if d then return d end
-                                                local getter = reg and (reg.Peek or reg.Get)
-                                                if not getter then return nil end
-                                                local okg, r = pcall(getter, "TreadmillPlotRender", tostring(slot))
-                                                if okg then return r end
-                                                return nil
-                                        end
-                                        local function isMine(m)
-                                                local mine = myRender()
-                                                if mine and m == mine then return true end
-                                                local okp, pos = pcall(function() return m:GetPivot().Position end)
-                                                if not okp then return true end
-                                                local okb, within = pcall(PS.IsWorldPositionWithinLocalPlotBounds, pos)
-                                                if not okb then return true end
-                                                return within and true or false
-                                        end
-                                        for _, m in ipairs(renders:GetChildren()) do
-                                                if m:IsA("Model") and not isMine(m) then pcall(function() m:Destroy() end) end
-                                        end
-                                        table.insert(fpsConns, renders.ChildAdded:Connect(function(m)
-                                                task.defer(function()
-                                                        if m.Parent and m:IsA("Model") and not isMine(m) then pcall(function() m:Destroy() end) end
-                                                end)
-                                        end))
-                                        done = true
-                                end)
-                                if not ok then warn("[PilatBoost] treadmills:", err) return false end
-                                ready.treads = done
-                                return done
-                        end
-
-                        local function doAreas()
-                                if ready.areas then return true end
-                                local root = workspace:FindFirstChild("World") or workspace:FindFirstChild("__OBJECTS")
-                                local areas = root and root:FindFirstChild("Areas")
-                                local guard = areas and areas:FindFirstChild("GuardAreas")
-                                local build = root and root:FindFirstChild("Build")
-                                if not guard or not build then return false end
-                                for _, g in ipairs(guard:GetChildren()) do
-                                        local sign = g:FindFirstChild("RequiredSpeedSign")
-                                        if sign then pcall(function() sign:Destroy() end) end
-                                end
-                                local main = build:FindFirstChild("MainMap")
-                                local bases = main and main:FindFirstChild("Bases")
-                                local function keepFlat(p)
-                                        if bases and p:IsDescendantOf(bases) then
-                                                return p.Size.Y <= 5 and not string.find(string.upper(p.Name), "WALL", 1, true)
-                                        end
-                                        local n = p
-                                        while n and n ~= build do
-                                                if string.find(string.upper(n.Name), "BOTTOM", 1, true) then return true end
-                                                n = n.Parent
-                                        end
-                                        return false
-                                end
-                                local KEEP = {"ENCHANTED", "FUSEBIOME", "WISP", "BUTTERFLY", "MARKERS", "PORTAL", "TRIGGER"}
-                                local function interactive(p)
-                                        if p:FindFirstChildOfClass("TouchTransmitter") or p:FindFirstChildWhichIsA("ProximityPrompt", true) then return true end
-                                        local n = p
-                                        while n and n ~= build do
-                                                local up = string.upper(n.Name)
-                                                for _, k in ipairs(KEEP) do
-                                                        if string.find(up, k, 1, true) then return true end
-                                                end
-                                                n = n.Parent
-                                        end
-                                        return false
-                                end
-                                local function handle(p)
-                                        pcall(function()
-                                                if not p:IsA("BasePart") then return end
-                                                if interactive(p) then return end
-                                                if keepFlat(p) then flatten(p) else p:Destroy() end
-                                        end)
-                                end
-                                table.insert(fpsConns, build.DescendantAdded:Connect(function(p) task.defer(handle, p) end))
-                                local n = 0
-                                for _, p in ipairs(build:GetDescendants()) do
-                                        handle(p)
-                                        n += 1
-                                        if n >= 250 then
-                                                n = 0
-                                                RunSvc.Heartbeat:Wait()
-                                        end
-                                end
-                                ready.areas = true
-                                return true
-                        end
-
-                        local function doWorld()
-                                if ready.world then return true end
-                                local done = false
-                                local ok, err = pcall(function()
-                                        local roots = {workspace, Lighting}
-                                        local function W(d)
-                                                pcall(flatten, d)
-                                                pcall(killFx, d)
-                                        end
-                                        for _, r in ipairs(roots) do
-                                                table.insert(fpsConns, r.DescendantAdded:Connect(function(d) task.defer(W, d) end))
-                                        end
-                                        local stack = {}
-                                        for _, r in ipairs(roots) do
-                                                for _, c in ipairs(r:GetChildren()) do table.insert(stack, c) end
-                                        end
-                                        local n = 0
-                                        while #stack > 0 do
-                                                local cur = table.remove(stack)
-                                                W(cur)
-                                                for _, c in ipairs(cur:GetChildren()) do table.insert(stack, c) end
-                                                n += 1
-                                                if n >= 250 and #stack > 0 then
-                                                        n = 0
-                                                        RunSvc.Heartbeat:Wait()
-                                                end
-                                        end
-                                        done = true
-                                end)
-                                if not ok then
-                                        for _, c in ipairs(fpsConns) do pcall(function() c:Disconnect() end) end
-                                        table.clear(fpsConns)
-                                        warn("[PilatBoost] world:", err)
-                                        return false
-                                end
-                                ready.world = done
-                                return done
-                        end
-
-                        local function doPets()
-                                if ready.pets then return true end
-                                local isOn
-                                local ok, err = pcall(function()
-                                        local m, set, get = prefsModule()
-                                        if not m then error("Preferences module not found") end
-                                        m[set]("HideOtherPets", true)
-                                        isOn = m[get]
-                                end)
-                                local on = false
-                                if ok and isOn then
-                                        local okc, v = pcall(isOn, "HideOtherPets")
-                                        on = okc and v == true
-                                end
-                                if not ok or not on then
-                                        warn("[PilatBoost] HideOtherPets:", err or "setting not active")
-                                        return false
-                                end
-                                local done = false
-                                local ok2, err2 = pcall(function()
-                                        local f = workspace:FindFirstChild("ClientRenderedAssets") or workspace:WaitForChild("ClientRenderedAssets", 10)
-                                        if not f then return end
-                                        for _, c in ipairs(f:GetChildren()) do pcall(function() c.Parent = nil end) end
-                                        table.insert(fpsConns, f.ChildAdded:Connect(function(c)
-                                                task.defer(function() pcall(function() c.Parent = nil end) end)
-                                        end))
-                                        done = true
-                                end)
-                                if not ok2 then warn("[PilatBoost] pets:", err2) return false end
-                                ready.pets = done
-                                return done
-                        end
-
-                        local function hideForeignEgg(e)
-                                if not e or not e:IsA("Model") then return end
-                                local id = tonumber(e.Name:match("^(%d+)_"))
-                                if not id or id == me.UserId then return end
-                                for _, d in ipairs(e:GetDescendants()) do
-                                        if d:IsA("BasePart") then
-                                                d.Transparency = 1
-                                                d.CanCollide = false
-                                        elseif d:IsA("Decal") or d:IsA("Texture") then
-                                                d.Transparency = 1
-                                        elseif d:IsA("ParticleEmitter") or d:IsA("Trail") or d:IsA("Beam") then
-                                                d.Enabled = false
-                                        elseif d:IsA("BillboardGui") or d:IsA("SurfaceGui") then
-                                                d.Enabled = false
-                                        end
-                                end
-                        end
-                        local function doEggs()
-                                if ready.eggs then return true end
-                                local done = false
-                                local ok, err = pcall(function()
-                                        local R = require(RS.Shared.Eggs.PlacedEggRenderer)
-                                        local f = R.GetRenderFolder()
-                                        if not f then return end
-                                        for _, e in ipairs(f:GetChildren()) do hideForeignEgg(e) end
-                                        table.insert(fpsConns, f.ChildAdded:Connect(function(e) task.defer(hideForeignEgg, e) end))
-                                        done = true
-                                end)
-                                if not ok then warn("[PilatBoost] eggs:", err) return false end
-                                ready.eggs = done
-                                return done
-                        end
-
-                        function B.fpsBoost()
-                                if fpsAll or fpsBusy or dead then return end
-                                fpsBusy = true
-                                local ok, err = pcall(function()
-                                        gfx()
-                                        ready.plots = doPlots() == true
-                                        ready.treads = doTreads() == true
-                                        ready.areas = doAreas() == true
-                                        ready.world = doWorld() == true
-                                        ready.pets = doPets() == true
-                                        ready.eggs = doEggs() == true
-                                        fpsAll = ready.plots and ready.treads and ready.areas and ready.world and ready.pets and ready.eggs
-                                end)
-                                fpsBusy = false
-                                if not ok then warn("[PilatBoost] FPS Boost failed:", err) end
-                        end
-
-                        function B.setCap(n) return setCap(n) end
-                        function B.hasSnapshot() return snap ~= nil end
-                        function B.isDead() return dead end
-
-                        function B.shutdown()
-                                dead = true
-                                for _, c in ipairs(fpsConns) do pcall(function() c:Disconnect() end) end
-                                table.clear(fpsConns)
-                                task.spawn(B.revert)
-                        end
-                        return B
-                end)()
-                pcall(function() table.insert(ctx.state.cleanup, Boost.shutdown) end)
-
-                local startupArmed = false
-                Performance:Toggle("Startup Boost", false, function(v)
-                        local was = pilatV4Config.StartupBoost == true
+                Performance:Toggle("Startup Boost", true, function(v)
                         pilatV4Config.StartupBoost = v == true
-                        if not pilatV4Config.StartupBoost then
-                                startupArmed = false
-                                if was or Boost.hasSnapshot() then task.spawn(Boost.revert) end
-                                return
-                        end
-                        if not startupArmed then
-                                startupArmed = true
-
-                                task.spawn(function()
-                                        task.wait(1.5)
-                                        if pilatV4Config.StartupBoost and not Boost.isDead() then Boost.apply() end
-                                        task.wait(4)
-                                        if pilatV4Config.StartupBoost and not Boost.isDead() then Boost.apply() end
-                                end)
-                        end
+                        local gb = genv.__PilatGB
+                        if gb then gb.setStartup(v == true) end
                 end, "Lowers graphics when the script starts. Turn it off to get the graphics back; hidden pets and eggs return after a rejoin.")
                 Performance:Toggle("Boost FPS", false, function(v)
                         pilatV4Config.BoostFps = v == true
-                        if v == true then task.spawn(Boost.fpsBoost) end
+                        local gb = genv.__PilatGB
+                        if gb and v == true then gb.boostFps() end
                 end, "Removes extra map details and other players' plots for more FPS.")
                 Performance:Toggle("Uncap FPS", true, function(v)
-                        Boost.setCap(v and 1000 or 60)
+                        local gb = genv.__PilatGB
+                        if gb then gb.setCap(v and 1000 or 60) end
                 end, "Raises the FPS cap to 1000.")
+                do
+                        local gb = genv.__PilatGB
+                        if gb then
+                                gb.setStartup(true)
+                                gb.setCap(1000)
+                        end
+                end
 
                 local Guard = settingsTab:Section("Guard")
                 Guard:Toggle("Anti Guard Knockback", true, function(v) pilatV4Config.AntiGuardKnockback = v == true end, "Cancels the knockback the Forest guard puts on you, so a hit never throws you off the lane.")
@@ -55983,6 +51302,7 @@ end)()
                 Player:Toggle("Auto Execute (Rejoin)", false, function(v) pilatV4Config.AutoExecute = v == true end, "Prepares the bootstrapper so the script runs automatically after teleport or reconnect.")
         end)
 
+        -- ==== Steal Other Script toggle (in Auto Steal section) ====
         pcall(function()
             local autoStealSection = cacheCore["Auto Steal"]
             if autoStealSection then
@@ -55995,6 +51315,7 @@ end)()
             end
         end)
 
+        -- ==== 22_quickbuttons#1 (floating Quick Buttons: ANY toggle / button of the hub as an on-screen button) ====
         runStep("22_quickbuttons#1", function()
                 local UIS = game:GetService("UserInputService")
                 local HttpS = game:GetService("HttpService")
@@ -56016,6 +51337,7 @@ end)()
                 local Q = {recs = {}, reg = {}, list = {}, selected = nil, edit = false, page = "Buttons", dead = false,
                         syncers = {}, rep = 0}
 
+                -- ===== small helpers =====
                 local function clampNum(v, lo, hi, d)
                         v = tonumber(v)
                         if not v or v ~= v then
@@ -56115,6 +51437,8 @@ end)()
                         end)
                 end
 
+                -- press / drag / tap on a GuiObject (works for mouse and touch)
+                -- h.getPos() -> Vector2 (px) | h.canDrag() -> bool | h.onDrag(Vector2) | h.onDrop() | h.onTap()
                 local function bindPress(guiObj, h)
                         guiObj.InputBegan:Connect(function(input)
                                 if not isPress(input) then
@@ -56152,6 +51476,7 @@ end)()
                         end)
                 end
 
+                -- hold a button to repeat (used by the +/- steppers)
                 local function bindRepeat(btn, fn)
                         btn.InputBegan:Connect(function(input)
                                 if not isPress(input) then
@@ -56178,6 +51503,7 @@ end)()
                         end)
                 end
 
+                -- ===== config (saved to PilatLibrary/QuickButtons.json) =====
                 local function sanitize(b, id)
                         return {
                                 id = id, key = tostring(b.key),
@@ -56248,6 +51574,7 @@ end)()
 
                 Q.cfg = loadCfg()
 
+                -- ===== feature registry (every toggle + button of the hub) =====
                 local function rebuildRegistry()
                         local reg, list = {}, {}
                         for _, opt in ipairs(mainWindow.Opts or {}) do
@@ -56277,6 +51604,7 @@ end)()
                         return n
                 end
 
+                -- ===== GUI root =====
                 local parentGui = (gethui and gethui()) or game:GetService("CoreGui")
                 pcall(function()
                         local old = parentGui:FindFirstChild(GUI_NAME)
@@ -56303,6 +51631,7 @@ end)()
                         return (cam and cam.ViewportSize) or Vector2.new(1024, 768)
                 end
 
+                -- ===== quick button records =====
                 local paintRec, layoutRec, fireRec, selectButton
 
                 local function makeRec(d)
@@ -56378,6 +51707,7 @@ end)()
                         end
                 end
 
+                -- real on/off of ANY toggle: QGetState (script flag) if the control has one, else the real menu switch, else Value
                 function Q.featOn(feat)
                         local c = feat.ctrl
                         if type(c.QGetState) == "function" then
@@ -56386,7 +51716,7 @@ end)()
                                         return v == true
                                 end
                         end
-
+                        -- every other toggle: read the real switch in the menu (not the cached Value) and keep Value in step
                         if type(c.Real) == "function" then
                                 local okR, v = pcall(c.Real, c)
                                 if okR and type(v) == "boolean" then
@@ -56555,6 +51885,7 @@ end)()
                         Q.recs[d.id] = rec
                 end
 
+                -- ===== gear button (always draggable, opens the manager) =====
                 local gear = mk("TextButton", {Name = "Gear", AutoButtonColor = false, BorderSizePixel = 0, Text = "QB", Font = Enum.Font.GothamBold,
                         TextSize = 14, TextColor3 = C.text, BackgroundColor3 = C.bg, BackgroundTransparency = 0.1,
                         Size = UDim2.fromOffset(40, 40), ZIndex = 6, Visible = Q.cfg.gear}, gui)
@@ -56595,6 +51926,7 @@ end)()
                         end,
                 })
 
+                -- ===== global setters (shared by gear / manager / Pilat tab) =====
                 function Q.syncAll()
                         gear.Text = Q.edit and "EDIT" or "QB"
                         gear.TextSize = Q.edit and 11 or 14
@@ -56655,6 +51987,7 @@ end)()
                         end
                 end
 
+                -- ===== manager window =====
                 local MW, MH = 400, 520
 
                 local function buildManager()
@@ -56681,6 +52014,7 @@ end)()
                         end
                         Q.fitManager = fit
 
+                        -- header (drag handle)
                         local header = mk("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 38), Active = true, ZIndex = 21}, mgr)
                         local title = label(header, "Quick Buttons", 15, C.text, true)
                         title.Position = UDim2.fromOffset(14, 0)
@@ -56706,6 +52040,7 @@ end)()
                                 onTap = function() end,
                         })
 
+                        -- tab bar
                         local TABS = {"Buttons", "Add", "Edit", "Global"}
                         local tabBtns, pages = {}, {}
                         local tabHolder = mk("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 44), Size = UDim2.new(1, -24, 0, 30), ZIndex = 21}, mgr)
@@ -56767,6 +52102,7 @@ end)()
                                 return l
                         end
 
+                        -- switch row: title + ON/OFF button
                         local function switchRow(page, title, get, set)
                                 local row = formRow(page, 36)
                                 rowTitle(row, title)
@@ -56787,6 +52123,7 @@ end)()
                                 return row, refresh
                         end
 
+                        -- stepper row: title [-] [value] [+]  (hold to repeat, value is typeable)
                         local function stepperRow(page, title, get, set, step, lo, hi, fmt, parse)
                                 local row = formRow(page, 38)
                                 rowTitle(row, title)
@@ -56825,6 +52162,7 @@ end)()
                                 return row, refresh
                         end
 
+                        -- ================= PAGE: Buttons (list) =================
                         local listPage = newScrollPage("Buttons")
                         local listRows = {}
                         local listEmpty = label(listPage, "No quick buttons yet.\nOpen the Add tab and tap any feature to put it on screen.", 12, C.muted, false)
@@ -56891,6 +52229,7 @@ end)()
                                 end
                         end
 
+                        -- ================= PAGE: Add (search all features) =================
                         local addPage = mk("Frame", {Name = "Add", BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 82),
                                 Size = UDim2.new(1, -24, 1, -94), Visible = false, ZIndex = 21}, mgr)
                         pages.Add = addPage
@@ -57019,6 +52358,7 @@ end)()
                                 notify("Quick Buttons", "Added " .. #snapshot .. " buttons")
                         end)
 
+                        -- ================= PAGE: Edit =================
                         local editPage = newScrollPage("Edit")
                         local editRows, editRefreshers = {}, {}
                         local function editRow(row)
@@ -57046,6 +52386,7 @@ end)()
                         infoLbl.TextYAlignment = Enum.TextYAlignment.Center
                         infoLbl.ZIndex = 23
 
+                        -- label text
                         local lblRow = editRow(formRow(editPage, 38))
                         rowTitle(lblRow, "Label")
                         local lblBox = textbox(lblRow, "", UDim2.new(1, -176, 0.5, -15), UDim2.fromOffset(166, 30), function(text)
@@ -57099,6 +52440,7 @@ end)()
                         addStepper("Opacity", "op", 0.05, 0, 0.95, function(v) return tostring(math.floor((1 - v) * 100 + 0.5)) .. "%" end,
                                 function(n) return 1 - n / 100 end)
 
+                        -- shape cycle
                         local shapeRow = editRow(formRow(editPage, 38))
                         rowTitle(shapeRow, "Shape")
                         local shapeBtn = button(shapeRow, "", UDim2.new(1, -116, 0.5, -15), UDim2.fromOffset(106, 30), nil)
@@ -57117,6 +52459,7 @@ end)()
                                 shapeBtn.Text = d and d.shape or ""
                         end
 
+                        -- colour rows: swatch + hex box + palette cycle
                         local function colorRow(title, field)
                                 local row = editRow(formRow(editPage, 38))
                                 rowTitle(row, title)
@@ -57160,6 +52503,7 @@ end)()
                         colorRow("OFF colour", "off")
                         colorRow("Text colour", "tc")
 
+                        -- show state text
                         do
                                 local row, refresh = switchRow(editPage, "Show ON/OFF text", function()
                                         local d = cur()
@@ -57175,6 +52519,7 @@ end)()
                                 editRefreshers[#editRefreshers + 1] = refresh
                         end
 
+                        -- actions
                         local actRow = editRow(formRow(editPage, 40))
                         actRow.BackgroundTransparency = 1
                         local testBtn = button(actRow, "Test", UDim2.new(0, 0, 0.5, -15), UDim2.new(0.32, -4, 0, 30), function()
@@ -57224,6 +52569,7 @@ end)()
                                 end
                         end
 
+                        -- ================= PAGE: Global =================
                         local globalPage = newScrollPage("Global")
                         switchRow(globalPage, "Show quick buttons", function() return Q.cfg.enabled end, function(v) Q.setEnabled(v) end)
                         switchRow(globalPage, "Edit mode (drag + tap to select)", function() return Q.edit end, function(v) Q.setEdit(v) end)
@@ -57309,6 +52655,7 @@ end)()
                         Q.syncAll()
                 end
 
+                -- ===== start-up =====
                 rebuildRegistry()
                 Q.layoutGear()
                 for _, rec in pairs(Q.recs) do
@@ -57323,6 +52670,7 @@ end)()
                         end
                 end)
 
+                -- state poller: keeps toggles in sync when they are switched from the Pilat menu / by the script itself
                 task.spawn(function()
                         local lastReg = 0
                         while not Q.dead and gui.Parent do
@@ -57354,6 +52702,7 @@ end)()
                         end)
                 end)
 
+                -- ===== Pilat menu tab (Quick > Quick Buttons) =====
                 local sec = cacheCore[SEC_NAME]
                 if sec then
                         Q.pt = {}
@@ -57398,8 +52747,8 @@ end)()
                 ctx.state.quickButtons = Q
         end)
 
-        if ctx.pilat and ctx.pilat.window then
-                pcall(function() ctx.pilat.window:Finish() end)
+        if ctx.chilli and ctx.chilli.window then
+                pcall(function() ctx.chilli.window:Finish() end)
         end
 
         mainWindow:Finish()
@@ -57423,7 +52772,7 @@ loadAllSectionsSafe = function()
                                 local hui = gethui()
                                 if typeof(hui) == "Instance" then parent = hui end
                         end)
-
+                        -- Don't create a duplicate error GUI if the UI lib already showed one
                         if parent:FindFirstChild("PilatLoadError") then return end
                         local sg = Instance.new("ScreenGui")
                         sg.Name = "PilatCrashError"
@@ -57488,4 +52837,3 @@ end
 print("[Pilat] main: calling loadAllSectionsSafe()")
 local ok = loadAllSectionsSafe()
 print("[Pilat] main: loadAllSectionsSafe() returned " .. tostring(ok))
-
