@@ -16000,7 +16000,7 @@ end)()
                         end
                 end)
                 local doStep7Result, doStep7ResultSteal = doStep7(hubSettings, "Delivery", "insDel", {"Walk",
-                        "Instant Steps", "Fast Tween"}, "Walk"):When(hubSettings3, (getValue("Walk"))), doStep7(hubSettings, "Teleport Delivery", "tpDel", {"Walk", "Quick Steps", "Fast Tween"}, "Walk"):When(hubSettings3, ctx.isTp)
+                        "Instant Steps", "Fast Tween"}, "Walk"):When(hubSettings3, (getValue("Walk"))), doStep7(hubSettings, "Teleport Delivery", "tpDel", {"Walk", "Quick Steps", "Fast Tween", "Stable"}, "Walk"):When(hubSettings3, ctx.isTp)
 
                 pcall(function()
                         doStep7ResultSteal.row.lb.Text = "Delivery"
@@ -17529,6 +17529,13320 @@ end)()
                                 end
                                 return false, "Cancelled"
                         end
+
+                        -- ===== Gehlee Low Speed User engine (extracted whole) + "Stable" delivery =====
+                        local GEHLEE_SRC = [=====[
+-- Gehlee Low Speed User engine, extracted from Gehlee Hub Stability v10 (deobf)
+local genv = {} -- private on purpose, does not collide with a running Gehlee
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local LocalPlayer = Players.LocalPlayer
+
+local function v8()
+	local a = LocalPlayer.Character
+
+	return a, a and a:FindFirstChild("HumanoidRootPart"), a and a:FindFirstChildOfClass("Humanoid")
+end
+
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
+local Workspace = game:GetService("Workspace")
+
+local function v14()
+	return Workspace:FindFirstChild("World") or Workspace:FindFirstChild("__OBJECTS")
+end
+
+local t1 = {}
+
+genv.__GehleeV4HubSession = t1
+
+local function v20()
+	return genv.__GehleeV4HubSession == t1
+end
+
+local t4, INTEGRITY_KEY, HEADROOM, CLAMP, MULTIPLIER, MIN_INPUT, MAX_INPUT, DEF_INPUT, MIN_SPEED, MAX_SPEED
+local DEF_SPEED, v63, n1, n2, name, s2, t5, v69, v70, v71
+local v72, v73, v74, v75, v76, v77, v78, v79, v80, v81
+local v82, v83, v84, v85
+
+do
+	local __GehleeV4TweenRuntimeGeneration = genv.__GehleeV4TweenRuntimeGeneration
+
+	t4 = {
+		KEY = "__GehleeV4StealAnEggMovementSpoof",
+		VERSION = 436,
+		INTEGRITY_KEY = "__GehleeV4StealAnEggIntegritySpoof",
+		SIGNAL = "ClientCharacter: GetDebugSnapshot",
+		HEADROOM = 1.35,
+		CLAMP = 0.15,
+		PADDING = 24,
+		MULTIPLIER = 10,
+		MIN_INPUT = 20,
+		MAX_INPUT = 100,
+		DEF_INPUT = 60,
+		MIN_SPEED = 200,
+		MAX_SPEED = 1000,
+		DEF_SPEED = 600,
+		FIELDS = {
+			"LastObservedSample",
+			"LastSample",
+			"LastGoodSample",
+			"LastGameplayTrustedSample",
+			"LastValidatedSample",
+			"LastValidatedGroundedSample",
+			"LastConfirmedGroundSample",
+			"CandidateGroundedSample"
+		}
+	}
+
+	local KEY = t4.KEY
+	local VERSION = t4.VERSION
+
+	INTEGRITY_KEY = t4.INTEGRITY_KEY
+
+	local SIGNAL = t4.SIGNAL
+
+	HEADROOM = t4.HEADROOM
+	CLAMP = t4.CLAMP
+
+	local PADDING = t4.PADDING
+
+	MULTIPLIER = t4.MULTIPLIER
+	MIN_INPUT = t4.MIN_INPUT
+	MAX_INPUT = t4.MAX_INPUT
+	DEF_INPUT = t4.DEF_INPUT
+	MIN_SPEED = t4.MIN_SPEED
+	MAX_SPEED = t4.MAX_SPEED
+	DEF_SPEED = t4.DEF_SPEED
+
+	local FIELDS = t4.FIELDS
+
+	v63 = function()
+		return 1 / math.max(genv.__GehleeV4FrameDt or 0.016666666666666666, 0.001)
+	end
+	genv.__GehleeV4NetPing = function()local a=0;pcall(function()a=game:GetService('\83t\zats').Network.ServerStatsItem["D\97t\97 Pi\zng"]:GetValue();end);return tonumber(a)or 0;end
+	n1 = 8
+	n2 = 1
+	name = "__GehleeV4HoverPad"
+	s2 = "GehleeV4RuntimeOwner"
+
+	local u93
+	local v94 = tostring(math.random(100000, 999999))
+	local connection
+	local connection2
+
+	t5 = {}
+
+	local u97
+
+	v69 = nil
+
+	local function v98()
+		for a, a in ipairs(Workspace:GetChildren()) do
+			if a:IsA("BasePart") and a.Name == name and a ~= u93 then
+				pcall(a.Destroy, a)
+			end
+		end
+	end
+
+	v70 = function(q)
+		if not u93 or not u93.Parent then
+			return false
+		end
+
+		local _, R, z = v8()
+
+		if not R or not z then
+			return false
+		end
+
+		local a = typeof(q) == "Vector3" and q or R.Position
+		local q = z.RigType == Enum.HumanoidRigType.R15 and (R.Size.Y * 0.5 + math.max(z.HipHeight, 0.5)) or (R.Size.Y * 0.5 + 2)
+
+		u93.CFrame = CFrame.new(a.X, a.Y - q - n2 * 0.5 - 0.05, a.Z)
+
+		return true
+	end
+	v71 = nil
+	v71 = function()
+		if not u93 or not u93.Parent or u93:GetAttribute(s2) ~= v94 then
+			v98()
+
+			if u93 and u93.Parent then
+				pcall(u93.Destroy, u93)
+			end
+
+			local a = Instance.new("Part")
+
+			a.Name = name
+			a:SetAttribute(s2, v94)
+			a.Anchored = true
+			a.CanCollide = true
+			a.CanQuery = true
+			a.CanTouch = false
+			a.CastShadow = false
+			a.Transparency = 1
+			a.Material = Enum.Material.SmoothPlastic
+			a.Size = Vector3.new(n1, n2, n1)
+			u93 = a
+			a.Parent = Workspace
+		end
+
+		v70()
+
+		if not connection then
+			connection = RunService.PreSimulation:Connect(function()
+				if not v70() then
+					v71()
+				end
+			end)
+		end
+
+		if not connection2 then
+			connection2 = RunService.PostSimulation:Connect(function()
+				v70()
+			end)
+		end
+	end
+	v72 = function()
+		if connection then
+			pcall(connection.Disconnect, connection)
+			connection = nil
+		end
+
+		if connection2 then
+			pcall(connection2.Disconnect, connection2)
+			connection2 = nil
+		end
+
+		if u93 then
+			pcall(u93.Destroy, u93)
+			u93 = nil
+		end
+
+		v98()
+	end
+	v72()
+	v73 = function()
+		u97 = nil
+	end
+	v74 = function(a, R)
+		if a and typeof(R) == "CFrame" then
+			u97 = { Character = LocalPlayer.Character, RootPart = a, CFrame = R }
+		end
+	end
+
+	local function v107()
+		local q = u97
+
+		if type(q) ~= "table" or typeof(q.CFrame) ~= "CFrame" then
+			return false
+		end
+
+		if LocalPlayer.Character ~= q.Character or not q.RootPart or not q.RootPart.Parent then
+			u97 = nil
+
+			return false
+		end
+
+		local z = genv.__GehleeV4MovementWorldReady
+
+		if type(z) == "function" and not z(q.CFrame.Position.Y < -100.0) then
+			u97 = nil
+
+			return false
+		end
+
+		v71()
+		q.RootPart.AssemblyLinearVelocity = Vector3.zero
+		q.RootPart.AssemblyAngularVelocity = Vector3.zero
+		v70(q.CFrame.Position)
+		q.RootPart.CFrame = q.CFrame
+		v70(q.CFrame.Position)
+
+		return true
+	end
+	local function v110()
+		local q = LocalPlayer.Character
+		local R = q and q:FindFirstChild("HumanoidRootPart")
+
+		for q, q in pairs(t5) do
+			if type(q) == "table" then
+				q.cancelled = true
+			end
+		end
+
+		table.clear(t5)
+
+		if R then
+			R.AssemblyLinearVelocity = Vector3.zero
+			R.AssemblyAngularVelocity = Vector3.zero
+		end
+
+		v73()
+		v72()
+	end
+
+	genv.__GehleeV4TweenRuntimeCleanup = function()
+		for a, a in pairs(t5) do
+			if type(a) == "table" then
+				a.cancelled = true
+			end
+		end
+
+		table.clear(t5)
+		v73()
+		v72()
+	end
+	v75 = function()return getgenv and getgenv()or _G;end
+
+	local function v117()
+		local a = v75()
+		local z = a[KEY]
+
+		if type(z) ~= "table" or z.Version ~= VERSION then
+			if type(z) == "table" then
+				z.Enabled = false
+			end
+
+			z = { Version = VERSION, Installed = false, Enabled = false, Mode = "StateBaseline", Humanoid = nil, RootPart = nil, WalkSpeed = DEF_SPEED }
+			a[KEY] = z
+		end
+
+		return z
+	end
+
+	v76 = function(a, _)
+		local s = v117()
+
+		if not s then
+			return false
+		end
+
+		local L = a and a:FindFirstChildOfClass("Humanoid")
+		local W = a and a:FindFirstChild("HumanoidRootPart")
+
+		s.Humanoid = L
+		s.RootPart = W
+		s.WalkSpeed = math.clamp(tonumber(_) or DEF_SPEED, MIN_SPEED, MAX_SPEED * HEADROOM)
+		s.Enabled = false
+
+		return L ~= nil and W ~= nil
+	end
+	v77 = function()
+		local a = v75()[KEY]
+
+		if type(a) == "table" then
+			a.Enabled = false
+			a.Humanoid = nil
+			a.RootPart = nil
+		end
+	end
+
+	local function v124(a, R, z)
+		local L = nil
+
+		if type(getcallbackvalue) == "function" and type(debug) == "table" and type(debug.getupvalue) == "function" then
+			local _ = ReplicatedStorage:FindFirstChild("Packages") and ReplicatedStorage.Packages:FindFirstChild("Signal")
+
+			if _ then
+				local S, s = pcall(require, _)
+
+				if S and type(s) == "table" and type(s.Invoked) == "function" then
+					local S, invoked = pcall(s.Invoked, SIGNAL)
+
+					if S and invoked then
+						local S, F = pcall(getcallbackvalue, invoked, "OnInvoke")
+
+						if S and type(F) == "function" then
+							local S, info = pcall(debug.getinfo, F)
+
+							if S and type(info) == "table" then
+								local function S(s, W, d)
+									if L or type(s) ~= "table" or W > 3 or d[s] then
+										return
+									end
+
+									d[s] = true
+
+									if rawget(s, "Player") == a and rawget(s, "Character") == a.Character and rawget(s, "Humanoid") == R and rawget(s, "RootPart") == z and type(rawget(s, "SampleHistory")) == "table" and type(rawget(s, "Evidence")) == "table" then
+										L = s
+
+										return
+									end
+
+									local M = 0
+
+									for I, I in pairs(s) do
+										M = M + 1
+
+										if M > 128 then
+											break
+										end
+
+										if type(I) == "table" then
+											S(I, W + 1, d)
+										end
+									end
+								end
+
+								for s = 1, tonumber(info.nups) or 0 do
+									local _, W = pcall(debug.getupvalue, F, s)
+
+									if _ and type(W) == "table" then
+										S(W, 0, {})
+
+										if L then
+											break
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+
+		if not L and type(getgc) == "function" then
+			local S, F = pcall(getgc, true)
+
+			if S and type(F) == "table" then
+				for S, S in ipairs(F) do
+					if type(S) == "table" and rawget(S, "Player") == a and rawget(S, "Character") == a.Character and rawget(S, "Humanoid") == R and rawget(S, "RootPart") == z and type(rawget(S, "SampleHistory")) == "table" and type(rawget(S, "Evidence")) == "table" then
+						L = S
+
+						break
+					end
+				end
+			end
+		end
+
+		return L
+	end
+
+	local t6 = {
+		busy = false,
+		nextAt = 0,
+		misses = 0,
+		found = nil
+	}
+
+	local function v147(a, R, z)
+		local L = t6.found
+
+		if type(L) == "table" and rawget(L, "Player") == a and rawget(L, "Character") == a.Character and rawget(L, "Humanoid") == R and rawget(L, "RootPart") == z then
+			return L
+		end
+
+		if t6.busy or os.clock() < t6.nextAt then
+			return nil
+		end
+
+		t6.busy = true
+		task.spawn(function()
+			task.wait()
+
+			local L, _ = pcall(v124, a, R, z)
+
+			_ = L and _ or nil
+			t6.found = _
+			t6.misses = _ and 0 or t6.misses + 1
+			t6.nextAt = os.clock() + (_ and 0.2 or (t6.misses >= 5 and 10 or 1))
+			t6.busy = false
+		end)
+
+		return nil
+	end
+
+	v78 = function(a, z, L)
+		if type(a) ~= "table" then
+			return false
+		end
+
+		local _ = rawget(a, "RootPart")
+		local s = _ and _.Parent and _.CFrame or nil
+		local _ = s and s.Position or nil
+		local W = typeof(L) == "Vector3" and L or Vector3.zero
+
+		local function L(d)
+			if type(d) == "table" then
+				rawset(d, "WalkSpeed", z)
+
+				if s then
+					rawset(d, "CFrame", s)
+					rawset(d, "Position", _)
+					rawset(d, "LinearVelocity", W)
+					rawset(d, "AngularVelocity", Vector3.zero)
+				end
+			end
+		end
+
+		for s, s in ipairs(FIELDS) do
+			L(rawget(a, s))
+		end
+
+		for S, S in pairs(rawget(a, "SampleHistory") or {}) do
+			L(S)
+		end
+
+		for S, S in pairs(rawget(a, "SafeGroundCheckpoints") or {}) do
+			L(S)
+		end
+
+		local S = rawget(a, "Evidence")
+
+		if type(S) == "table" then
+			S.Speed = 0
+			S.Teleport = 0
+			S.Flight = 0
+		end
+
+		local S = rawget(a, "ImpulseContext")
+
+		if type(S) == "table" then
+			local s = math.max(tonumber(S.MaxHorizontalSpeed) or 0, z)
+			local z = math.max((tonumber(S.ExpiresAt) or 0) - (tonumber(S.StartedAt) or 0), CLAMP)
+
+			S.MaxHorizontalSpeed = s
+
+			if _ then
+				S.OriginPosition = _
+			end
+
+			S.MaxHorizontalDistance = math.max(tonumber(S.MaxHorizontalDistance) or 0, s * z + PADDING * 2)
+			L(S.PreMovementSafeSample)
+		end
+
+		if rawget(a, "CorrectionContext") == nil then
+			rawset(a, "FirstSuspiciousAt", nil)
+
+			if rawget(a, "ThreatLevel") == "Observing" then
+				rawset(a, "ThreatLevel", "Trusted")
+			end
+		end
+
+		return true
+	end
+	v79 = function()
+		local a = v75()
+		local S = a[INTEGRITY_KEY]
+
+		if type(S) ~= "table" then
+			S = {}
+			a[INTEGRITY_KEY] = S
+		end
+
+		return S
+	end
+	v80 = function(a, F, R)
+		return type(a) == "table" and rawget(a, "Player") == LocalPlayer and rawget(a, "Character") == LocalPlayer.Character and rawget(a, "Humanoid") == F and rawget(a, "RootPart") == R
+	end
+	v81 = function(a, F, R)
+		return v80(a, F, R)
+	end
+	v82 = function(a, M, I)
+		local Q = v79()
+		local s = Q.State
+
+		if not v80(s, a, M) then
+			local W = os.clock()
+
+			if W < (Q.NextSearchAt or 0) then
+				return false
+			end
+
+			Q.NextSearchAt = W + 0.2
+			s = v147(LocalPlayer, a, M)
+		end
+
+		if not s then
+			return false
+		end
+
+		if not v81(s, a, M) then
+			Q.Enabled = false
+			Q.Humanoid = a
+			Q.RootPart = M
+			Q.State = s
+
+			return false
+		end
+
+		Q.NextSearchAt = 0
+		Q.Enabled = true
+		Q.Humanoid = a
+		Q.RootPart = M
+		Q.State = s
+		Q.WalkSpeed = math.clamp(I * HEADROOM, MIN_SPEED, MAX_SPEED * HEADROOM)
+		Q.TravelVelocity = Vector3.zero
+		v78(s, Q.WalkSpeed, Q.TravelVelocity)
+
+		return true
+	end
+	v83 = function(a, W, d, M)
+		local I = v75()[INTEGRITY_KEY]
+
+		if type(I) ~= "table" or not I.Enabled or I.Humanoid ~= a or I.RootPart ~= W or not v81(I.State, a, W) then
+			return false
+		end
+
+		I.WalkSpeed = math.clamp(d * HEADROOM, MIN_SPEED, MAX_SPEED * HEADROOM)
+
+		if typeof(M) == "Vector3" then
+			I.TravelVelocity = M
+		elseif typeof(I.TravelVelocity) ~= "Vector3" then
+			I.TravelVelocity = Vector3.zero
+		end
+
+		return v78(I.State, I.WalkSpeed, I.TravelVelocity)
+	end
+	v84 = function(a)
+		local R = v75()[INTEGRITY_KEY]
+
+		if type(R) ~= "table" then
+			return
+		end
+
+		if a == nil or R.Humanoid == a then
+			R.Enabled = false
+			R.Humanoid = nil
+			R.RootPart = nil
+			R.State = nil
+			R.TravelVelocity = nil
+			R.NextSearchAt = 0
+		end
+	end
+
+	local connection3
+
+	v85 = function()
+		if connection3 then
+			return
+		end
+
+		connection3 = RunService.PreSimulation:Connect(function()
+			if genv.__GehleeV4TweenRuntimeGeneration ~= __GehleeV4TweenRuntimeGeneration then
+				local a = connection3
+
+				connection3 = nil
+
+				if a then
+					pcall(a.Disconnect, a)
+				end
+
+				return
+			end
+
+			local a, S, L = v8()
+
+			if not a or not S or not L then
+				return
+			end
+
+			local W = v69()
+
+			v76(a, W * HEADROOM)
+
+			if not v83(L, S, W) then
+				v82(L, S, W)
+			end
+
+			v107()
+		end)
+	end
+
+	local function v179()
+		if connection3 then
+			pcall(connection3.Disconnect, connection3)
+			connection3 = nil
+		end
+
+		v77()
+		v84()
+	end
+
+	genv.__GehleeV4TweenRuntimeCleanup = function()
+		v110()
+		v179()
+	end
+end
+
+local gehleeV4Config = {
+	AutoSteal = false,
+	HelpFriend = false,
+	LowSpeedBoost = false,
+	StarAlert = true,
+	StealMode = "S2RInstant",
+	FlyAerial = false,
+	FlyZigzag = false,
+	StealHoldSeconds = 5,
+	StealAreas = { "None" },
+	StealRarities = { "None" },
+	StealNamesFilter = { "None" },
+	StealMinValue = 0,
+	StealMutations = { "None" },
+	StealMinWeight = 0,
+	StealPriority = "Rarity",
+	TaskOrder = {
+		"auto_steal",
+		"hw_steal",
+		"star",
+		"butterfly",
+		"phantom",
+		"hw_mobs",
+		"hw_pumpkin",
+		"auto_place",
+		"use_scrambled",
+		"ring_event",
+		"treadmill",
+		"hw_fish"
+	},
+	AutoFavorite = false,
+	FavMode = "Rarity",
+	FavRarities = { "None" },
+	FavSpecies = { "None" },
+	AutoEquipBest = false,
+	AutoClaimOffline = false,
+	AutoBaseUpgrade = false,
+	AutoClaimAlmanac = false,
+	AutoFusePets = false,
+	ButterflyAutoNet = false,
+	ButterflyAutoCatch = false,
+	ButterflyEsp = false,
+	ButterflyTiers = {},
+	ButterflyAutoTrade = false,
+	ButterflyTradeRecipe = "All",
+	ButterflyCatchMode = "Tween",
+	ButterflyAutoCraft = false,
+	WispAutoQuest = false,
+	BanjoAuto = false,
+	Noclip = false,
+	BottingMode = false,
+	AntiCutscene = false,
+	FuseSelectedOnly = false,
+	FuseRarities = { "None" },
+	FuseSpecies = { "None" },
+	EspDetails = {
+		"Name",
+		"Rarity",
+		"Value"
+	},
+	BackpackRateEsp = false,
+	AntiAFK = true,
+	AutoReconnect = true,
+	AutoExecute = false,
+	AutoPlace = false,
+	PlaceRarities = { "None" },
+	AutoHatch = false,
+	SellAll = false,
+	AutoSell = false,
+	SellNames = { "None" },
+	SellRarities = { "None" },
+	AutoSellEgg = false,
+	SellEggRarities = { "None" },
+	WebhookEnabled = false,
+	WebhookURL = "",
+	WebhookDisconnect = false,
+	WebhookPingRole = "",
+	WebhookPingUser = "",
+	WebMonitoring = false,
+	WebhookFishEnabled = false,
+	WebhookFishURL = "",
+	WebhookFishMinRarity = "Legendary",
+	HideMyAssets = false,
+	HideOtherAssets = false,
+	HideGameUI = false,
+	TweenSpeedMultiplier = 60,
+	ReturnTreadmillAfterSteal = true,
+	AutoTreadmillIdle = false,
+	AutoTreadmillUpgrade = false,
+	AntiTreadmill = false,
+	HopNoMatch = false,
+	PrivateServerMax = "2",
+	PrivateServerAuto = false,
+	HopCooldown = 5,
+	AutoIndex = false,
+	AntiHitGuard = false,
+	FlyForCapture = false,
+	AutoStealCapture = false,
+	InstantGrab = false,
+	InfiniteJump = false,
+	StealJump = true,
+	StealSkipTollAreas = false,
+	SnipeDroppedEggs = true,
+	SnipeAreas = {
+		Forest = true,
+		Lake = true,
+		Desert = true
+	},
+	SnipePunch = true,
+	FastPull = true,
+	FastPullSpeed = 3500,
+	AutoStealHalloween = false,
+	RaceAuto = false,
+	RaceSpeedMultiplier = 1,
+	RaceMode = "Drive (legit)",
+	RaceGlideSpeed = 420,
+	HalloweenNames = { "None" },
+	HalloweenZonePriority = true,
+	HalloweenCarrySpeed = 290,
+	HalloweenAutoBuy = false,
+	HalloweenHitMobs = false,
+	HalloweenMobTypes = { "Soul Phantom" },
+	CheckerCardSize = "Medium",
+	CheckerStealMode = "Queue for Auto Steal",
+	MobFishShare = 50,
+	TreadFishShare = 50,
+	HalloweenEggRarities = { "None" },
+	HalloweenMobRarities = { "None" },
+	HalloweenCollectPumpkin = false,
+	HalloweenAutoBoss = false,
+	HalloweenBossDodge = false,
+	HalloweenBossClaim = false,
+	HalloweenManorKey = false,
+	HalloweenVoidFusion = false,
+	HalloweenCrossWorld = true,
+	HalloweenAutoFish = false,
+	HalloweenPhantomExpress = false,
+	HalloweenTradeSouls = false,
+	WalkSpeedMultiplier = 1,
+	AntiGuardKnockback = true,
+	GodMode = true,
+	EggPredictUI = false,
+	EggESP = false,
+	StealPlayers = false,
+	StealPlayerRarities = { "None" },
+	StealPlayerMinValue = 0,
+	StealPlayerTarget = "Any Player",
+	WebhookRarities = { "None" },
+	WebhookMinValue = 0
+}
+local t7 = {}
+local t8 = {
+	DEFAULT = {
+		"auto_steal",
+		"hw_steal",
+		"hw_boss",
+		"hw_manor",
+		"star",
+		"butterfly",
+		"phantom",
+		"hw_mobs",
+		"hw_pumpkin",
+		"auto_place",
+		"use_scrambled",
+		"ring_event",
+		"treadmill",
+		"hw_fish"
+	},
+	TITLES = {
+		auto_steal = "Auto Steal",
+		hw_boss = "Pumpkin Boss",
+		hw_manor = "Manor Quest",
+		star = "Shooting Star",
+		butterfly = "Butterfly Bloom",
+		phantom = "Phantom Express",
+		hw_steal = "Steal Halloween",
+		hw_mobs = "Hit Mobs",
+		hw_pumpkin = "Collect Pumpkins",
+		hw_fish = "Auto Fish",
+		auto_place = "Auto Place",
+		ring_event = "Ring Event",
+		use_scrambled = "Auto Mutation",
+		treadmill = "Treadmill"
+	},
+	PINNED = {
+		treadmill = true,
+		hw_fish = true
+	},
+	register = function(a, F)
+		t7[a] = F
+	end
+}
+
+t8.sanitize = function(a)
+	local F, R = {}, {}
+
+	local function z(L)
+		L = tostring(L)
+
+		if t8.TITLES[L] and not R[L] and not t8.PINNED[L] then
+			R[L] = true
+			F[#F + 1] = L
+		end
+	end
+
+	for L, L in ipairs(type(a) == "table" and a or {}) do
+		z(L)
+	end
+
+	for a, L in ipairs(t8.DEFAULT) do
+		if not R[L] and not t8.PINNED[L] and #F > 0 then
+			local _ = 1
+
+			for s = a - 1, 1, -1.0 do
+				local a = t8.DEFAULT[s]
+				local s = table.find(F, a)
+
+				if s then
+					_ = s + 1
+
+					break
+				end
+			end
+
+			table.insert(F, _, L)
+			R[L] = true
+		end
+	end
+
+	for a, a in ipairs(t8.DEFAULT) do
+		z(a)
+	end
+
+	for a, a in ipairs(t8.DEFAULT) do
+		if t8.PINNED[a] and not R[a] then
+			R[a] = true
+			F[#F + 1] = a
+		end
+	end
+
+	return F
+end
+
+local u237
+local u238
+local t9 = {}
+
+t8.order = function()
+	local a = gehleeV4Config and gehleeV4Config.TaskOrder
+	local z = type(a) == "table" and a or {}
+	local _ = a ~= u238 or not u237 or #z ~= #t9
+
+	if not _ then
+		for s, W in ipairs(z) do
+			if W ~= t9[s] then
+				_ = true
+
+				break
+			end
+		end
+	end
+
+	if _ then
+		u238 = a
+		t9 = table.clone(z)
+		u237 = t8.sanitize(a)
+	end
+
+	return u237
+end
+t8.rank = function(a)
+	for F, R in ipairs(t8.order()) do
+		if R == a then
+			return F
+		end
+	end
+
+	return math.huge
+end
+
+local function v247(a, F)
+	local R = t7[a]
+	local a = R and R[F]
+
+	if type(a) ~= "function" then
+		return nil
+	end
+
+	local S, F = pcall(a)
+
+	if S then
+		return F
+	end
+
+	return nil
+end
+
+t8.wants = function(q)
+	local F = genv.__GehleeV4WorldAvailable
+
+	if type(F) == "function" and not F(q:sub(1, 3) == "hw_" or q == "phantom") then
+		return false
+	end
+
+	return v247(q, "wants") == true
+end
+t8.active = function(a)
+	return v247(a, "active") == true
+end
+t8.enabled = function(a)
+	local F = v247(a, "enabled")
+
+	return F == true
+end
+t8.stealCarrying = function()
+	local a = genv.__GehleeV4EggRuntime
+
+	if not a or a.destroyed then
+		return false
+	end
+
+	if a._instantReturnToken ~= nil or a._forestDropInProgress ~= nil then
+		return true
+	end
+
+	local S = a.carry
+
+	return S ~= nil and S.active == true and S.uid ~= nil and S.uid ~= a.primerUid
+end
+
+local t10 = {}
+
+local function v257(a)
+	if a ~= "auto_steal" and t8.stealCarrying() then
+		return "auto_steal"
+	end
+
+	if a ~= "phantom" and genv.__GehleeV4OnTrain == true then
+		return "phantom"
+	end
+
+	local R = genv.__GehleeV4DesiredTask
+
+	R = type(R) == "function" and R() or nil
+
+	if R and t8.rank(R) < t8.rank(a) then
+		return R
+	end
+
+	for F, F in ipairs(t8.order()) do
+		if F == a then
+			return nil
+		end
+
+		if t8.wants(F) then
+			return F
+		end
+	end
+
+	return nil
+end
+
+t8.blocker = function(a)
+	local L = genv.__GehleeV4WorldOwner
+
+	L = type(L) == "function" and L() or nil
+
+	if L and L ~= a then
+		return L
+	end
+
+	local z = os.clock()
+	local L = t8.order()
+	local R = t10[a]
+
+	if R and R.order == L and z - R.at < 0.1 then
+		return R.value
+	end
+
+	local _ = v257(a)
+
+	if R then
+		R.at, R.value, R.order = z, _, L
+	else
+		t10[a] = { at = z, value = _, order = L }
+	end
+
+	return _
+end
+t8.holder = function(a)
+	local R = genv.__GehleeV4WorldOwner
+
+	R = type(R) == "function" and R() or nil
+
+	if R and R ~= a then
+		return R
+	end
+
+	for S, S in ipairs(t8.order()) do
+		if S ~= a and not t8.PINNED[S] and t8.active(S) then
+			return S
+		end
+	end
+
+	return nil
+end
+t8.yieldLabel = function(q)
+	local S = t8.blocker(q)
+
+	return S and ("Yielding to " .. t8.TITLES[S]) or nil
+end
+t8.current = function()
+	local a = genv.__GehleeV4WorldOwner
+
+	a = type(a) == "function" and a() or nil
+
+	if a then
+		return a
+	end
+
+	if t8.stealCarrying() then
+		return "auto_steal"
+	end
+
+	for a, a in ipairs(t8.order()) do
+		if t8.active(a) then
+			return a
+		end
+	end
+
+	return nil
+end
+t8.describe = function(a)
+	if not t8.enabled(a) then
+		return "Off", "off"
+	end
+
+	local R = v247(a, "status")
+
+	R = type(R) == "string" and R ~= "" and R or nil
+
+	if t8.active(a) or t8.current() == a then
+		return R or "Running", "run"
+	end
+
+	local S = t8.blocker(a)
+
+	if S and t8.wants(a) then
+		return "Yielding to " .. t8.TITLES[S], "wait"
+	end
+
+	return R or "Idle", "off"
+end
+local n3 = 0.4
+local v2214, v2215, v2216, v2217
+
+do
+	local v2218 = (function()local a={};a.__index=a;local S={auto_place=true,auto_fuse=true,equip_best=true};local F={auto_steal=100,auto_hatch=80,auto_place=70,auto_fuse=50,equip_best=40,rewards=20};local function R(z)local L={};for _,s in pairs(z)do L[_]=s;end;return L;end;function a.new()local z=setmetatable({},a);z.destroyed=false;z.active=nil;z.background=nil;z.reservations={};z.listeners={};z.backgroundListeners={};z.serial=0;return z;end;function a:_snapshot()local z=self.active;return{busy=z~=nil,operation=z and z.owner or nil,priority=z and z.priority or 0,reservedCount=z and#z.uids or 0,reservations=R(self.reservations)};end;function a:_emit()local R=self:_snapshot();for z in pairs(self.listeners)do local L=pcall(z,R);if not L then warn("\[\zSt\101alA\u{06E}\69g\z \u{67}\x5D \x43oordi\110\x61\116or \108is\z\u{074}\u{065}\110\u{065}r fa\x69le\100\58",_);end;end;end;function a:_emitBackground()local R=self.background;local z={busy=R~=nil,operation=R and R.owner or nil};for R in pairs(self.backgroundListeners)do local L=pcall(R,z);if not L then warn("[\83\z  \116eal\x41n\u{45}\x67g] \B\u{061}ckg\x72oun\100 co\o\u{072}din\97to\x72\x20li\x73\u{074}en\101\u{0072}\u{20}fai\z \x6C\u{65}d:",_);end;end;end;function a:subscribe(R)self.listeners[R]=true;pcall(R,self:_snapshot());return function()self.listeners[R]=nil;end;end;function a:subscribeBackground(R)self.backgroundListeners[R]=true;pcall(R,{busy=self.background~=nil,operation=self.background and self.background.owner or nil});return function()self.backgroundListeners[R]=nil;end;end;function a:getSnapshot()return self:_snapshot();end;function a:isBackgroundBusy()return self.background~=nil;end;function a:isReserved(R,z)local L=self.reservations[R];return L~=nil and L~=z;end;function a:tryAcquire(R,z,L)if self.destroyed then return nil,"\C\111o\u{72}dina\u{074}\u{006F}r d\e\zs\u{0074}\u{72}oye\zd";end;if type(R)~='\x73tri\110\z  \103'or R==''then return nil,"I\x6Ev\u{0061}\x6C\105\100\32\111\perat\u{69}\u{006F}\x6E o\z  w\zne\u{072}";end;if self.active then return nil,"\Bu\x73\121\58\x20"..self.active.owner;end;if self.background and S[R]then return nil,'Bus\u{079}: b\z \x61ckgr\x6F\u{75}\z \110\u{064} '..self.background.owner;end;local S={};local _={};for s,s in ipairs(type(z)=="\z \u{74}ab\108e"and z or{})do if type(s)=='s\x74ri\110\x67'and s~=""and not _[s]then if self:isReserved(s,R)then return nil,'\z \x55\x49\D\32r\101se\114v\101d by '..tostring(self.reservations[s]);end;_[s]=true;table.insert(S,s);end;end;self.serial+=1;local z={id=self.serial,lane="fo\z re\g\u{0072}oun\u{0064}",owner=R,priority=tonumber(L)or F[R]or 0,uids=S,released=false};self.active=z;for F,F in ipairs(S)do self.reservations[F]=R;end;self:_emit();return z;end;function a:release(S)if type(S)~="t\x61b\108e"or S.released then return false;end;S.released=true;for F,F in ipairs(S.uids or{})do if self.reservations[F]==S.owner then self.reservations[F]=nil;end;end;local F=self.active==S;if F then self.active=nil;elseif self.background==S then self.background=nil;self:_emitBackground();end;if F then self:_emit();end;return true;end;function a:destroy()if self.destroyed then return;end;self.destroyed=true;if self.active then self:release(self.active);end;if self.background then self:release(self.background);end;table.clear(self.reservations);table.clear(self.listeners);table.clear(self.backgroundListeners);end;return a;end)()
+
+	v2214 = (function()
+		local a = require(ReplicatedStorage.Data.Assets)
+		local F = require(ReplicatedStorage.Shared.Modules.Mutations)
+		local S = {}
+		local R = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6, Cosmic = 7, Secret = 8, Eternal = 9, Divine = 10 }
+
+		function S.rarityRank(z)
+			return R[z] or 0
+		end
+
+		local function z(L)
+			local _ = {}
+			local s = {}
+
+			for W, W in ipairs(L) do
+				if type(W) == "string" and W ~= "" and not _[W] then
+					_[W] = true
+					table.insert(s, W)
+				end
+			end
+
+			table.sort(s)
+
+			return s
+		end
+
+		function S.getRarities()
+			local L = {}
+
+			for _ in pairs(a.ByRarity) do
+				table.insert(L, _)
+			end
+
+			table.sort(L, function(_, s)
+				local W, d = R[_] or 99, R[s] or 99
+
+				if W ~= d then
+					return W < d
+				end
+
+				return tostring(_) < tostring(s)
+			end)
+
+			return L
+		end
+		function S.getMutations()
+			local L = {}
+			local _ = F.Ids()
+
+			for s in pairs(type(_) == "table" and _ or {}) do
+				if type(s) == "string" and s ~= F.NO_MUTATION then
+					local _, W = pcall(F.LabelOf, s)
+
+					table.insert(L, _ and type(W) == "string" and W ~= "" and W or s)
+				end
+			end
+
+			return z(L)
+		end
+		function S.resolveMutationId(z)
+			if type(z) ~= "string" then
+				return nil
+			end
+
+			if F.IdSet[z] then
+				return z
+			end
+
+			for L in pairs(F.Ids()) do
+				if L ~= F.NO_MUTATION and F.LabelOf(L) == z then
+					return L
+				end
+			end
+
+			return nil
+		end
+		function S.resolve(F)
+			local z = F and a.Directory[F.AssetCategory]
+			local a = z and z.Rarity
+			local L = a and (a.DisplayName or a._id) or "Unknown"
+
+			return { name = z and (z.DisplayName or z._id) or (F and F.AssetCategory) or "Unknown", category = F and F.AssetCategory or "Unknown", rarity = L, rarityRank = R[L] or 0, rarityColor = a and a.Color or nil, icon = z and type(z.Icon) == "string" and z.Icon or nil }
+		end
+
+		return S
+	end)()
+
+	local function v2270(a)if not a then return nil;end;for S,S in ipairs(a:GetDescendants())do if S:IsA('\u{4D}o\du\x6CeS\99\114\ipt')and S.Name=="Lim\u{069}\116\u{073}"and S.Parent and S.Parent:FindFirstChild('\z S\117r\102\97c\u{065}')and S.Parent:FindFirstChild("\z R\117n\116\105\z  \x6D\e")then return S;end;end;return nil;end
+
+	local v2273 = v2270(LocalPlayer:FindFirstChildOfClass("PlayerScripts")) or v2270(game:GetService("StarterPlayer"):FindFirstChild("StarterPlayerScripts"))
+	local v2274 = (function()
+		local a = require(ReplicatedStorage.Client.EggState)
+		local J = require(ReplicatedStorage.Shared.Remotes)
+		local n = J.EggWorld
+		local l = require(ReplicatedStorage.Shared.Types.AreaEggs)
+		local i = require(ReplicatedStorage.Shared.Util.AreaEggSlotIdentity)
+		local b = require(ReplicatedStorage.Client.AreaEggResetWall)
+		local V = require(ReplicatedStorage.Client.SpeedPowerProjection)
+		local v = require(ReplicatedStorage.Shared.Util.TreadmillUtil)
+		local Y = require(ReplicatedStorage.Shared.Util.EggRecords)
+		local c = require(ReplicatedStorage.Shared.Util.AssetEarnings)
+		local E = require(ReplicatedStorage.Shared.Save)
+		local X = require(ReplicatedStorage.Client.PlotState)
+
+		local function N()
+			if genv.__GehleeV4AdminBoost == true then
+				return 3000
+			end
+
+			if genv.__GehleeV4FastPull then
+				local P = tonumber(gehleeV4Config.FastPullSpeed) or 0
+
+				if P > MAX_SPEED then
+					return P
+				end
+			end
+
+			return MAX_SPEED
+		end
+
+		local P = { Divine = true, Eternal = true }
+		local t = Vector3.new(542.93, 71.5, -405.58)
+		local t30 = { -364.3, -367.21, -371.12, -375.65 }
+		local cFrame = CFrame.new(554.071, 70.276, -395.573, 0, 0, 1, 0, 1, 0, -1.0, 0, 0)
+		local S7 = { Script = true, LocalScript = true, BillboardGui = true, Sound = true }
+		local F7 = {}
+
+		F7.__index = F7
+
+		local R7 = game:GetService("Stats")
+
+		local function v2296(L7, _7, p3)
+			local W7 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+			if W7 then
+				pcall(function()
+					W7.AssemblyLinearVelocity = Vector3.zero
+					W7.AssemblyAngularVelocity = Vector3.zero
+				end)
+			end
+
+			if not p3 then
+				local n11 = 0
+
+				pcall(function()
+					n11 = R7.Network.ServerStats.Ping:GetValue()
+				end)
+				task.wait(math.max(0.3, n11 * 2.5 / 1000))
+			end
+
+			local R7 = { Uid = L7 }
+
+			if _7 ~= nil then
+				R7.FirstAreaSlotKey = _7
+			end
+
+			local L7, _7 = n.AskFieldEggCarry:InvokeServer(R7)
+
+			return L7 == true, typeof(_7) == "string" and _7 or nil
+		end
+		local function R7(L7, _7, p4)
+			local W7 = L7:Connect(_7)
+
+			table.insert(p4, W7)
+
+			return W7
+		end
+		local function L7(_7)
+			for _, v2 in ipairs(_7) do
+				pcall(v2.Disconnect, v2)
+			end
+
+			table.clear(_7)
+		end
+		local function _7(p5, W7)
+			for _, v2 in ipairs(p5 or {}) do
+				if v2 == W7 then
+					return true
+				end
+			end
+
+			return false
+		end
+
+		local v2310
+
+		local function W7(p6)
+			local M7 = p6 and p6:FindFirstChild("HumanoidRootPart")
+
+			if M7 then
+				M7:SetAttribute("KillPartIgnore", true)
+			end
+		end
+		local function v2313(M7)
+			if M7._healthPinner then
+				pcall(M7._healthPinner.Disconnect, M7._healthPinner)
+				M7._healthPinner = nil
+			end
+
+			if M7._healthChangedConnection then
+				pcall(M7._healthChangedConnection.Disconnect, M7._healthChangedConnection)
+				M7._healthChangedConnection = nil
+			end
+		end
+		local function M7(I7, Q7)
+			v2313(I7)
+
+			local T7 = Q7 and Q7:FindFirstChildOfClass("Humanoid")
+			local HumanoidRootPart = Q7 and Q7:FindFirstChild("HumanoidRootPart")
+
+			if not T7 then
+				return false
+			end
+
+			local health = math.max(T7.MaxHealth, 100)
+			local u2318 = false
+			local B7 = 0
+
+			local function D7()
+				if u2318 or I7.destroyed or I7._s2rInstantToken or I7:_isS2RTreadmillParked() or LocalPlayer.Character ~= Q7 or not T7.Parent then
+					return
+				end
+
+				local now = os.clock()
+
+				if now - B7 < 0.1 and T7.Health > 0 and T7:GetState() ~= Enum.HumanoidStateType.Dead then
+					return
+				end
+
+				B7 = now
+				u2318 = true
+				pcall(function()
+					T7.BreakJointsOnDeath = false
+					T7.RequiresNeck = false
+					T7:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+					T7:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+					T7:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+
+					if T7.Health <= 0 then
+						T7.Health = health
+					end
+
+					if T7:GetState() == Enum.HumanoidStateType.Dead then
+						T7:ChangeState(Enum.HumanoidStateType.Running)
+					end
+
+					if HumanoidRootPart and HumanoidRootPart.Parent == Q7 and HumanoidRootPart.Anchored then
+						HumanoidRootPart.Anchored = false
+					end
+				end)
+				u2318 = false
+			end
+
+			D7()
+			I7._healthChangedConnection = T7.HealthChanged:Connect(function(Q7)
+				if Q7 <= 0 or Q7 < health then
+					D7()
+				end
+			end)
+			I7._healthPinner = RunService.Heartbeat:Connect(D7)
+
+			return true
+		end
+		local function I7(Q7)
+			local T7 = Q7 and Q7:FindFirstChildOfClass("Humanoid")
+
+			if not T7 then
+				return
+			end
+
+			pcall(function()
+				if T7.Health <= 0 then
+					T7.Health = math.max(T7.MaxHealth, 1)
+				end
+
+				T7:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+				T7.BreakJointsOnDeath = true
+				T7.RequiresNeck = true
+			end)
+		end
+		local function Q7()
+			if type(getconnections) ~= "function" or type(debug) ~= "table" or type(debug.info) ~= "function" or type(debug.getupvalue) ~= "function" then
+				return false
+			end
+
+			local T7, result = pcall(getconnections, LocalPlayer.Idled)
+
+			if not T7 or type(result) ~= "table" then
+				return false
+			end
+
+			for T7, T7 in ipairs(result) do
+				local Function = T7.Function
+
+				if type(Function) == "function" and type(T7.Disable) == "function" then
+					local ok, result2 = pcall(debug.info, Function, "s")
+					local B7, D7 = pcall(debug.getupvalue, Function, 1)
+
+					if ok and type(result2) == "string" and result2:sub(-27.0) == ".PlayerScripts.Game.AntiAFK" and B7 and type(D7) == "number" then
+						local ok2 = pcall(T7.Disable, T7)
+
+						return ok2
+					end
+				end
+			end
+
+			return false
+		end
+		local function T7(p7, p8)
+			if #p8 == 0 then
+				return true
+			end
+
+			for _, v2 in ipairs(p7.Mutations or {}) do
+				if _7(p8, v2) then
+					return true
+				end
+			end
+
+			return p7.BaseMutation ~= nil and _7(p8, p7.BaseMutation)
+		end
+		local function v2338()
+			local v2339 = v.SpeedPowerToWalkSpeed(V.ReadProjected())
+			local v = LocalPlayer.Character
+			local Humanoid = v and v:FindFirstChildOfClass("Humanoid")
+			local v = Humanoid and Humanoid.WalkSpeed or v2339
+
+			return math.clamp(math.min(v2339, v), MIN_SPEED, MAX_SPEED)
+		end
+
+		function F7.new(C, v, p9)
+			local obj = setmetatable({}, F7)
+
+			obj.catalog = C
+			obj.limitsModule = v
+			obj.coordinator = p9
+			obj.operationToken = nil
+			obj.connections = {}
+			obj.listeners = {}
+			obj.records = {}
+			obj.enabled = false
+			obj.userStealEnabled = false
+			obj.skippedEggs = {}
+			obj.riftWants = {}
+			obj.riftOnly = false
+			obj.indexObjectiveEnabled = false
+			obj.wispObjective = nil
+			obj.manualObjectiveEnabled = false
+			obj.manualQueue = {}
+			obj.manualOrder = {}
+			obj.indexCache = { at = 0, set = {} }
+			obj.running = false
+			obj.safeStarting = false
+			obj.movementRetryPending = false
+			obj.destroyed = false
+			obj.resetBlocked = b.IsSealed()
+			obj.gateOpenAt = obj.resetBlocked and math.huge or os.clock()
+			obj.activeTween = nil
+			obj.activeTarget = nil
+			obj.claimPresentationNode = nil
+			obj.claimPresentationOriginal = nil
+			obj.claimPresentationSuppression = nil
+			obj.carry = { active = false, uid = nil, generation = 0 }
+			obj.carryWorker = nil
+			obj.tweenRecoveryUid = nil
+			obj.planGeneration = 0
+			obj.treadmillDecoy = nil
+			obj.treadmillDecoyCamera = nil
+			obj.treadmillDecoyCameraConnection = nil
+			obj.treadmillDecoyCharacterConnection = nil
+			obj.treadmillPopupConnection = nil
+			obj.treadmillDecoyRealTransparency = nil
+			obj.hoverPadOwnerId = string.format("%s:%0.6f", tostring(obj), os.clock())
+			obj.instantPhase = nil
+			obj.primerUid = nil
+			obj.primerUids = {}
+			obj.targetUid = nil
+			obj.hitTimer = nil
+			obj.guardHitBoostInstalled = false
+			obj.stats = { status = obj.resetBlocked and "Reset wall closed" or "Ready", available = 0, matching = 0, lastTarget = "None", lastResult = "Idle" }
+			obj.config = { stealMode = "S2RInstant", flyAerial = false, flyZigzag = false, speed = DEF_SPEED, antiTrap = true, heaviestFirst = false, highestValueFirst = false, minWeightKg = 0, espEnabled = false, espRarity = true, espName = true, espKg = true, espMutation = true, espValue = true, espPlaced = false, espIcon = true, espMinRank = 0, espMinValue = 0, minValuePerSec = 0, rarityEnabled = false, rarities = {}, nameEnabled = false, names = {}, areaEnabled = false, areas = {}, mutationEnabled = false, mutations = {} }
+			obj.gameAntiAfkDisabled = Q7()
+
+			if LocalPlayer.Character then
+				W7(LocalPlayer.Character)
+
+				local C = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+				if C then
+					pcall(function()
+						C.BreakJointsOnDeath = false
+						C.RequiresNeck = false
+						C:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+						C:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+						C:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+					end)
+				end
+
+				M7(obj, LocalPlayer.Character)
+			end
+
+			local C, v = pcall(function()
+				return require(ReplicatedStorage.Shared.Util.EggRecords)
+			end)
+
+			obj.weightUtil = C and type(v.WeightKgForScale) == "function" and v or nil
+
+			local function C(v)
+				if not v then
+					return
+				end
+
+				R7(v.DescendantAdded, function(v)
+					if obj.config.antiTrap then
+						obj:_purgeTrap(v)
+					end
+				end, obj.connections)
+			end
+
+			C(workspace:FindFirstChild("Transient"))
+			C(workspace:FindFirstChild("__DEBRIS"))
+
+			if obj.config.antiTrap then
+				obj:_purgeTraps()
+			end
+
+			R7(workspace.ChildAdded, function(v)
+				if v.Name == "Transient" or v.Name == "__DEBRIS" then
+					C(v)
+
+					if obj.config.antiTrap then
+						obj:_purgeTraps()
+					end
+				end
+			end, obj.connections)
+			obj:_replaceSnapshot(a.ReadFieldEggs())
+			R7(a.FieldRefreshed, function(C)
+				obj:_replaceSnapshot(C)
+			end, obj.connections)
+			R7(a.FieldShifted, function(C)
+                if type(C) ~= "table" or type(C.Uid) ~= "string" or C.Uid == "" then return end
+				obj.records[C.Uid] = C
+				obj:_refreshCounts()
+
+				if obj.enabled and not obj.destroyed and not obj.running and not obj.carry.active and (C.State == l.States.Slot or C.State == l.States.Dropped) and not obj._shiftWakePending then
+					obj._shiftWakePending = true
+					task.delay(genv.__GehleeV4AdminBoost == true and 0 or 0.25, function()
+						obj._shiftWakePending = nil
+
+						if not obj.destroyed and obj.enabled and not obj.running then
+							obj:_schedule()
+						end
+					end)
+				end
+			end, obj.connections)
+			R7(a.FieldGone, function(C)
+				obj.records[C] = nil
+                if obj._s2rInstantToken then obj:_refreshCounts(); return end
+
+				if obj.activeTarget and obj.activeTarget.Uid == C then
+					if obj.carry.active and obj.carry.uid == C then
+						obj:_refreshCounts()
+
+						return
+					end
+
+					obj.carryAttemptToken = nil
+					obj:_clearArrivalHold(C)
+
+					if obj.activeTween and obj.activeTween.Cancel then
+						pcall(obj.activeTween.Cancel, obj.activeTween)
+					end
+
+					local v = obj.activeTarget
+
+					task.delay(0.65, function()
+						if obj.destroyed or not obj.enabled then
+							return
+						end
+
+						if obj.carry.active and obj.carry.uid == C then
+							return
+						end
+
+						if obj.activeTarget == v and v.Uid == C then
+							obj:_finish("Target removed — continuing")
+						end
+					end)
+				end
+
+				obj:_refreshCounts()
+			end, obj.connections)
+			R7(a.ResetCountdown, function()
+				obj:_closeGate("Egg reset countdown")
+			end, obj.connections)
+			R7(a.ResetFade, function()
+				obj:_closeGate("Egg reset teleport")
+			end, obj.connections)
+			R7(b.Changed, function(C)
+				if C then
+					obj:_closeGate("Reset wall closed")
+				else
+					obj.resetBlocked = false
+					obj.gateOpenAt = os.clock()
+					obj.safeStarting = false
+					obj.running = false
+					obj:_setStatus(obj.enabled and "Searching" or "Ready")
+					obj:_schedule()
+				end
+			end, obj.connections)
+			R7(LocalPlayer.CharacterRemoving, function()
+                obj._s2rTreadmillParked = nil
+				obj._recalling = nil
+				obj:_cleanupInstantSteal()
+				obj:_hideTreadmillDecoy()
+				obj._forestDropInProgress = nil
+				obj._instantReturnToken = nil
+				obj.carry.generation += 1
+				obj:_invalidateCarryWorker()
+				obj.carry.active = false
+				obj.carry.uid = nil
+				obj.safeStarting = false
+				obj.planGeneration += 1
+				obj:_cancelTween("Character resetting")
+				obj:_stopMovementProtection()
+			end, obj.connections)
+			R7(RunService.Heartbeat, function()
+				if obj.destroyed or obj._s2rInstantToken or obj:_isS2RTreadmillParked() then
+					return
+				end
+
+				local C = LocalPlayer.Character
+				local v = C and C:FindFirstChild("HumanoidRootPart")
+
+				if not v then
+					return
+				end
+
+				local Q7 = v.AssemblyLinearVelocity
+				local Humanoid = C:FindFirstChildOfClass("Humanoid")
+				local C = Humanoid and Humanoid.WalkSpeed or 0
+				local vector32 = Vector3.new(Q7.X, 0, Q7.Z)
+
+				if vector32.Magnitude > math.max(400, C * 1.5) or math.abs(Q7.Y) > 400 then
+					local B7 = math.max(100, C)
+
+					if vector32.Magnitude > B7 then
+						vector32 = vector32.Unit * B7
+					end
+
+					v.AssemblyLinearVelocity = Vector3.new(vector32.X, math.clamp(Q7.Y, -100.0, 100), vector32.Z)
+				end
+			end, obj.connections)
+			R7(LocalPlayer.CharacterAdded, function(C)
+				obj:_hideTreadmillDecoy()
+				W7(C)
+
+				local v = C:FindFirstChildOfClass("Humanoid")
+
+				if v then
+					pcall(function()
+						v.BreakJointsOnDeath = false
+						v.RequiresNeck = false
+						v:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+						v:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+						v:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+					end)
+				end
+
+				M7(obj, C)
+				task.delay(0.25, function()
+					if not obj.destroyed and obj.enabled then
+						obj:_startMovementProtection()
+					end
+				end)
+				task.delay(1, function()
+					if not obj.destroyed and obj.enabled and obj:_wallOpen() then
+						obj:_schedule()
+					end
+				end)
+			end, obj.connections)
+			obj:_installClaimPresentationFilter()
+			R7(a.CarryChanged, function(C)
+                if obj._s2rInstantToken then
+                    if type(C) == "table" then
+                        if C.IsCarrying == true then
+                            obj.carry.active, obj.carry.uid = true, C.Uid
+                            if C.Uid == obj._s2rInstantToken.Uid then obj._s2rInstantToken.SeenCarry = true end
+                        elseif C.Uid == nil or C.Uid == obj.carry.uid then
+                            obj.carry.active, obj.carry.uid = false, nil
+                        end
+                    end
+                    -- The new route owns deliberate drop/regrab/deposit transitions.
+                    return
+                end
+				if C.IsCarrying then
+					if obj.running and obj.activeTarget and C.Uid == obj.activeTarget.Uid then
+						if obj.carry.active and obj.carry.uid == C.Uid then
+							return
+						end
+
+						if obj.instantPhase == "priming" and C.Uid == obj.primerUid then
+							obj.carry.active = true
+							obj.carry.uid = C.Uid
+							obj:_clearArrivalHold(C.Uid)
+							obj:_enterBaitWait()
+
+							return
+						end
+
+						obj.carry.generation += 1
+						obj:_invalidateCarryWorker()
+						obj:_clearArrivalHold(C.Uid)
+						obj.claimPresentationSuppression = { assetCategory = obj.activeTarget.AssetCategory, expiresAt = os.clock() + 8 }
+						obj.carry.active = true
+						obj.carry.uid = C.Uid
+						obj.carryStartTime = os.clock()
+						obj.carryStartPos = (obj.activeTarget and obj.activeTarget.BottomCFrame and obj.activeTarget.BottomCFrame.Position) or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position)
+
+						if obj.tweenRecoveryUid == C.Uid then
+							obj.tweenRecoveryUid = nil
+						end
+
+						if obj.carryTimeouts then
+							obj.carryTimeouts[C.Uid] = nil
+						end
+
+						obj.stats.lastResult = "Carry confirmed"
+						obj:_notify()
+						obj.carryAttemptToken = nil
+
+						if obj.activeTween and obj.activeTween.Cancel then
+							pcall(obj.activeTween.Cancel, obj.activeTween)
+						end
+
+						task.defer(function()
+							if not obj.destroyed and obj.enabled and obj.carry.uid == C.Uid and obj:_hasConfirmedCarry(C.Uid) then
+								if genv.__GehleeV4GodMode then
+									genv.__GehleeV4GodMode:stopDefend()
+								end
+
+								obj:_returnToSafe()
+							end
+						end)
+					end
+
+					return
+				end
+
+				if obj.carry.uid ~= nil and C.Uid ~= nil and C.Uid ~= obj.carry.uid then
+					return
+				end
+
+				local v = C.Uid or obj.carry.uid or (obj.activeTarget and obj.activeTarget.Uid)
+				local Q7 = obj.carry.active
+
+				obj.carry.generation += 1
+
+				local generation = obj.carry.generation
+
+				obj:_invalidateCarryWorker()
+
+				if obj.activeTween and obj.activeTween.Cancel then
+					pcall(obj.activeTween.Cancel, obj.activeTween)
+				end
+
+				obj.carry.active = false
+				obj.carry.uid = nil
+
+				if genv.__GehleeV4GodMode then
+					genv.__GehleeV4GodMode:startDefend(v)
+				end
+
+				if (obj._captureHoldUid ~= nil and v == obj._captureHoldUid) or (obj._adminBusyUid ~= nil and v == obj._adminBusyUid) then
+					return
+				end
+
+				if obj.instantPhase == "priming" and (C.Uid == obj.primerUid or v == obj.primerUid) then
+					obj:_startPrimerTargetHunt()
+
+					return
+				end
+
+				if obj._forestDropInProgress ~= nil and v == obj._forestDropInProgress then
+					return
+				end
+
+				if not Q7 then
+					return
+				end
+
+				if not obj.running or not obj.activeTarget then
+					return
+				end
+
+				local C = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+				if C and obj:_isInSafeArea(C) then
+					obj:_reportStolen()
+					obj:_finish("Safe return complete")
+
+					return
+				end
+
+				task.delay(0.03, function()
+					if obj.destroyed or not obj.enabled or obj.carry.active or obj.carry.generation ~= generation then
+						return
+					end
+
+					local C = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+					if C and obj:_isInSafeArea(C) then
+						obj:_reportStolen()
+						obj:_finish("Safe return complete")
+
+						return
+					end
+
+					obj:_reStealDroppedEgg(v)
+				end)
+			end, obj.connections)
+			R7(LocalPlayer:GetAttributeChangedSignal("RagdollEndTime"), function()
+				local C = LocalPlayer:GetAttribute("RagdollEndTime") or 0
+
+				if obj.instantPhase == "priming" and C > workspace:GetServerTimeNow() then
+					obj:_startPrimerTargetHunt()
+				end
+			end, obj.connections)
+			R7(RunService.Heartbeat, function()
+				if obj.destroyed then
+					return
+				end
+
+				local C = os.clock()
+
+				if C - (obj._espLastTick or 0) < 0.4 then
+					return
+				end
+
+				obj._espLastTick = C
+
+				local v, R7 = pcall(function()
+					obj:_updateEsp()
+				end)
+
+				if not v then
+					if C - (obj._espErrLast or 0) > 5 then
+						obj._espErrLast = C
+						warn("[SAE][esp] update error: " .. tostring(R7))
+					end
+				end
+			end, obj.connections)
+
+			local C = obj.stats.status
+
+			obj.stats.status = C
+
+			return obj
+		end
+		function F7:_installClaimPresentationFilter()
+			return false
+		end
+		function F7:_restoreClaimPresentationFilter()
+			local C = self.claimPresentationNode
+			local v = self.claimPresentationOriginal
+
+			if type(C) == "table" and type(v) == "function" and rawget(C, "_fn") == self.claimPresentationWrapper then
+				C._fn = v
+			end
+
+			self.claimPresentationNode = nil
+			self.claimPresentationOriginal = nil
+			self.claimPresentationWrapper = nil
+			self.claimPresentationSuppression = nil
+		end
+		function F7:_setStatus(C)
+			if self.stats.status == C then
+				return
+			end
+
+			if type(C) == "string" and string.find(C, "not currently trusted", 1, true) then
+				self._untrustedSeen = true
+			end
+
+			self.stats.status = C
+			self:_notify()
+		end
+		function F7:_notify()
+			local C = self:getSnapshot()
+
+			for v in pairs(self.listeners) do
+				local R7, Q7 = pcall(v, C)
+
+				if not R7 then
+					warn("[StealAnEgg] UI listener failed:", Q7)
+				end
+			end
+		end
+		function F7:onChanged(C)
+			self.listeners[C] = true
+
+			local v, R7 = pcall(C, self:getSnapshot())
+
+			if not v then
+				warn("[StealAnEgg] UI listener failed:", R7)
+			end
+
+			return function()
+				self.listeners[C] = nil
+			end
+		end
+		function F7:getSnapshot()
+			return { status = self.stats.status, available = self.stats.available, matching = self.stats.matching, lastTarget = self.stats.lastTarget, lastResult = self.stats.lastResult, wallClosed = self.resetBlocked or b.IsSealed() or os.clock() < self.gateOpenAt, enabled = self.enabled, running = self.running }
+		end
+		function F7:_replaceSnapshot(C)
+			table.clear(self.records)
+
+			local v = type(C) == "table" and (C.Records or C) or {}
+            if type(v) ~= "table" then v = {} end
+
+			for C, R7 in pairs(v) do
+				if type(R7) == "table" and type(R7.Uid) == "string" then
+					self.records[R7.Uid] = R7
+				elseif type(C) == "string" and type(R7) == "table" then
+					self.records[C] = R7
+				end
+			end
+
+			self:_refreshCounts()
+			self:_schedule()
+		end
+		function F7:_indexWants()
+			local C = os.clock()
+			local v = self.indexCache
+
+			if v and C - (v.at or 0) < 2 then
+				return v.set
+			end
+
+			local v = {}
+
+			pcall(function()
+				local R7 = self.areasDirectory
+
+				if not R7 then
+					R7 = require(ReplicatedStorage.Data.Areas).Directory
+					self.areasDirectory = R7
+				end
+
+				local Q7 = (E.Peek or E.Get)()
+
+				if not (R7 and Q7) then
+					return
+				end
+
+				local Index = Q7.Index or {}
+				local t31 = {}
+
+				for B7, B7 in pairs(Q7.EggInventory or {}) do
+					local Q7 = type(B7) == "table" and (B7.AssetCategory or B7.Category) or nil
+
+					if Q7 then
+						t31[tostring(Q7)] = true
+					end
+				end
+
+				local Q7 = self.carry and self.carry.uid
+
+				if Q7 then
+					local B7 = self.records[Q7]
+
+					if B7 and B7.AssetCategory then
+						t31[tostring(B7.AssetCategory)] = true
+					end
+				end
+
+				for Q7, Q7 in pairs(R7) do
+					if type(Q7) == "table" and type(Q7.DropTable) == "table" then
+						for R7, R7 in ipairs(Q7.DropTable) do
+							local Q7 = R7[1]
+
+							if Q7 then
+								Q7 = tostring(Q7)
+
+								if not Index[Q7] and not t31[Q7] then
+									v[Q7] = true
+								end
+							end
+						end
+					end
+				end
+			end)
+			self.indexCache = { at = C, set = v }
+
+			return v
+		end
+		function F7:_isIndexObjective(C)
+			if not self.indexObjectiveEnabled then
+				return false
+			end
+
+			if type(C) ~= "table" then
+				return false
+			end
+
+			local v = C.AssetCategory
+
+			if not v or v == "" then
+				return false
+			end
+
+			return self:_indexWants()[tostring(v)] == true
+		end
+		function F7:setIndexObjective(C)
+			local v = C == true
+
+			if self.indexObjectiveEnabled == v then
+				return
+			end
+
+			self.indexObjectiveEnabled = v
+			self.indexCache = { at = 0, set = {} }
+			self:_reconcileRunningState()
+		end
+		function F7:_isWispObjective(C)
+			local v = self.wispObjective
+
+			if type(v) ~= "table" or type(C) ~= "table" then
+				return false
+			end
+
+			if v.area and C.AreaId ~= v.area then
+				return false
+			end
+
+			if v.rarity then
+				local R7 = self:_candidateMetadata(C)
+
+				if not R7 or R7.rarity ~= v.rarity then
+					return false
+				end
+			end
+
+			return true
+		end
+		function F7:setWispObjective(C)
+			local v = type(C) == "table" and ((C.area or "") .. "|" .. (C.rarity or "")) or nil
+
+			if self.wispObjectiveKey == v then
+				return
+			end
+
+			self.wispObjectiveKey = v
+			self.wispObjective = v and C or nil
+			self:_reconcileRunningState()
+		end
+		function F7:_matchesNormalFilter(C, v)
+            if type(C) ~= "table" then return false end
+            local resolved, R7 = pcall(self.catalog.resolve, C)
+            if not resolved or type(R7) ~= "table" then return false end
+			local Q7 = self.config
+            -- Unrestricted name/rarity selections do not bypass the other
+            -- user's filters, including for Divine and Eternal eggs.
+			if Q7.rarityEnabled and (#Q7.rarities == 0 or not _7(Q7.rarities, R7.rarity)) then
+				return false
+			end
+
+			if Q7.nameEnabled and (#Q7.names == 0 or (not _7(Q7.names, R7.name) and not _7(Q7.names, R7.category))) then
+				return false
+			end
+
+			if (not v or Q7.stealMode == "S2RInstant") and Q7.areaEnabled and (#Q7.areas == 0 or not _7(Q7.areas, C.AreaId)) then
+				return false
+			end
+
+			if Q7.mutationEnabled and not T7(C, Q7.mutations) then
+				return false
+			end
+
+			if (Q7.minWeightKg or 0) > 0 then
+				local v = self:_resolveWeightKg(C)
+
+				if not v or v < Q7.minWeightKg then
+					return false
+				end
+			end
+
+			if (Q7.minValuePerSec or 0) > 0 then
+				local v = v2310(C)
+
+				if not v or v < Q7.minValuePerSec then
+					return false
+				end
+			end
+
+			return true
+		end
+		function F7:_matches(C)
+			if C.State ~= l.States.Slot and C.State ~= l.States.Dropped then
+				return false
+			end
+
+			if self.riftWants[C.AssetCategory] then
+				return true
+			end
+
+			if self.indexObjectiveEnabled and self:_isIndexObjective(C) then
+				return true
+			end
+
+			if self.wispObjective and self:_isWispObjective(C) then
+				return true
+			end
+
+			if self.userStealEnabled and not self.riftOnly and self:_matchesNormalFilter(C) then
+				return true
+			end
+
+			return false
+		end
+		function F7:_refreshCounts()
+			local C = 0
+			local v = 0
+
+			for R7, R7 in pairs(self.records) do
+				if type(R7) == "table" and R7.State == l.States.Slot then
+					C += 1
+
+					local ok, matches = pcall(self._matches, self, R7)
+					if ok and matches then
+						v += 1
+					end
+				end
+			end
+
+			self.stats.available = C
+			self.stats.matching = v
+			self:_notify()
+		end
+
+        -- GEHLEE_V8_CANDIDATE_HELPERS_BEGIN
+        function F7:_candidateMetadata(record)
+            if type(self.catalog) ~= "table" or type(self.catalog.resolve) ~= "function" then return nil end
+            local ok, metadata = pcall(self.catalog.resolve, record)
+            return ok and type(metadata) == "table" and metadata or nil
+        end
+        function F7:_candidateDistance(record, root)
+            if type(record) ~= "table" or type(record.Uid) ~= "string" or record.Uid == ""
+                or (record.State ~= l.States.Slot and record.State ~= l.States.Dropped)
+                or typeof(record.BottomCFrame) ~= "CFrame" or not root then return nil end
+            local distance = (record.BottomCFrame.Position - root.Position).Magnitude
+            if distance ~= distance or distance == math.huge then return nil end
+            return distance
+        end
+        -- GEHLEE_V8_CANDIDATE_HELPERS_END
+
+		function F7:hasPriorityRareEgg()
+			local C = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			local v, R7, _7
+
+			for Q7, Q7 in pairs(self.records or {}) do
+				if self:_candidateDistance(Q7, C) ~= nil and not self:isSkippedEgg(Q7.Uid) and self:_matchesNormalFilter(Q7) then
+					local T7 = self:_candidateMetadata(Q7)
+
+					if T7 and P[T7.rarity] then
+						local Magnitude = C and (Q7.BottomCFrame.Position - C.Position).Magnitude or 0
+						local C = tonumber(T7.rarityRank) or 0
+
+						if not v or C > R7 or (C == R7 and Magnitude < _7) then
+							v = Q7
+							R7 = C
+							_7 = Magnitude
+						end
+					end
+				end
+			end
+
+			return v ~= nil, v
+		end
+		function F7:bestNormalStealRank(C)
+			if not (self.carry and self.carry.active) and (self:_eggInventoryFull() or F7.resetSoon()) then
+				return 0
+			end
+
+			local v = LocalPlayer:GetAttribute("InHalloweenDimension") == true or genv.__GehleeV4OnTrain == true
+			local R7 = self.userStealEnabled == true and not self.riftOnly
+			local _7 = gehleeV4Config.SnipeDroppedEggs == true and not self.riftOnly and not v
+			local v, Q7 = 0, 0
+
+			for T7, T7 in pairs(self.records or {}) do
+				local v2426 = T7.State == l.States.Slot
+				local v2427 = T7.State == l.States.Dropped
+
+				if (v2426 or v2427) and T7.BottomCFrame and not self:isSkippedEgg(T7.Uid) then
+					local ok, B7 = pcall(function()
+						return self.catalog.resolve(T7)
+					end)
+					local D7 = (ok and B7 and tonumber(B7.rarityRank)) or 0
+
+					if (C and D7 == C) or (not C and D7 > v) then
+						local v2431 = R7 and self:_matchesNormalFilter(T7) and ((ok and B7 and P[B7.rarity]) or not self:_tollAreaSkip(T7))
+						local P = not v2431 and v2427 and _7 and T7.CarrierUserId ~= LocalPlayer.UserId and self:_inSnipeZone(T7) and self:_matchesNormalFilter(T7, true)
+
+						if (v2431 or P) and C then
+							local R7 = v2310(T7) or 0
+
+							if R7 > Q7 then
+								Q7 = R7
+							end
+						elseif v2431 or P then
+							v = D7
+						end
+					end
+				end
+			end
+
+			if C then
+				return Q7
+			end
+
+			return v
+		end
+		function F7:isSkippedEgg(C)
+			if C ~= nil and C == workspace:GetAttribute("Event_CaptureTheEggUid") and not self.captureObjectiveEnabled then
+				return true
+			end
+
+			local v = C and self.skippedEggs[C]
+
+			if not v then
+				return false
+			end
+
+			if os.clock() < v then
+				return true
+			end
+
+			self.skippedEggs[C] = nil
+
+			return false
+		end
+		function F7:_areaOverSpeed(C)
+			local v = os.clock()
+			local P = self._overSpeedCache
+
+			if not P or v - P.at > 5 then
+				P = { at = v, map = {} }
+				self._overSpeedCache = P
+
+				local v = 0
+
+				pcall(function()
+					v = tonumber(require(ReplicatedStorage.Shared.Save).Peek().SpeedPower) or 0
+				end)
+
+				local R7 = Workspace:FindFirstChild("World")
+				local _7 = R7 and R7:FindFirstChild("Areas")
+
+				_7 = _7 and _7:FindFirstChild("GuardAreas")
+
+				for R7, R7 in ipairs(_7 and _7:GetChildren() or {}) do
+					local _7 = R7:GetAttribute("GuardEscapeSpeeds")
+					local Q7 = typeof(_7) == "Vector2" and _7.X or tonumber(_7)
+
+					if Q7 then
+						P.map[R7.Name] = v < Q7
+					end
+				end
+			end
+
+			return P.map[tostring(C)] == true
+		end
+		function F7:_tollAreaSkip(C)
+			return gehleeV4Config.StealSkipTollAreas ~= false and type(C) == "table" and self:_areaOverSpeed(C.AreaId)
+		end
+		function F7:_inSnipeZone(C)
+			local v = type(C) == "table" and C.BottomCFrame and C.BottomCFrame.Position
+
+			if not v then
+				return false
+			end
+
+			local C = os.clock()
+
+			if not self._snipeZones or C - (self._snipeZonesAt or 0) > 10 then
+				self._snipeZonesAt = C
+				self._snipeZones = {}
+
+				local C = workspace:FindFirstChild("World")
+
+				C = C and C:FindFirstChild("Areas")
+				C = C and C:FindFirstChild("GuardAreas")
+
+				for P in pairs(gehleeV4Config.SnipeAreas or {}) do
+					local R7 = C and C:FindFirstChild(P)
+
+					if R7 and R7:IsA("Model") then
+						local C, P, _7 = pcall(R7.GetBoundingBox, R7)
+
+						if C then
+							self._snipeZones[#self._snipeZones + 1] = { cf = P, half = _7 * 0.5 }
+						end
+					end
+				end
+			end
+
+			if #self._snipeZones == 0 then
+				return true
+			end
+
+			for C, C in ipairs(self._snipeZones) do
+				local P = C.cf:PointToObjectSpace(v)
+
+				if math.abs(P.X) <= C.half.X + 2 and math.abs(P.Z) <= C.half.Z + 2 then
+					return true
+				end
+			end
+
+			return false
+		end
+		function F7:_isCaptureEgg(C)
+			return C ~= nil and C == workspace:GetAttribute("Event_CaptureTheEggUid")
+		end
+		function F7:setCaptureObjective(C)
+			C = C == true
+
+			if self.captureObjectiveEnabled == C then
+				return
+			end
+
+			if C then
+				self._modeBeforeCapture = { self.config.stealMode, self.config.flyAerial, self.config.flyZigzag }
+				self:setStealMode("Instant", false, false)
+				self.captureObjectiveEnabled = true
+			else
+				self.captureObjectiveEnabled = false
+
+				local C = self._modeBeforeCapture
+
+				self._modeBeforeCapture = nil
+
+				if C then
+					self:setStealMode(C[1], C[2], C[3])
+				end
+			end
+
+			self:_reconcileRunningState()
+		end
+		function F7:_captureHold(C)
+			if self._captureHoldUid == C then
+				return
+			end
+
+			self._captureHoldUid = C
+
+			local function v()
+				local P = a.ReadFieldEgg(C)
+
+				return P ~= nil and P.State == l.States.Carried and P.CarrierUserId == LocalPlayer.UserId
+			end
+			local function P()
+				return not self.destroyed and self.enabled and self.captureObjectiveEnabled and v()
+			end
+
+			task.spawn(function()
+				self:_clearArrivalHold(C)
+				self:_hideTreadmillDecoy()
+				pcall(function()
+					self:_stopHoverPad()
+				end)
+				self.stats.lastResult = "Holding capture egg"
+				self:_setStatus("Holding capture egg")
+
+				local v = LocalPlayer.Character
+				local R7 = v and v:FindFirstChild("HumanoidRootPart")
+				local v = R7 and CFrame.new(R7.Position.X, 110, R7.Position.Z) * R7.CFrame.Rotation
+
+				if v then
+					self:_glideRoot(v, function()
+						return not P()
+					end)
+				end
+
+				while P() do
+					local P, R7, _7 = v8()
+
+					if R7 and _7 and v then
+						pcall(function()
+							R7.CFrame = v
+							R7.AssemblyLinearVelocity = Vector3.zero
+							R7.AssemblyAngularVelocity = Vector3.zero
+						end)
+						self:_syncHoverPad(v.Position)
+
+						local v = math.clamp(self.config.speed or DEF_SPEED, MIN_SPEED, N())
+
+						pcall(function()
+							v76(P, v * HEADROOM)
+							v83(_7, R7, v, Vector3.zero)
+						end)
+					end
+
+					task.wait(0.1)
+				end
+
+				pcall(function()
+					self:_stopHoverPad()
+				end)
+
+				if self._captureHoldUid == C then
+					self._captureHoldUid = nil
+				end
+
+				if self.destroyed or not self.enabled then
+					return
+				end
+
+				self:_finish(self.captureObjectiveEnabled and "Capture egg lost — re-grabbing" or "Capture stopped")
+			end)
+		end
+		function F7:_chooseTarget()
+			if LocalPlayer:GetAttribute("InHalloweenDimension") == true then
+				return nil
+			end
+
+			local C = genv.__GehleeV4NormalWorldReady
+
+			if type(C) == "function" and not C() then
+				return nil
+			end
+
+			local C = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+			if not C then
+				return nil
+			end
+
+			local v = self:_rescueTarget()
+
+			if v and self:_candidateDistance(v, C) ~= nil then
+				return v
+			end
+
+			if self.captureObjectiveEnabled then
+				local v = workspace:GetAttribute("Event_CaptureTheEggUid")
+				local P = v and (a.ReadFieldEgg(v) or self.records[v])
+
+				if self:_candidateDistance(P, C) ~= nil then
+					return P
+				end
+			end
+
+			if self.manualObjectiveEnabled then
+				local v = self:_takeManualTarget()
+
+				if v and self:_candidateDistance(v, C) ~= nil and not self:isSkippedEgg(v.Uid) then
+					return v
+				end
+                for _, uid in ipairs(self.manualOrder or {}) do
+                    local queued = self.records[uid]
+                    if self:_candidateDistance(queued, C) ~= nil and not self:isSkippedEgg(queued.Uid)
+                        and (self.config.stealMode ~= "S2RInstant" or self:_allowsS2RTarget(queued, false)) then return queued end
+                end
+			end
+
+			if self.userStealEnabled and not self.riftOnly then
+				local v, P = self:hasPriorityRareEgg()
+
+				if v and P then
+					return P
+				end
+			end
+
+			if gehleeV4Config.SnipeDroppedEggs and not self.riftOnly then
+				local v, P
+
+				for R7, R7 in pairs(self.records) do
+					if self:_candidateDistance(R7, C) ~= nil and R7.State == l.States.Dropped and R7.CarrierUserId ~= LocalPlayer.UserId and not self:isSkippedEgg(R7.Uid) and self:_matchesNormalFilter(R7, true) and self:_inSnipeZone(R7) then
+						local _7 = (R7.BottomCFrame.Position - C.Position).Magnitude
+
+						if not v or _7 < P then
+							v, P = R7, _7
+						end
+					end
+				end
+
+				if v then
+					return v
+				end
+			end
+
+			local v, P, R7, _7, Q7, T7
+
+			for _, record in pairs(self.records) do
+				if self:_candidateDistance(record, C) ~= nil and not self:isSkippedEgg(record.Uid) then
+					local Magnitude = (record.BottomCFrame.Position - C.Position).Magnitude
+
+					if self.riftWants[record.AssetCategory] then
+						if not v or Magnitude < P then
+							v, P = record, Magnitude
+						end
+					elseif self.wispObjective and self:_isWispObjective(record) then
+						if not Q7 or Magnitude < T7 then
+							Q7, T7 = record, Magnitude
+						end
+					elseif self.indexObjectiveEnabled and self:_isIndexObjective(record) then
+						if not R7 or Magnitude < _7 then
+							R7, _7 = record, Magnitude
+						end
+					end
+				end
+			end
+
+			if v or Q7 or R7 then
+				return v or Q7 or R7
+			end
+
+			if self.userStealEnabled and not self.riftOnly then
+				local v, P, R7
+
+				for _7, _7 in pairs(self.records) do
+					if self:_candidateDistance(_7, C) ~= nil then
+						if not self:isSkippedEgg(_7.Uid) and self:_matchesNormalFilter(_7) and not self:_tollAreaSkip(_7) then
+							local Q7 = (_7.BottomCFrame.Position - C.Position).Magnitude
+							local C = self:_candidateMetadata(_7)
+                            if not C then continue end
+							local T7
+
+							if self.config.highestValueFirst then
+								T7 = v2310(_7) or -math.huge
+							elseif self.config.heaviestFirst then
+								T7 = self:_resolveWeightKg(_7) or -math.huge
+							else
+								T7 = tonumber(C.rarityRank) or 0
+							end
+
+							if not v or T7 > P or (T7 == P and Q7 < R7) then
+								v = _7
+								P = T7
+								R7 = Q7
+							end
+						end
+					end
+				end
+
+				if v then
+					return v
+				end
+			end
+
+			return nil
+		end
+		function F7:_takeManualTarget()
+			local C = {}
+			local v = {}
+
+			for P, P in ipairs(self.manualOrder) do
+				local R7 = self.records[P]
+
+				if R7 and (R7.State == l.States.Slot or R7.State == l.States.Dropped)
+                    and (self.config.stealMode ~= "S2RInstant" or self:_allowsS2RTarget(R7, false)) then
+					v[#v + 1] = P
+					C[P] = true
+				end
+			end
+
+			self.manualOrder = v
+
+			for P in pairs(self.manualQueue) do
+				if not C[P] then
+					self.manualQueue[P] = nil
+				end
+			end
+
+			if #v == 0 then
+				if self.manualObjectiveEnabled then
+					self.manualObjectiveEnabled = false
+					task.defer(function()
+						if not self.destroyed then
+							self:_reconcileRunningState()
+						end
+					end)
+				end
+
+				return nil
+			end
+
+			return self.records[v[1]]
+		end
+        -- GEHLEE_V9_MANUAL_QUEUE_BEGIN
+        function F7:queueManual(requested)
+            local result = {accepted = {}, rejected = {}, pending = 0, reason = "Pick an egg first"}
+            if self.destroyed then result.reason = "Runtime not ready"; return 0, result end
+            if type(requested) ~= "table" then return 0, result end
+            local count, seen, rejected = 0, {}, 0
+            for _, uid in ipairs(requested) do
+                if type(uid) ~= "string" or uid == "" then
+                    rejected += 1
+                    result.reason = "Invalid egg selection"
+                elseif not seen[uid] then
+                    seen[uid] = true
+                    local record = self.records[uid]
+                    if record == nil and type(a.ReadFieldEgg) == "function" then
+                        local ok, fresh = pcall(a.ReadFieldEgg, uid)
+                        if ok and type(fresh) == "table" and fresh.Uid == uid then
+                            record = self.records[uid] or fresh
+                            if not self.destroyed then self.records[uid] = record end
+                        end
+                    end
+                    if self.destroyed then result.accepted = {}; result.reason = "Runtime not ready"; return 0, result end
+                    local reason
+                    if type(record) ~= "table" or record.Uid ~= uid
+                        or (record.State ~= l.States.Slot and record.State ~= l.States.Dropped) then
+                        reason = "Egg no longer available"
+                    elseif self.config.stealMode == "S2RInstant" then
+                        local ok, metadata = pcall(self._candidateMetadata, self, record)
+                        if not ok or type(metadata) ~= "table" then
+                            reason = "Egg data is still loading"
+                        else
+                            local checked, allowed = pcall(self._matchesNormalFilter, self, record)
+                            if not checked then reason = "Egg data is still loading"
+                            elseif allowed ~= true then reason = "Blocked by egg filters" end
+                        end
+                    end
+                    if self.destroyed then result.accepted = {}; result.reason = "Runtime not ready"; return 0, result end
+                    if reason then
+                        result.rejected[uid] = reason
+                        result.reason = reason
+                        rejected += 1
+                    else
+                        if not self.manualQueue[uid] then
+                            self.manualQueue[uid] = true
+                            self.manualOrder[#self.manualOrder + 1] = uid
+                        end
+                        result.accepted[uid] = true
+                        count += 1
+                    end
+                end
+            end
+            result.pending = #self.manualOrder
+            if count > 0 then
+                self.manualObjectiveEnabled = true
+                result.reason = rejected > 0 and "Some eggs were not queued" or "Queued"
+                local ok, failure = pcall(self._reconcileRunningState, self)
+                if not ok then
+                    if self.stats then self.stats.lastError = "Manual steal setup: " .. tostring(failure) end
+                    result.reason = "Queued; retrying setup"
+                    if not self.destroyed and self.enabled then pcall(self._scheduleMovementRetry, self) end
+                end
+            end
+            return count, result
+        end
+        -- GEHLEE_V9_MANUAL_QUEUE_END
+
+		function F7:manualPending()
+			return #self.manualOrder
+		end
+		function F7:setTreadmillManager(C)
+			self.treadmillManager = C
+		end
+		function F7:getStealMode()
+			return self.config.stealMode == "S2RInstant" and "S2RInstant" or (self.config.stealMode == "Fly" and "Fly" or "Instant")
+		end
+		function F7:setStealMode(C, v, P)
+			local R7 = C == "S2RInstant" and "S2RInstant" or ((C == "Fly") and "Fly" or "Instant")
+			local C = R7 == "Fly" and v == true
+			local v = R7 == "Fly" and P == true and not C
+
+			if self.config.stealMode ~= R7 or self.config.flyAerial ~= C or self.config.flyZigzag ~= v then
+				self.config.stealMode = R7
+				self.config.flyAerial = C
+				self.config.flyZigzag = v
+
+				if self.enabled then
+					self:_installGuardHitDistanceBoost()
+					self:_finish("Mode changed")
+				end
+			end
+
+			return R7
+		end
+
+		local C = nil
+
+		function F7:_installGuardHitDistanceBoost()
+			if self.guardHitBoostInstalled then
+				return
+			end
+
+			pcall(function()
+				local v = require(ReplicatedStorage.Shared.Modules.GuardAreas.GuardChasePolicy)
+
+				if v and type(v.ResolveHitDistance) == "function" then
+					C = C or v.ResolveHitDistance
+
+					local P = self
+
+					v.ResolveHitDistance = function(v)
+						if P.enabled and P.instantPhase == "priming" then
+							return 25
+						end
+
+						if P.enabled or P._recalling then
+							return -math.huge
+						end
+
+						local P = C and C(v) or (v or 10)
+
+						return P
+					end
+					self.guardHitBoostInstalled = true
+				end
+			end)
+		end
+		function F7:_removeGuardHitDistanceBoost()
+			if not self.guardHitBoostInstalled then
+				return
+			end
+
+			pcall(function()
+				local v = require(ReplicatedStorage.Shared.Modules.GuardAreas.GuardChasePolicy)
+
+				if v and C then
+					v.ResolveHitDistance = C
+					self.guardHitBoostInstalled = false
+				end
+			end)
+		end
+		function F7:_setInstantAnchored(C)
+            if C == false and self:_isS2RTreadmillParked() then return end
+			pcall(function()
+				local v = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+				if v and v.Anchored ~= C then
+					v.Anchored = C
+				end
+			end)
+		end
+		function F7:_kbCancelTimer()
+			if self.hitTimer then
+				pcall(task.cancel, self.hitTimer)
+				self.hitTimer = nil
+			end
+		end
+		function F7:_isPrimerEgg(C)
+			if C == nil then
+				return false
+			end
+
+			if C == self.primerUid then
+				return true
+			end
+
+			local v = self.primerUids and self.primerUids[C]
+
+			if v and v > os.clock() then
+				return true
+			end
+
+			if v then
+				self.primerUids[C] = nil
+			end
+
+			return false
+		end
+		function F7:_cleanupInstantSteal()
+            if self._s2rInstantCancel then self._s2rInstantCancel() end
+			self.instantPhase = nil
+			self.primerUid = nil
+			self.targetUid = nil
+			self._flyDeparting = false
+			self:_stopGuardStick()
+			self:_kbCancelTimer()
+			self:_setInstantAnchored(false)
+			self:_hideTreadmillDecoy()
+		end
+		function F7:_choosePrimerEgg(C)
+			local v = v14()
+			local P = v and v:FindFirstChild("Areas")
+			local v = P and P:FindFirstChild("GuardAreas")
+			local P = v and v:FindFirstChild("Forest")
+			local v = P and P:FindFirstChild("Guard")
+			local P = v and v:FindFirstChild("HumanoidRootPart")
+			local v = P and P.Position
+			local P, R7
+
+			for _7, _7 in pairs(self.records) do
+				if _7.State == l.States.Slot and _7.AreaId == "Forest" and _7.Uid ~= C and not self:_isCaptureEgg(_7.Uid) then
+					local C = v and (_7.BottomCFrame.Position - v).Magnitude or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and (_7.BottomCFrame.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude or math.huge)
+					local v = self.catalog.resolve(_7).rarityRank or 0
+					local Q7 = -C - (v * 100)
+
+					if not P or Q7 > R7 then
+						P = _7
+						R7 = Q7
+					end
+				end
+			end
+
+			return P
+		end
+		function F7:_stopGuardStick()
+			if self.guardStickConnection then
+				pcall(self.guardStickConnection.Disconnect, self.guardStickConnection)
+				self.guardStickConnection = nil
+			end
+		end
+		function F7:_startGuardStick()
+			self:_stopGuardStick()
+
+			local function C()
+				local v = v14()
+				local P = v and v:FindFirstChild("Areas")
+				local v = P and P:FindFirstChild("GuardAreas")
+				local P = v and v:FindFirstChild("Forest")
+				local v = P and P:FindFirstChild("Guard")
+
+				return v and v:FindFirstChild("HumanoidRootPart")
+			end
+
+			self.guardStickConnection = RunService.PreSimulation:Connect(function()
+				if self.destroyed or not self.enabled or self.instantPhase ~= "priming" then
+					self:_stopGuardStick()
+
+					return
+				end
+
+				local v = C()
+				local C = LocalPlayer.Character
+				local P = C and C:FindFirstChild("HumanoidRootPart")
+
+				if not v or not P then
+					return
+				end
+
+				local C = v.Position
+				local R7 = v.CFrame.LookVector * 2.5
+				local v = Vector3.new(C.X + R7.X, P.Position.Y, C.Z + R7.Z)
+				local R7 = v - P.Position
+
+				if R7.Magnitude > 40 then
+					R7 = R7.Unit * 40
+				end
+
+				local v = P.Position + R7
+
+				P.CFrame = CFrame.lookAt(v, Vector3.new(C.X, v.Y, C.Z))
+				P.AssemblyLinearVelocity = Vector3.zero
+				P.AssemblyAngularVelocity = Vector3.zero
+				self:_syncHoverPad(v)
+			end)
+		end
+		function F7:_forestGuardModel()
+			local C = v14()
+			local v = C and C:FindFirstChild("Areas")
+			local C = v and v:FindFirstChild("GuardAreas")
+			local v = C and C:FindFirstChild("Forest")
+
+			return v and v:FindFirstChild("Guard")
+		end
+		function F7:_triggerGuardHit()
+			local C = self:_forestGuardModel()
+			local v = C and C:FindFirstChild("HumanoidRootPart")
+
+			if not v then
+				return
+			end
+
+			local P = LocalPlayer.Character
+			local R7 = P and P:FindFirstChild("HumanoidRootPart")
+
+			if not R7 then
+				return
+			end
+
+			local P = v.Position
+			local _7 = v.CFrame.LookVector * 2.5
+			local Q7 = Vector3.new(P.X + _7.X, R7.Position.Y, P.Z + _7.Z)
+
+			self.guardStrikeAnchor = Q7
+			R7.CFrame = CFrame.lookAt(Q7, Vector3.new(P.X, Q7.Y, P.Z))
+			R7.AssemblyLinearVelocity = Vector3.zero
+
+			local P = C:FindFirstChild("Collider") or v
+
+			if P and firetouchinterest then
+				pcall(function()
+					firetouchinterest(R7, P, 0)
+					firetouchinterest(R7, P, 1)
+				end)
+			end
+
+			pcall(function()
+				local C = J.GuardPatrol and J.GuardPatrol.ForestStrike
+
+				if C then
+					C:FireServer({ EggUid = self.primerUid, GuardCFrame = v.CFrame })
+				end
+			end)
+		end
+		function F7:_stopGuardStrike()
+			self.guardStrikeGeneration = (self.guardStrikeGeneration or 0) + 1
+		end
+		function F7:_knockbackLanded()
+			local _, C, v = v8()
+
+			if not C or not v then
+				return false
+			end
+
+			if v.PlatformStand or v.Sit then
+				return true
+			end
+
+			local P = v:GetState()
+
+			if P == Enum.HumanoidStateType.Ragdoll or P == Enum.HumanoidStateType.FallingDown or P == Enum.HumanoidStateType.PlatformStanding then
+				return true
+			end
+
+			return C.AssemblyLinearVelocity.Magnitude > 18
+		end
+
+		F7._settleAfterKnockback = function(C)
+			local v = C.guardStrikeAnchor
+			local P = os.clock() + 0.35
+
+			while os.clock() < P and not C.destroyed do
+				local P = LocalPlayer.Character
+				local R7 = P and P:FindFirstChild("HumanoidRootPart")
+
+				if not R7 then
+					return
+				end
+
+				local _7 = P:FindFirstChildOfClass("Humanoid")
+
+				if _7 then
+					pcall(function()
+						_7.PlatformStand = false
+						_7.Sit = false
+						_7:ChangeState(Enum.HumanoidStateType.GettingUp)
+					end)
+				end
+
+				if v then
+					R7.CFrame = CFrame.new(v)
+				end
+
+				R7.AssemblyLinearVelocity = Vector3.zero
+				R7.AssemblyAngularVelocity = Vector3.zero
+				C:_syncHoverPad(v or R7.Position)
+				RunService.Heartbeat:Wait()
+			end
+		end
+
+		function F7:_startGuardStrike()
+			self:_stopGuardStrike()
+
+			local C = self.guardStrikeGeneration
+
+			task.spawn(function()
+				local v = os.clock() + 1.5
+
+				while not self.destroyed and self.enabled and self.instantPhase == "priming" and self.guardStrikeGeneration == C and os.clock() < v do
+					self:_triggerGuardHit()
+
+					local v = os.clock() + 0.05
+					local P = false
+
+					while os.clock() < v do
+						if self:_knockbackLanded() then
+							P = true
+
+							break
+						end
+
+						RunService.Heartbeat:Wait()
+					end
+
+					if P then
+						break
+					end
+				end
+
+				if self.guardStrikeGeneration == C then
+					self:_stopGuardStick()
+					self:_settleAfterKnockback()
+				end
+			end)
+		end
+		function F7:_enterBaitWait()
+			self:_setInstantAnchored(false)
+			self:_setStatus("Preparing steal")
+			self:_startGuardStick()
+			self:_startGuardStrike()
+
+			if self.hitTimer then
+				return
+			end
+
+			self.hitTimer = task.delay(1.8, function()
+				self.hitTimer = nil
+
+				if self.destroyed or not self.enabled then
+					return
+				end
+
+				if self.instantPhase ~= "priming" then
+					return
+				end
+
+				self:_stopGuardStick()
+				self:_stopGuardStrike()
+
+				if self.carry.active and self:_isPrimerEgg(self.carry.uid) then
+					pcall(a.DropFieldEgg, "PlayerRequest")
+				end
+
+				self:_finish("Steal timed out — retrying")
+			end)
+		end
+
+		local function C(v, P)
+			local R7 = tostring(v or ""):lower()
+			local v, _7 = 8, 3.5
+
+			if R7:find("enchanted") then
+				v, _7 = 18, 12
+			elseif R7:find("light") or R7:find("dark") then
+				v, _7 = 16, 10
+			elseif R7:find("titan") or R7:find("cosmic") or R7:find("cherry") then
+				v, _7 = 10, 8
+			end
+
+			return math.max(_7, v * ((11 - math.clamp(P, 1, 10)) / 6))
+		end
+
+		function F7:_resolveSettleSeconds(v)
+			local P = math.clamp(tonumber(gehleeV4Config.StealHoldSeconds) or 5, 1, 10)
+			local R7 = self.settleBonus and type(v) == "table" and self.settleBonus[v.Uid]
+			local _7 = (R7 and R7.untilAt > os.clock()) and R7.seconds or 0
+			local R7 = v63()
+
+			if R7 > 0 and R7 < 12 then
+				_7 = _7 + 2
+			end
+
+			if genv.__GehleeV4NetPing() > 300 then
+				_7 = _7 + 1
+			end
+
+			return C(type(v) == "table" and v.AreaId, P) + _7
+		end
+		function F7:_startPrimerTargetHunt()
+			if self.destroyed or not self.enabled or self.instantPhase ~= "priming" then
+				return
+			end
+
+			self:_stopGuardStick()
+			self:_stopGuardStrike()
+			pcall(function()
+				local _, v, P = v8()
+
+				if P then
+					P.PlatformStand = false
+					P.Sit = false
+				end
+
+				if v then
+					if self.guardStrikeAnchor then
+						v.CFrame = CFrame.new(self.guardStrikeAnchor)
+					end
+
+					v.AssemblyLinearVelocity = Vector3.zero
+					v.AssemblyAngularVelocity = Vector3.zero
+				end
+			end)
+			self:_kbCancelTimer()
+			self:_setInstantAnchored(false)
+			self.instantPhase = "hunting"
+			self:_clearArrivalHold()
+			self.carry.generation += 1
+			self:_invalidateCarryWorker()
+			self.carry.active = false
+			self.carry.uid = nil
+
+			local v = self.targetUid
+
+			self.targetUid = nil
+
+			if not v then
+				self:_finish("No target egg")
+
+				return
+			end
+
+			local P = a.ReadFieldEgg(v) or self.records[v]
+
+			if not P or (P.State ~= l.States.Slot and P.State ~= l.States.Dropped) then
+				self:_finish("Target egg no longer available")
+
+				return
+			end
+
+			local _, v, R7 = v8()
+
+			if not v or not R7 then
+				self:_finish("Character unavailable")
+
+				return
+			end
+
+			self.activeTarget = P
+
+			local _7 = self:_resolveEggDestination(P, v, R7)
+
+			if not _7 then
+				self:_finish("Target destination unavailable")
+
+				return
+			end
+
+			if self.config.stealMode == "Fly" or self._walkHunt then
+				local v = P.Uid
+
+				local function R7()
+					return self.destroyed or not self.enabled or self.instantPhase ~= "hunting" or not self.activeTarget or self.activeTarget.Uid ~= v
+				end
+
+				if self.config.flyAerial then
+					self:_setStatus("Heading to target egg")
+					self:_startFlyGrounding()
+
+					local Q7 = self:_flyWalkTo(_7, R7, 8, 110)
+
+					self:_stopFlyGrounding()
+
+					if not Q7 then
+						if not R7() then
+							self:_finish("Could not reach the egg — retrying")
+						end
+
+						return
+					end
+				elseif self.config.flyZigzag then
+					self:_setStatus("Heading to target egg")
+
+					if not self:_walkToZigzag(_7, R7) then
+						if not R7() then
+							self:_finish("Zig-zag walk to target failed")
+						end
+
+						return
+					end
+				else
+					self:_setStatus("Heading to target egg")
+
+					if self._walkHunt then
+						if not self:_groundGlide(_7, R7) then
+							if not R7() then
+								self:_finish("Walk to target failed")
+							end
+
+							return
+						end
+					elseif not self:_walkTo(_7, R7) then
+						if not R7() then
+							self:_finish("Walk to target failed")
+						end
+
+						return
+					end
+				end
+
+				if R7() then
+					return
+				end
+
+				self:_glideRoot(_7, R7, self:_legitWalkSpeed())
+
+				if R7() then
+					return
+				end
+
+				self:_setArrivalHold(_7, v)
+				self:_setStatus("Securing target egg")
+				self:_requestCarry(P, true)
+
+				return
+			end
+
+			if self.config.stealMode == "Instant" then
+				local v = P.Uid
+
+				local function R7()
+					return self.destroyed or not self.enabled or self.instantPhase ~= "hunting" or not self.activeTarget or self.activeTarget.Uid ~= v
+				end
+
+				local v = _7 + Vector3.new(0, 14, 0)
+
+				self:_setStatus("Heading to target egg")
+
+				if not self:_glideRoot(v, R7) then
+					if not R7() then
+						self:_finish("Could not reach the egg — retrying")
+					end
+
+					return
+				end
+
+				task.spawn(self._hoverSettleCarry, self, P, _7, v, R7)
+
+				return
+			end
+
+			self:_setStatus("Heading to target egg")
+			self:_tweenRoot(_7, function()
+				if self.instantPhase == "hunting" and self.activeTarget and self.activeTarget.Uid == P.Uid then
+					self:_requestCarry(P, false)
+				end
+			end, nil, { holdAfterArrival = true, holdUid = P.Uid, flightProfile = true, carryTarget = P })
+		end
+		function F7:_hoverSettleCarry(v, P, R7, _7)
+			self:_startHoverPad()
+
+			local Q7 = self:_resolveSettleSeconds(v)
+			local T7 = os.clock() + Q7
+
+			while os.clock() < T7 do
+				if _7() then
+					return
+				end
+
+				self:_setStatus(string.format("Securing target egg (%.1fs)", math.max(0, T7 - os.clock())))
+
+				local Q7, T7, v2597 = v8()
+
+				if T7 and v2597 then
+					pcall(function()
+						T7.CFrame = R7
+						T7.AssemblyLinearVelocity = Vector3.zero
+						T7.AssemblyAngularVelocity = Vector3.zero
+					end)
+					self:_syncHoverPad(R7.Position)
+
+					local R7 = math.clamp(self.config.speed or DEF_SPEED, MIN_SPEED, N())
+
+					pcall(function()
+						v76(Q7, R7 * HEADROOM)
+						v83(v2597, T7, R7, Vector3.zero)
+					end)
+				end
+
+				task.wait(0.1)
+			end
+
+			if _7() then
+				return
+			end
+
+			self:_glideRoot(P, _7)
+
+			if _7() then
+				return
+			end
+
+			self:_setArrivalHold(P, v.Uid)
+			self:_setStatus("Securing target egg")
+			self:_requestCarry(v, true)
+		end
+		function F7:_wallOpen()
+			if self.resetBlocked or b.IsSealed() or os.clock() < self.gateOpenAt then
+				return false
+			end
+
+			local b = v14()
+			local v = b and b:FindFirstChild("Areas")
+			local b = v and v:FindFirstChild("WallStartCollision")
+
+			if b and b:IsA("BasePart") and b.CanCollide then
+				return false
+			end
+
+			return true
+		end
+		function F7:_closeGate(b)
+			self.resetBlocked = true
+			self.gateOpenAt = math.huge
+			self.safeStarting = false
+
+			if not (self.activeTween and self.activeTween.sharedTravel) then
+				self:_cancelTween(b)
+			end
+
+			self:_setStatus(b)
+		end
+		function F7:_releaseOperation()
+			local b = self.operationToken
+
+			self.operationToken = nil
+
+			if b and self.coordinator then
+				self.coordinator:release(b)
+			end
+		end
+		function F7:_acquireOperation()
+			if self.destroyed or not self.enabled then
+				return false, "Cancelled"
+			end
+
+			if self.operationToken or not self.coordinator then
+				return true
+			end
+
+			local b = self.planGeneration
+			local v, P = self.coordinator:tryAcquire("auto_steal", {})
+
+			if not v then
+				return false, P
+			end
+
+			if self.destroyed or not self.enabled or self.planGeneration ~= b then
+				self.coordinator:release(v)
+
+				return false, "Cancelled"
+			end
+
+			self.operationToken = v
+
+			return true
+		end
+		function F7:_cancelTween(b, v)
+			self:_cleanupInstantSteal()
+			self.carryAttemptToken = nil
+			self:_clearArrivalHold()
+			self.safeStarting = false
+
+			if self.activeTween then
+				pcall(self.activeTween.Cancel, self.activeTween)
+				self.activeTween = nil
+			end
+
+			if not self.activeTween and not self.arrivalHold then
+				self:_stopHoverPad()
+			end
+
+			if self.running then
+				self.running = false
+				self.activeTarget = nil
+				self.stats.lastResult = b
+				self:_notify()
+			end
+
+			if not v then
+				self:_releaseOperation()
+			end
+		end
+
+		F7._groundYAt = function(b, v, P, R7)
+			R7 = R7 or (LocalPlayer.Character)
+
+			local _7 = Vector3.new(v, (R7 and R7:FindFirstChild("HumanoidRootPart") and R7.HumanoidRootPart.Position.Y or t.Y) + 60, P)
+			local v = {}
+
+			if R7 then
+				table.insert(v, R7)
+			end
+
+			if b.hoverPad then
+				table.insert(v, b.hoverPad)
+			end
+
+			if b.treadmillDecoy then
+				table.insert(v, b.treadmillDecoy)
+			end
+
+			for b, b in ipairs(workspace:GetChildren()) do
+				if b.Name == name or b.Name == "__GehleeV4TreadmillDecoy" then
+					table.insert(v, b)
+				end
+			end
+
+			for b = 1, 10 do
+				local b = RaycastParams.new()
+
+				b.FilterType = Enum.RaycastFilterType.Exclude
+				b.FilterDescendantsInstances = v
+				b.IgnoreWater = true
+
+				local P = workspace:Raycast(_7, Vector3.new(0, -300.0, 0), b)
+
+				if not P then
+					return nil
+				end
+
+				if P.Instance.CanCollide then
+					return P.Position.Y
+				end
+
+				table.insert(v, P.Instance)
+			end
+
+			return nil
+		end
+
+		function F7:_resolveSafeCFrame(b)
+			if not b then
+				return nil
+			end
+
+			local v, P = t.X, t.Z
+			local R7 = t.Y
+			local _7 = b.Parent
+			local Q7 = self:_groundYAt(v, P, _7)
+
+			if Q7 then
+				R7 = Q7 + 3.2
+			end
+
+			return CFrame.new(v, R7, P) * b.CFrame.Rotation
+		end
+		function F7:_groundSnap()
+			local b, v, P = v8()
+
+			if not v or not P then
+				return false
+			end
+
+			local R7 = v.Position
+			local _7 = self:_groundYAt(R7.X, R7.Z, b)
+
+			if not _7 then
+				return false
+			end
+
+			local b = _7 + self:_feetOffset(v, P)
+
+			if R7.Y < b - 0.25 or R7.Y > b + 8 then
+				pcall(function()
+					self:_syncHoverPad(Vector3.new(R7.X, b, R7.Z))
+					v.CFrame = CFrame.new(R7.X, b, R7.Z) * v.CFrame.Rotation
+					v.AssemblyLinearVelocity = Vector3.zero
+					v.AssemblyAngularVelocity = Vector3.zero
+				end)
+
+				return true
+			end
+
+			return false
+		end
+
+		local function b(v)
+			if typeof(v) == "Instance" and v:IsA("Trail") then
+				pcall(v.Destroy, v)
+			end
+		end
+		local function v(P)
+			if typeof(P) == "Instance" and (P.Name == "SpeedGainPopup" or P.Name == "PlusOne") then
+				pcall(P.Destroy, P)
+			end
+		end
+
+		function F7:_showTreadmillDecoy()
+			if self.treadmillDecoy and self.treadmillDecoy.Parent then
+				return true
+			end
+
+			self:_hideTreadmillDecoy()
+
+			local P = LocalPlayer.Character
+
+			if not P then
+				return false
+			end
+
+			local R7 = P.Archivable
+
+			P.Archivable = true
+
+			local _7, Q7 = pcall(P.Clone, P)
+
+			P.Archivable = R7
+
+			if not _7 or not Q7 or typeof(Q7) ~= "Instance" then
+				return false
+			end
+
+			Q7.Name = "__GehleeV4TreadmillDecoy"
+
+			for R7, R7 in ipairs(Q7:GetDescendants()) do
+				if S7[R7.ClassName] or R7:IsA("Trail") then
+					pcall(R7.Destroy, R7)
+				elseif R7:IsA("BasePart") then
+					R7.LocalTransparencyModifier = 0
+					R7.Anchored = true
+					R7.CanCollide = false
+					R7.CanQuery = false
+					R7.CanTouch = false
+				end
+			end
+
+			local S7 = Q7:FindFirstChild("HumanoidRootPart")
+			local R7 = Q7:FindFirstChildOfClass("Humanoid")
+
+			if not S7 or not R7 then
+				Q7:Destroy()
+
+				return false
+			end
+
+			pcall(function()
+				R7.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+				R7.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+			end)
+			Q7.Parent = workspace
+			Q7:PivotTo(CFrame.new(t))
+			self.treadmillDecoy = Q7
+
+			local S7 = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+
+			if S7 then
+				for _7, _7 in ipairs(S7:GetDescendants()) do
+					if _7.Name == "SpeedGainPopup" or _7.Name == "PlusOne" then
+						v(_7)
+					end
+				end
+
+				self.treadmillPopupConnection = S7.DescendantAdded:Connect(function(S7)
+					if self.treadmillDecoy == Q7 then
+						v(S7)
+					end
+				end)
+			end
+
+			local v = setmetatable({}, { __mode = "k" })
+
+			local function S7(_7)
+				if not _7 or not _7:IsA("BasePart") or not _7:IsDescendantOf(P) then
+					return
+				end
+
+				if v[_7] == nil then
+					v[_7] = _7.LocalTransparencyModifier
+				end
+
+				_7.LocalTransparencyModifier = 1
+			end
+
+			for _7, _7 in ipairs(P:GetDescendants()) do
+				S7(_7)
+				b(_7)
+			end
+
+			self.treadmillDecoyRealTransparency = v
+			self.treadmillDecoyCharacterConnection = P.DescendantAdded:Connect(function(P)
+				if self.treadmillDecoy == Q7 then
+					pcall(S7, P)
+					b(P)
+				end
+			end)
+
+			local b = workspace.CurrentCamera
+
+			if b then
+				self.treadmillDecoyCamera = b.CameraSubject
+				b.CameraSubject = R7
+			end
+
+			self.treadmillDecoyCameraConnection = RunService.RenderStepped:Connect(function()
+				if self.treadmillDecoy ~= Q7 or not Q7.Parent or not R7.Parent then
+					return
+				end
+
+				for b in pairs(v) do
+					if b.Parent and b.LocalTransparencyModifier ~= 1 then
+						b.LocalTransparencyModifier = 1
+					end
+				end
+
+				local b = workspace.CurrentCamera
+
+				if b and b.CameraSubject ~= R7 then
+					b.CameraSubject = R7
+				end
+			end)
+
+			return true
+		end
+		function F7:_hideTreadmillDecoy(b)
+			if self._recalling and not b then
+				return
+			end
+
+			if self.treadmillDecoyCameraConnection then
+				pcall(self.treadmillDecoyCameraConnection.Disconnect, self.treadmillDecoyCameraConnection)
+				self.treadmillDecoyCameraConnection = nil
+			end
+
+			if self.treadmillDecoyCharacterConnection then
+				pcall(self.treadmillDecoyCharacterConnection.Disconnect, self.treadmillDecoyCharacterConnection)
+				self.treadmillDecoyCharacterConnection = nil
+			end
+
+			if self.treadmillPopupConnection then
+				pcall(self.treadmillPopupConnection.Disconnect, self.treadmillPopupConnection)
+				self.treadmillPopupConnection = nil
+			end
+
+			for b, v in pairs(self.treadmillDecoyRealTransparency or {}) do
+				if typeof(b) == "Instance" and b.Parent then
+					pcall(function()
+						b.LocalTransparencyModifier = v
+					end)
+				end
+			end
+
+			self.treadmillDecoyRealTransparency = nil
+
+			local b = LocalPlayer.Character
+			local v = b and b:FindFirstChildOfClass("Humanoid")
+			local b = workspace.CurrentCamera
+
+			if b then
+				pcall(function()
+					b.CameraSubject = v or self.treadmillDecoyCamera
+				end)
+			end
+
+			self.treadmillDecoyCamera = nil
+
+			if self.treadmillDecoy then
+				pcall(self.treadmillDecoy.Destroy, self.treadmillDecoy)
+			end
+
+			self.treadmillDecoy = nil
+		end
+		function F7:_restoreTreadmillVisualAtSafe()
+			if not self.treadmillDecoy then
+				self:_hideTreadmillDecoy()
+
+				return true
+			end
+
+			local _, b, v = v8()
+			local P = self:_resolveSafeCFrame(b)
+
+			if not b or not v or not P then
+				self:_hideTreadmillDecoy()
+
+				return false
+			end
+
+			local S7 = os.clock() + 2
+			local R7 = nil
+			local _7 = 0
+
+			while not self.destroyed and os.clock() < S7 do
+				local S7 = os.clock()
+
+				if not self:_isInSafeArea(b) then
+					R7 = nil
+
+					if S7 >= _7 then
+						_7 = S7 + 0.1
+						self:_teleportRoot(b, v, P)
+					end
+				else
+					R7 = R7 or S7
+
+					if S7 - R7 >= 0.35 then
+						self:_hideTreadmillDecoy()
+
+						return true
+					end
+				end
+
+				task.wait(0.03)
+			end
+
+			self:_hideTreadmillDecoy()
+
+			return false
+		end
+		function F7:_resolveEggDestination(b, v, P)
+			if type(b) ~= "table" or typeof(b.BottomCFrame) ~= "CFrame" then
+				return nil
+			end
+
+			local S7 = LocalPlayer.Character
+
+			v = v or (S7 and S7:FindFirstChild("HumanoidRootPart"))
+			P = P or (S7 and S7:FindFirstChildOfClass("Humanoid"))
+
+			if not v or not P then
+				return nil
+			end
+
+			local S7 = self:_feetOffset(v, P) + 0.15
+			local P = self:_bigEggSideCFrame(b, v, S7)
+
+			if P then
+				return P
+			end
+
+			return CFrame.new(b.BottomCFrame.Position + Vector3.new(0, S7, 0))
+		end
+
+		local _, _ = 4, 1.5
+
+		function F7:_eggModelAt(b)
+			local v = b.BottomCFrame.Position
+
+			self._eggModelCache = self._eggModelCache or {}
+
+			local P = self._eggModelCache[b.Uid]
+
+			if P and P.at > os.clock() and P.model.Parent and (P.bottom - v).Magnitude < 0.5 then
+				return P.model, P.cf, P.size
+			end
+
+			local P = workspace:FindFirstChild("AreaEggSlotsClient")
+			local S7, R7, _7, Q7
+
+			for T7, T7 in ipairs(P and P:GetChildren() or {}) do
+				if T7:IsA("Model") then
+					local P, result, result2 = pcall(T7.GetBoundingBox, T7)
+
+					if P then
+						local P = result.Position - Vector3.new(0, result2.Y * 0.5, 0)
+						local B7 = Vector3.new(P.X - v.X, 0, P.Z - v.Z).Magnitude + math.abs(P.Y - v.Y) * 0.5
+
+						if B7 < 3 and (not Q7 or B7 < Q7) then
+							S7, R7, _7, Q7 = T7, result, result2, B7
+						end
+					end
+				end
+			end
+
+			if S7 then
+				self._eggModelCache[b.Uid] = { model = S7, cf = R7, size = _7, bottom = v, at = os.clock() + 3 }
+			end
+
+			return S7, R7, _7
+		end
+		function F7:_bigEggSideCFrame(b, v, v)
+			local P, S7, R7, _7 = pcall(self._eggModelAt, self, b)
+
+			if not P or not S7 or _7.Y <= 4 then
+				return nil
+			end
+
+			local P = R7.Position
+			local Q7 = Vector3.new(t.X - P.X, 0, t.Z - P.Z)
+
+			if Q7.Magnitude < 1 then
+				Q7 = Vector3.new(-1.0, 0, 0)
+			end
+
+			Q7 = Q7.Unit
+
+			local T7 = math.max(_7.X, _7.Z) * 0.5
+			local v2683 = P + Q7 * T7
+			local raycastParams = RaycastParams.new()
+
+			raycastParams.FilterType = Enum.RaycastFilterType.Include
+			raycastParams.FilterDescendantsInstances = { S7 }
+
+			local B7 = Vector3.new(P.X, b.BottomCFrame.Position.Y + math.min(_7.Y * 0.5, 3), P.Z) + Q7 * (T7 + 4)
+			local D7 = workspace:Raycast(B7, -Q7 * (T7 + 4), raycastParams)
+
+			if D7 then
+				v2683 = D7.Position
+			end
+
+			local v2687 = Vector3.new(v2683.X, 0, v2683.Z) + Q7 * 1.5
+			local v2688 = R7:PointToObjectSpace(Vector3.new(v2687.X, P.Y, v2687.Z))
+
+			if math.abs(v2688.X) < _7.X * 0.5 and math.abs(v2688.Z) < _7.Z * 0.5 then
+				local v2689, B7 = math.abs(Q7:Dot(R7.RightVector)), math.abs(Q7:Dot(R7.LookVector))
+				local R7 = math.min(v2689 > 1e-3 and _7.X * 0.5 / v2689 or math.huge, B7 > 1e-3 and _7.Z * 0.5 / B7 or math.huge)
+
+				if R7 == math.huge then
+					R7 = T7
+				end
+
+				v2687 = Vector3.new(P.X, 0, P.Z) + Q7 * (R7 + 1.5)
+			end
+
+			local R7 = RaycastParams.new()
+
+			R7.FilterType = Enum.RaycastFilterType.Exclude
+			R7.FilterDescendantsInstances = { S7, LocalPlayer.Character }
+			R7.RespectCanCollide = true
+
+			local S7 = b.BottomCFrame.Position.Y + _7.Y + 4
+			local Q7 = workspace:Raycast(Vector3.new(v2687.X, S7, v2687.Z), Vector3.new(0, -(_7.Y + 30), 0), R7)
+			local S7 = Q7 and Q7.Position.Y or b.BottomCFrame.Position.Y
+			local b = Vector3.new(v2687.X, S7 + v, v2687.Z)
+
+			return CFrame.lookAt(b, Vector3.new(P.X, b.Y, P.Z))
+		end
+
+		local b = -426.0
+		local b = -308.0
+
+		local function b()
+			local v, P = pcall(function()
+				local S7 = v14()
+
+				return S7 and S7:FindFirstChild("Areas") and S7.Areas:FindFirstChild("EggCarryBounds")
+			end)
+
+			if v and P then
+				local v = P:FindFirstChild("Gameplay1")
+
+				if v and v:IsA("BasePart") then
+					local P = v.Size.Z * 0.5 - 18
+
+					if P > 5 then
+						return v.Position.Z - P, v.Position.Z + P
+					end
+				end
+			end
+
+			return -426.0, -308.0
+		end
+
+		function F7:_resolveRouteCruiseY(v, P)
+			if self.config.stealMode ~= "Fly" then
+				return nil
+			end
+
+			if not v or typeof(P) ~= "CFrame" then
+				return nil
+			end
+
+			if P.Position.Y >= 104.0 then
+				return nil
+			end
+
+			return 110
+		end
+		function F7:_resolveElevatedDestination(v, P)
+			if not v or typeof(P) ~= "CFrame" then
+				return nil
+			end
+
+			return P
+		end
+		function F7:_teleportRoot(v, P, S7)
+			if not v or not P or typeof(S7) ~= "CFrame" then
+				return false
+			end
+
+			local R7 = genv.__GehleeV4CrossAdmin and genv.__GehleeV4CrossAdmin()
+
+			if not R7 and ((LocalPlayer:GetAttribute("InHalloweenDimension") == true) ~= (S7.Position.Y < -100.0) or genv.__GehleeV4OnTrain == true) then
+				return false
+			end
+
+			if not R7 then
+				do
+					local _7 = genv.__GehleeV4WorldReady
+
+					if type(_7) == "function" and not _7() then
+						local Q7 = os.clock()
+
+						repeat
+							task.wait(0.05)
+						until _7() or os.clock() - Q7 > 3
+
+						if not _7() then
+							return false
+						end
+					end
+				end
+			end
+
+			if not R7 and (v.Position.Y < -100.0) ~= (S7.Position.Y < -100.0) then
+				return false
+			end
+
+			local R7 = pcall(function()
+				v.AssemblyLinearVelocity = Vector3.zero
+				v.AssemblyAngularVelocity = Vector3.zero
+				v.CFrame = S7
+				v.AssemblyLinearVelocity = Vector3.zero
+				v.AssemblyAngularVelocity = Vector3.zero
+			end)
+
+			if not R7 then
+				return false
+			end
+
+			local S7 = math.clamp(self.config.speed or DEF_SPEED, MIN_SPEED, N())
+
+			v76(LocalPlayer.Character, S7 * HEADROOM)
+
+			if not v83(P, v, S7, Vector3.zero) then
+				v82(P, v, S7)
+				v83(P, v, S7, Vector3.zero)
+			end
+
+			return true
+		end
+		function F7:_legitWalkSpeed()
+			local v
+
+			pcall(function()
+				local P = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+				v = P and P.WalkSpeed
+			end)
+
+			if type(v) == "number" and v >= 1 and v <= 400 then
+				self._legitWsCache = v
+			end
+
+			return self._legitWsCache or (type(v) == "number" and math.clamp(v, 1, 400)) or 16
+		end
+
+		F7._groundGlide = function(v, P, S7, R7)
+			if typeof(P) ~= "CFrame" then
+				return false
+			end
+
+			local _7 = P.Position
+			local P, Q7, T7, v2716 = os.clock() + 60, math.huge, os.clock(), false
+
+			while os.clock() < P do
+				if S7 and S7() then
+					return false
+				end
+
+				local P, S7, v2719 = v8()
+
+				if not (S7 and v2719) then
+					return false
+				end
+
+				local B7 = Vector3.new(_7.X - S7.Position.X, 0, _7.Z - S7.Position.Z)
+				local D7 = B7.Magnitude
+
+				if D7 < Q7 - 5 then
+					Q7, T7 = D7, os.clock()
+				elseif not v2716 and os.clock() - T7 > 0.8 then
+					v2716, T7 = true, os.clock()
+					pcall(function()
+						J.Treadmill.AskDoff:InvokeServer()
+					end)
+				elseif os.clock() - T7 > 3 then
+					return false
+				end
+
+				if D7 <= (R7 or 2.5) and S7.Position.Y - _7.Y < 4 then
+					S7.AssemblyLinearVelocity = Vector3.zero
+
+					return true
+				end
+
+				if math.abs(S7.Position.Y - _7.Y) > 2 then
+					pcall(P.PivotTo, P, CFrame.new(S7.Position.X, _7.Y, S7.Position.Z) * S7.CFrame.Rotation)
+				end
+
+				local P = D7 > 0.01 and B7.Unit or Vector3.zero
+
+				S7.AssemblyLinearVelocity = P * math.min(v:_legitWalkSpeed() * 0.95, D7 / 0.05)
+				pcall(v2719.Move, v2719, P, false)
+				RunService.Heartbeat:Wait()
+			end
+
+			return false
+		end
+
+		function F7:_activeGlideSpeed()
+			if self.config.stealMode == "Fly" and self._flyDeparting then
+				return self:_legitWalkSpeed()
+			end
+
+			return 3000
+		end
+
+		F7._glideRoot = function(v, P, S7, R7)
+			if typeof(P) ~= "CFrame" then
+				return false
+			end
+
+			R7 = R7 or v:_activeGlideSpeed()
+
+			local _7 = LocalPlayer.Character
+			local Q7 = _7 and _7:FindFirstChildOfClass("Humanoid")
+			local T7 = _7 and _7:FindFirstChild("HumanoidRootPart")
+
+			if not T7 or not Q7 then
+				return false
+			end
+
+			pcall(W7, _7)
+			pcall(function()
+				Q7.AutoRotate = false
+			end)
+			v:_startHoverPad()
+
+			local Position = P.Position
+
+			local function v2727(B7, D7, p10)
+				local v2728 = math.clamp(v.config.speed or DEF_SPEED, MIN_SPEED, N())
+
+				pcall(function()
+					v76(B7, v2728 * HEADROOM)
+					v83(D7, p10, v2728, Vector3.zero)
+				end)
+			end
+
+			local B7 = os.clock() + math.clamp((Position - T7.Position).Magnitude / math.max(R7, 1) * 1.6 + 6, 15, 120)
+
+			while os.clock() < B7 do
+				if S7 and S7() then
+					return false
+				end
+
+				if v.destroyed or not (v.enabled or v._externalDeliver) then
+					return false
+				end
+
+				_7 = LocalPlayer.Character
+				T7 = _7 and _7:FindFirstChild("HumanoidRootPart")
+				Q7 = _7 and _7:FindFirstChildOfClass("Humanoid")
+
+				if not T7 or not Q7 then
+					return false
+				end
+
+				local S7 = T7.Position
+				local B7 = Position - S7
+				local D7 = B7.Magnitude
+
+				if D7 <= 1.0 then
+					pcall(function()
+						T7.CFrame = P
+						T7.AssemblyLinearVelocity = Vector3.zero
+						T7.AssemblyAngularVelocity = Vector3.zero
+					end)
+					v:_syncHoverPad(Position)
+					v2727(_7, Q7, T7)
+
+					return true
+				end
+
+				local P = RunService.Heartbeat:Wait()
+
+				P = math.max(math.min(P, CLAMP), 0.004166666666666667)
+
+				local v2734 = math.min(R7 * P, D7)
+				local R7 = S7 + B7.Unit * v2734
+
+				if P >= 0.03333333333333333 then
+					local P = v:_groundYAt(R7.X, R7.Z, _7)
+
+					if P then
+						local S7 = P + v:_feetOffset(T7, Q7)
+
+						if R7.Y < S7 then
+							R7 = Vector3.new(R7.X, S7, R7.Z)
+						end
+					end
+				end
+
+				pcall(function()
+					T7.CFrame = CFrame.new(R7, R7 + B7.Unit)
+					T7.AssemblyLinearVelocity = Vector3.zero
+					T7.AssemblyAngularVelocity = Vector3.zero
+				end)
+				v:_syncHoverPad(R7)
+				v2727(_7, Q7, T7)
+			end
+
+			return false
+		end
+		F7.HOP = { studs = 500, gap = 0.15, height = 40, safeWait = 0.8 }
+		F7.RELAY_LAND_OK = 200
+		F7.RELAY_ROUNDS = 3
+		F7.EGG_FREE_SLOTS = 5
+
+		function F7:_relaySettle()
+			if not self._relaySettle_s then
+				local v = 0.05
+
+				pcall(function()
+					v = LocalPlayer:GetNetworkPing() or 0.05
+				end)
+				self._relaySettle_s = math.clamp(0.5 + v * 4, F7.HOP.safeWait, 2)
+				self._relayGood = 0
+			end
+
+			return self._relaySettle_s
+		end
+		function F7:_noteRelayLanding(v)
+			local P = self:_relaySettle()
+
+			if v > F7.RELAY_LAND_OK then
+				self._relaySettle_s = math.min(P + 0.2, 2)
+				self._relayGood = 0
+			else
+				self._relayGood = (self._relayGood or 0) + 1
+
+				if self._relayGood >= 5 then
+					self._relayGood = 0
+					self._relaySettle_s = math.max(P - 0.05, F7.HOP.safeWait)
+				end
+			end
+		end
+
+		F7._hopRoot = function(v, P, S7)
+			if typeof(P) ~= "CFrame" then
+				return false
+			end
+
+			local R7 = F7.HOP
+			local _7 = LocalPlayer.Character
+			local Q7 = _7 and _7:FindFirstChildOfClass("Humanoid")
+			local T7 = _7 and _7:FindFirstChild("HumanoidRootPart")
+
+			if not T7 or not Q7 then
+				return false
+			end
+
+			pcall(W7, _7)
+			pcall(function()
+				Q7.AutoRotate = false
+			end)
+			v:_startHoverPad()
+
+			local Position = P.Position
+			local v2745 = Position.Y + R7.height
+
+			local function B7()
+				if S7 and S7() then
+					return false
+				end
+
+				if v.destroyed or not (v.enabled or v._externalDeliver) then
+					return false
+				end
+
+				_7 = LocalPlayer.Character
+				T7 = _7 and _7:FindFirstChild("HumanoidRootPart")
+				Q7 = _7 and _7:FindFirstChildOfClass("Humanoid")
+
+				return T7 ~= nil and Q7 ~= nil and Q7.Health > 0
+			end
+			local function S7(D7)
+				pcall(function()
+					T7.AssemblyLinearVelocity = Vector3.zero
+					T7.AssemblyAngularVelocity = Vector3.zero
+					T7.CFrame = D7
+					T7.AssemblyLinearVelocity = Vector3.zero
+					T7.AssemblyAngularVelocity = Vector3.zero
+				end)
+				v:_syncHoverPad(D7.Position)
+
+				local D7 = math.clamp(v.config.speed or DEF_SPEED, MIN_SPEED, N())
+
+				pcall(function()
+					v76(_7, D7 * HEADROOM)
+					v83(Q7, T7, D7, Vector3.zero)
+				end)
+			end
+
+			local v = os.clock() + 20
+
+			while os.clock() < v do
+				if not B7() then
+					return false
+				end
+
+				local v = T7.Position
+				local _7 = Vector3.new(Position.X - v.X, 0, Position.Z - v.Z)
+				local Q7 = _7.Magnitude
+
+				if Q7 <= R7.studs then
+					S7(P)
+
+					return true
+				end
+
+				local P = Vector3.new(v.X, v2745, v.Z) + _7.Unit * R7.studs
+				local v = CFrame.new(P, P + _7.Unit)
+
+				S7(v)
+
+				local P = os.clock() + R7.gap
+
+				while os.clock() < P do
+					RunService.Heartbeat:Wait()
+
+					if not B7() then
+						return false
+					end
+
+					S7(v)
+				end
+			end
+
+			return false
+		end
+
+		function F7:_walkBrakeDecel()
+			if self._brakeDecel then
+				return self._brakeDecel
+			end
+
+			local v = genv.__GehleeV4BrakeDecel
+			local P = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+			if type(v) == "table" and P and math.abs((v.ws or 0) - P.WalkSpeed) < 15 then
+				self._brakeDecel = v.decel
+
+				return v.decel
+			end
+
+			return 420
+		end
+
+		F7._walkLeg = function(v, P, S7, R7, _7, Q7, T7)
+			local Unit
+			local v2759, B7
+
+			local function D7(p11, p12)
+				if p11 and p12 then
+					pcall(function()
+						p11:MoveTo(p12.Position)
+					end)
+				end
+
+				return false
+			end
+
+			while os.clock() < Q7 do
+				local _, Q7, v2764 = v8()
+
+				if not Q7 or not v2764 then
+					return false
+				end
+
+				if S7 and S7() then
+					return D7(v2764, Q7)
+				end
+
+				if v.destroyed or (not v.enabled and not v._externalDeliver) then
+					return D7(v2764, Q7)
+				end
+
+				local S7 = Q7.Position
+				local vector32 = Vector3.new(P.X - S7.X, 0, P.Z - S7.Z)
+				local U7 = vector32.Magnitude
+				local Z7 = Q7.AssemblyLinearVelocity
+				local Q7 = Vector3.new(Z7.X, 0, Z7.Z).Magnitude
+
+				if not _7 then
+					Unit = Unit or (U7 > 0.001 and vector32.Unit or Vector3.zero)
+
+					if U7 <= R7 or vector32:Dot(Unit) <= 0 then
+						return true
+					end
+				elseif U7 <= R7 and Q7 <= 20 then
+					pcall(function()
+						v2764:MoveTo(S7)
+					end)
+
+					return true
+				end
+
+				local R7
+				local v2771 = U7 > 0.001 and math.max(Z7.X * vector32.X + Z7.Z * vector32.Z, 0) / U7 or Q7
+
+				if _7 and U7 <= v2771 * v2771 / (2 * v:_walkBrakeDecel()) + v2771 * 0.06 then
+					R7 = S7
+
+					local now = os.clock()
+
+					if v2759 and now > B7 and Q7 > 20 then
+						local Z7 = (v2759 - Q7) / (now - B7)
+
+						if Z7 > 20 and Z7 < 5000 then
+							v._brakeDecel = v:_walkBrakeDecel() * 0.8 + Z7 * 0.93 * 0.2
+							genv.__GehleeV4BrakeDecel = { ws = v2764.WalkSpeed, decel = v._brakeDecel }
+						end
+					end
+
+					v2759, B7 = Q7, now
+				else
+					v2759 = nil
+
+					local v = math.max(v2764.WalkSpeed * 0.5, 12)
+
+					if _7 and U7 <= v then
+						R7 = Vector3.new(P.X, S7.Y, P.Z)
+					else
+						R7 = S7 + vector32.Unit * v
+					end
+				end
+
+				pcall(function()
+					v2764:MoveTo(R7)
+				end)
+
+				if T7 then
+					T7()
+				end
+
+				RunService.Heartbeat:Wait()
+			end
+
+			local v = LocalPlayer.Character
+
+			return D7(v and v:FindFirstChildOfClass("Humanoid"), v and v:FindFirstChild("HumanoidRootPart"))
+		end
+
+		function F7:_walkTo(v, P, S7)
+			if typeof(v) ~= "CFrame" then
+				return false
+			end
+
+			S7 = S7 or 8
+
+			local _, R7, _7 = v8()
+
+			if not R7 or not _7 then
+				return false
+			end
+
+			pcall(function()
+				_7.AutoRotate = true
+			end)
+
+			local Q7 = v.Position
+			local v = _7.WalkSpeed
+
+			if not v or v < 1 then
+				v = 16
+			end
+
+			local _7 = Vector3.new(Q7.X - R7.Position.X, 0, Q7.Z - R7.Position.Z).Magnitude
+			local R7 = os.clock() + math.clamp(_7 / v * 2 + 8, 12, 90)
+
+			return self:_walkLeg(Q7, P, S7, true, R7)
+		end
+		function F7:_walkToZigzag(v, P, S7)
+			if typeof(v) ~= "CFrame" then
+				return false
+			end
+
+			S7 = S7 or 8
+
+			local R7, _7, Q7 = v8()
+
+			if not _7 or not Q7 then
+				return false
+			end
+
+			pcall(function()
+				Q7.AutoRotate = true
+			end)
+
+			local T7 = v.Position
+			local v = Q7.WalkSpeed
+
+			if not v or v < 1 then
+				v = 16
+			end
+
+			local Magnitude = Vector3.new(T7.X - _7.Position.X, 0, T7.Z - _7.Position.Z).Magnitude
+			local v2789 = math.max(45, v * v / (2 * self:_walkBrakeDecel()) * 1.25)
+			local B7 = os.clock() + math.clamp(Magnitude / v * 3 + 10, 14, 120)
+			local v, v2792
+
+			do
+				local D7, result, result2 = pcall(function()
+					return b()
+				end)
+
+				if D7 and type(result) == "number" and type(result2) == "number" then
+					v, v2792 = math.min(result, result2), math.max(result, result2)
+				end
+			end
+
+			local D7 = math.random() < 0.5 and -1.0 or 1
+
+			while os.clock() < B7 do
+				if P and P() then
+					return false
+				end
+
+				if self.destroyed or not self.enabled then
+					return false
+				end
+
+				R7 = LocalPlayer.Character
+				_7 = R7 and R7:FindFirstChild("HumanoidRootPart")
+				Q7 = R7 and R7:FindFirstChildOfClass("Humanoid")
+
+				if not _7 or not Q7 then
+					return false
+				end
+
+				local R7 = _7.Position
+				local _7 = Vector3.new(T7.X - R7.X, 0, T7.Z - R7.Z)
+				local Q7 = _7.Magnitude
+
+				if Q7 <= v2789 then
+					return self:_walkLeg(T7, P, S7, true, B7)
+				end
+
+				local S7 = _7.Unit
+				local _7 = Vector3.new(-S7.Z, 0, S7.X)
+				local T7 = math.max(Q7 - v2789 * 0.5, 4)
+				local Q7 = math.min(60 + math.random() * 40.0, T7)
+				local T7 = math.min(38, Q7 * 0.4)
+				local v2805 = D7 * T7 * (0.6 + math.random() * 0.4)
+
+				D7 = -D7
+
+				local T7 = R7 + S7 * Q7 + _7 * v2805
+				local S7 = T7.Z
+
+				if v and v2792 then
+					S7 = math.clamp(S7, v + 2, v2792 - 2)
+				end
+
+				if not self:_walkLeg(Vector3.new(T7.X, R7.Y, S7), P, 10, false, B7) then
+					return false
+				end
+			end
+
+			return false
+		end
+		function F7:_flyWalkTo(v, P, S7, R7)
+			if typeof(v) ~= "CFrame" then
+				return false
+			end
+
+			S7 = S7 or 8
+			R7 = tonumber(R7) or 110
+
+			local _, _7, Q7 = v8()
+
+			if not _7 or not Q7 then
+				return false
+			end
+
+			pcall(function()
+				Q7.AutoRotate = true
+			end)
+
+			local function T7()
+				pcall(function()
+					local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+					local Animator = Humanoid and Humanoid:FindFirstChildWhichIsA("Animator")
+
+					if Animator then
+						for _, v2 in ipairs(Animator:GetPlayingAnimationTracks()) do
+							v2:Stop(0)
+						end
+					end
+				end)
+			end
+			local function v2816(p13)
+				local B7 = LocalPlayer.Character
+				local D7 = B7 and B7:FindFirstChild("Animate")
+
+				if D7 then
+					pcall(function()
+						D7.Disabled = p13
+					end)
+				end
+			end
+
+			v2816(true)
+			T7()
+
+			local Position = v.Position
+
+			self.hoverPadHeightOverride = R7
+			self:_startHoverPad()
+			pcall(function()
+				_7.CFrame = CFrame.new(_7.Position.X, R7, _7.Position.Z) * _7.CFrame.Rotation
+				_7.AssemblyLinearVelocity = Vector3.zero
+				_7.AssemblyAngularVelocity = Vector3.zero
+			end)
+			self:_syncHoverPad()
+
+			local R7 = Q7.WalkSpeed
+
+			if not R7 or R7 < 1 then
+				R7 = 16
+			end
+
+			local Q7 = Vector3.new(Position.X - _7.Position.X, 0, Position.Z - _7.Position.Z).Magnitude
+			local _7 = os.clock() + math.clamp(Q7 / R7 * 2 + 10, 12, 120)
+			local R7 = self:_walkLeg(Position, P, S7, true, _7, T7)
+
+			v2816(false)
+			self.hoverPadHeightOverride = nil
+
+			if not R7 then
+				return false
+			end
+
+			if P and P() then
+				return false
+			end
+
+			self:_glideRoot(v, P, self:_legitWalkSpeed())
+
+			return not (P and P())
+		end
+		function F7:_isInSafeArea(v)
+			if not v then
+				return false
+			end
+
+			local P = v.Position - t
+
+			return Vector2.new(P.X, P.Z).Magnitude <= 30 and math.abs(P.Y) <= 18
+		end
+		function F7:_isInField(v)
+			local P = v14()
+			local S7 = P and P:FindFirstChild("Areas")
+			local P = S7 and S7:FindFirstChild("WallStartCollision")
+
+			if not P or not P:IsA("BasePart") then
+				return true
+			end
+
+			return v.Position.X >= P.Position.X + 3
+		end
+		function F7:_invalidateCarryWorker()
+			self.carryWorker = nil
+		end
+		function F7:_claimCarryWorker(v, P)
+			local S7 = self.carry.generation
+			local R7 = self.carryWorker
+
+			if R7 and R7.generation == S7 then
+				return nil
+			end
+
+			local R7 = { kind = v, uid = P, generation = S7, token = {} }
+
+			self.carryWorker = R7
+
+			return R7
+		end
+		function F7:_isCarryWorkerCurrent(v)
+			return type(v) == "table" and self.carryWorker == v and self.carry.generation == v.generation and not self.destroyed and (self.enabled or self._externalDeliver)
+		end
+		function F7:_releaseCarryWorker(v)
+			if self.carryWorker == v then
+				self.carryWorker = nil
+			end
+		end
+		function F7:requestCarryRecovery(v)
+            if self._s2rInstantToken then return self._s2rInstantToken.Uid == v end
+			if self.destroyed or not self.enabled or type(v) ~= "string" or v == "" then
+				return false
+			end
+
+			if self:isSkippedEgg(v) then
+				return true
+			end
+
+			if self.tweenRecoveryUid == v then
+				self:_scheduleMovementRetry()
+
+				return true
+			end
+
+			if self.carry.active and self.carry.uid == v then
+				return true
+			end
+
+			local P = a.ReadFieldEgg(v) or self.records[v]
+
+			if type(P) ~= "table" or (P.State ~= l.States.Dropped and P.State ~= l.States.Slot) then
+				return false
+			end
+
+			local S7 = self.carryWorker
+
+			if (S7 and S7.kind == "re-steal" and S7.uid == v) or (self.activeTween and self.activeTarget and self.activeTarget.Uid == v) or (self.carryAttemptToken and self.activeTarget and self.activeTarget.Uid == v) then
+				return true
+			end
+
+			self.carry.generation += 1
+			self:_invalidateCarryWorker()
+			self.carryAttemptToken = nil
+			self.running = true
+			self.activeTarget = P
+			task.defer(function()
+				if not self.destroyed and self.enabled and not self.carry.active then
+					self:_reStealDroppedEgg(v)
+				end
+			end)
+
+			return true
+		end
+		function F7:_hasConfirmedCarry(v)
+			if not self.carry.active then
+				return false
+			end
+
+			if v == nil or self.carry.uid == nil then
+				return true
+			end
+
+			return self.carry.uid == v
+		end
+		function F7:_adoptCarryFromRecord(v)
+			if self.carry.active and self.carry.uid == v then
+				return
+			end
+
+			if self.carryTimeouts then
+				self.carryTimeouts[v] = nil
+			end
+
+			if self.instantPhase == "priming" and v == self.primerUid then
+				self.carry.active = true
+				self.carry.uid = v
+
+				return
+			end
+
+			self.carry.generation += 1
+			self:_invalidateCarryWorker()
+			self:_clearArrivalHold(v)
+
+			local P = self.activeTarget
+
+			self.claimPresentationSuppression = { assetCategory = P and P.AssetCategory, expiresAt = os.clock() + 8 }
+			self.carry.active = true
+			self.carry.uid = v
+			self.carryStartTime = os.clock()
+
+			local S7 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+			self.carryStartPos = (P and P.BottomCFrame and P.BottomCFrame.Position) or (S7 and S7.Position)
+
+			if self.tweenRecoveryUid == v then
+				self.tweenRecoveryUid = nil
+			end
+
+			self.stats.lastResult = "Carry confirmed"
+			self:_notify()
+		end
+		function F7:_recordShowsCarried(v)
+			if type(v) ~= "string" or v == "" then
+				return false
+			end
+
+			local P = a.ReadFieldEgg(v) or self.records[v]
+
+			return type(P) == "table" and P.State == l.States.Carried and P.CarrierUserId == LocalPlayer.UserId
+		end
+		function F7:_recordShowsForeignCarry(v)
+			if type(v) ~= "string" or v == "" then
+				return false
+			end
+
+			local P = a.ReadFieldEgg(v) or self.records[v]
+
+			return type(P) == "table" and P.State == l.States.Carried and P.CarrierUserId ~= nil and P.CarrierUserId ~= LocalPlayer.UserId
+		end
+		function F7:_resolveMovementSpeed(v)
+			if not v.Parent or v.Health <= 0 then
+				return nil
+			end
+
+			return math.clamp(self.config.speed, MIN_SPEED, N())
+		end
+
+		F7._feetOffset = function(v, v, P)
+			if P.RigType == Enum.HumanoidRigType.R15 then
+				return v.Size.Y * 0.5 + math.max(P.HipHeight, 0.5)
+			end
+
+			return v.Size.Y * 0.5 + 2
+		end
+
+		function F7:_isForeignTrap(v)
+			if v.Name == "PlayerTrap" and v:IsA("BasePart") then
+				local P = v:GetAttribute("Owner")
+
+				return type(P) ~= "string" or P ~= LocalPlayer.Name
+			end
+
+			return v:IsA("Model") and v.Name == "Trap" and v:FindFirstChild("Hitbox") ~= nil
+		end
+		function F7:_purgeTrap(v)
+			if not self.config.antiTrap or not v or not v.Parent then
+				return
+			end
+
+			if self:_isForeignTrap(v) then
+				pcall(v.Destroy, v)
+			end
+		end
+		function F7:_purgeTraps()
+			for v, v in ipairs({ "Transient", "__DEBRIS" }) do
+				local P = workspace:FindFirstChild(v)
+
+				if P then
+					for v, v in ipairs(P:GetDescendants()) do
+						self:_purgeTrap(v)
+					end
+				end
+			end
+		end
+
+		F7._syncHoverPad = function(v, P)
+			local S7 = v.hoverPad
+
+			if not S7 or not S7.Parent or S7:GetAttribute(s2) ~= v.hoverPadOwnerId then
+				return false
+			end
+
+			local _, R7, _7 = v8()
+
+			if not R7 or not _7 then
+				return false
+			end
+
+			local Q7 = typeof(P) == "Vector3" and P or R7.Position
+			local T7 = Q7.Y
+
+			if v.hoverPadHeightOverride ~= nil and typeof(P) ~= "Vector3" then
+				T7 = v.hoverPadHeightOverride
+			end
+
+			local P = n1
+
+			if v.hoverPadHeightOverride ~= nil then
+				P = math.max(n1, _7.WalkSpeed * 2 / 15)
+			end
+
+			if math.abs(S7.Size.X - P) > 0.5 then
+				S7.Size = Vector3.new(P, n2, P)
+			end
+
+			S7.CFrame = CFrame.new(Q7.X, T7 - v:_feetOffset(R7, _7) - n2 * 0.5 - 0.05, Q7.Z)
+
+			return true
+		end
+
+		function F7:_setArrivalHold(v, P)
+			if typeof(v) ~= "CFrame" then
+				return
+			end
+
+			local S7 = LocalPlayer.Character
+			local R7 = S7 and S7:FindFirstChild("HumanoidRootPart")
+
+			if not S7 or not R7 then
+				return
+			end
+
+			self.arrivalHold = { Character = S7, RootPart = R7, CFrame = v, Uid = P }
+		end
+		function F7:_clearArrivalHold(v)
+			local P = self.arrivalHold
+
+			if not P or v == nil or P.Uid == nil or P.Uid == v then
+				self.arrivalHold = nil
+			end
+		end
+
+		F7._enforceArrivalHold = function(v)
+			local P = v.arrivalHold
+
+			if type(P) ~= "table" or typeof(P.CFrame) ~= "CFrame" then
+				return false
+			end
+
+			if LocalPlayer.Character ~= P.Character or not P.RootPart or not P.RootPart.Parent then
+				v.arrivalHold = nil
+
+				return false
+			end
+
+			local S7 = genv.__GehleeV4MovementWorldReady
+
+			if type(S7) == "function" and not S7(P.CFrame.Position.Y < -100.0) then
+				v.arrivalHold = nil
+
+				return false
+			end
+
+			v:_startHoverPad()
+			pcall(function()
+				P.RootPart.AssemblyLinearVelocity = Vector3.zero
+				P.RootPart.AssemblyAngularVelocity = Vector3.zero
+				v:_syncHoverPad(P.CFrame.Position)
+				P.RootPart.CFrame = P.CFrame
+			end)
+			v:_syncHoverPad(P.CFrame.Position)
+
+			return true
+		end
+
+		function F7:_purgeOrphanHoverPads()
+			for v, v in ipairs(workspace:GetChildren()) do
+				if v.Name == name and v ~= self.hoverPad then
+					pcall(v.Destroy, v)
+				end
+			end
+		end
+
+		F7._startHoverPad = function(v)
+			local P = v.hoverPad
+
+			if not P or not P.Parent or P:GetAttribute(s2) ~= v.hoverPadOwnerId then
+				v:_purgeOrphanHoverPads()
+
+				if P and P.Parent then
+					pcall(P.Destroy, P)
+				end
+
+				P = Instance.new("Part")
+				P.Name = name
+				P:SetAttribute(s2, v.hoverPadOwnerId)
+				P.Anchored = true
+				P.CanCollide = true
+				P.CanQuery = true
+				P.CanTouch = false
+				P.CastShadow = false
+				P.Transparency = 1
+				P.Material = Enum.Material.SmoothPlastic
+				P.Size = Vector3.new(n1, n2, n1)
+				v.hoverPad = P
+				P.Parent = workspace
+			end
+
+			v:_syncHoverPad()
+
+			if not v.hoverPadConnection then
+				v.hoverPadConnection = RunService.PreSimulation:Connect(function()
+					if not v:_syncHoverPad() then
+						v:_startHoverPad()
+					end
+				end)
+			end
+
+			if not v.hoverPadPostConnection then
+				v.hoverPadPostConnection = RunService.PostSimulation:Connect(function()
+					if v.activeTween or v.arrivalHold then
+						v:_syncHoverPad()
+					end
+				end)
+			end
+		end
+
+		function F7:_stopHoverPad()
+			self.hoverPadHeightOverride = nil
+
+			if self.hoverPadConnection then
+				pcall(self.hoverPadConnection.Disconnect, self.hoverPadConnection)
+				self.hoverPadConnection = nil
+			end
+
+			if self.hoverPadPostConnection then
+				pcall(self.hoverPadPostConnection.Disconnect, self.hoverPadPostConnection)
+				self.hoverPadPostConnection = nil
+			end
+
+			if self.hoverPad then
+				pcall(self.hoverPad.Destroy, self.hoverPad)
+				self.hoverPad = nil
+			end
+
+			self:_purgeOrphanHoverPads()
+		end
+		function F7:_startMovementProtection()
+			if self.destroyed or self._s2rInstantToken or self:_isS2RTreadmillParked() then
+				return false
+			end
+
+			local S = genv.__GehleeV4WorldReady
+
+			if type(S) == "function" and not S() then
+				return false
+			end
+
+			local S, w, m = v8()
+
+			if not S or not w or not m then
+				return false
+			end
+
+			if not self._healthPinner then
+				M7(self, S)
+			end
+
+			local p = math.clamp(self.config.speed or DEF_SPEED, MIN_SPEED, N())
+
+			self.protectionCharacter = S
+			self.protectionHumanoid = m
+			self.protectionRoot = w
+			v76(S, p * HEADROOM)
+			v82(m, w, p)
+
+			if not self.integritySpoofConnection then
+				self.integritySpoofConnection = RunService.PreSimulation:Connect(function()
+                    if self._s2rInstantToken or self:_isS2RTreadmillParked() then return end
+					if self.destroyed then
+						self:_stopMovementProtection()
+
+						return
+					end
+
+					local S, w, m = v8()
+
+					if not S or not w or not m then
+						return
+					end
+
+					local p = math.clamp(self.config.speed or DEF_SPEED, MIN_SPEED, N())
+
+					self.protectionCharacter = S
+					self.protectionHumanoid = m
+					self.protectionRoot = w
+					v76(S, p * HEADROOM)
+
+					if not v83(m, w, p) then
+						v82(m, w, p)
+					end
+
+					self:_enforceArrivalHold()
+				end)
+			end
+
+			if not self.arrivalHoldConnection then
+				self.arrivalHoldConnection = RunService.Heartbeat:Connect(function()
+					self:_enforceArrivalHold()
+				end)
+			end
+
+			return true
+		end
+		function F7:_startFlyGrounding()
+			self:_stopFlyGrounding()
+
+			local S = v79()
+
+			self._flyGroundConn = RunService.PreSimulation:Connect(function()
+				if self.destroyed then
+					return
+				end
+
+				local M = S and S.State
+
+				if type(M) ~= "table" or rawget(M, "CorrectionContext") ~= nil then
+					return
+				end
+
+				rawset(M, "IsSupportedNow", true)
+				rawset(M, "UnsupportedStartedAt", nil)
+
+				if rawget(M, "MovementMode") ~= "Correcting" then
+					rawset(M, "MovementMode", "Grounded")
+				end
+
+				local S = rawget(M, "Evidence")
+
+				if type(S) == "table" then
+					S.Flight = 0
+					S.Teleport = 0
+					S.Speed = 0
+				end
+			end)
+		end
+		function F7:_stopFlyGrounding()
+			if self._flyGroundConn then
+				pcall(self._flyGroundConn.Disconnect, self._flyGroundConn)
+				self._flyGroundConn = nil
+			end
+		end
+		function F7:_stopMovementProtection()
+			self:_stopFlyGrounding()
+
+			if self.integritySpoofConnection then
+				pcall(self.integritySpoofConnection.Disconnect, self.integritySpoofConnection)
+				self.integritySpoofConnection = nil
+			end
+
+			if self.arrivalHoldConnection then
+				pcall(self.arrivalHoldConnection.Disconnect, self.arrivalHoldConnection)
+				self.arrivalHoldConnection = nil
+			end
+
+			self:_clearArrivalHold()
+			self:_stopHoverPad()
+			v77()
+			v84(self.protectionHumanoid)
+			self.protectionCharacter = nil
+			self.protectionHumanoid = nil
+			self.protectionRoot = nil
+		end
+		function F7:_prepareWorldTravel()
+			self:_stopMovementProtection()
+			self:_removeGuardHitDistanceBoost()
+			v2313(self)
+		end
+		function F7:travelAndWait(S, d)
+			d = d or {}
+
+			if self.destroyed then
+				return false
+			end
+
+			if self.travelBusy and os.clock() < (self.travelBusyUntil or 0) then
+				return false
+			end
+
+			if self.activeTween and not self.running and (not self.activeTween.sharedTravel or d.preempt == true) then
+				pcall(self.activeTween.Cancel, self.activeTween)
+
+				local M = os.clock() + 0.5
+
+				while self.activeTween and os.clock() < M do
+					task.wait(0.05)
+				end
+			end
+
+			if self.activeTween then
+				return false
+			end
+
+			local M = LocalPlayer.Character
+			local w = M and M:FindFirstChild("HumanoidRootPart")
+
+			if not w then
+				return false
+			end
+
+			self.travelBusy = true
+			self.travelBusyUntil = os.clock() + 45
+
+			local M, A = pcall(function()
+				local m = nil
+				local p = os.clock()
+				local v = p
+				local P = (S.Position - w.Position).Magnitude
+				local w = math.max(tonumber(d.speed) or self.config.speed or DEF_SPEED, MIN_SPEED)
+				local W = p + P / w + 6
+
+				self.travelBusyUntil = W + 2
+				self:_tweenRoot(S, nil, d.speed, { silent = true, sharedTravel = true, abort = function()
+					return self.destroyed or (d.abort ~= nil and d.abort())
+				end, onDone = function(w)
+					m = w == true
+				end })
+
+				while m == nil do
+					local w = os.clock()
+					local p = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+					local S7 = p and (S.Position - p.Position).Magnitude or math.huge
+
+					if S7 < P - 0.5 then
+						P = S7
+						v = w
+					end
+
+					local S = self.destroyed or (d.abort ~= nil and d.abort())
+					local d = w - v >= 1.5
+
+					if S or d or w >= W then
+						if self.activeTween and self.activeTween.Cancel then
+							pcall(self.activeTween.Cancel)
+						end
+
+						m = false
+
+						break
+					end
+
+					task.wait(0.05)
+				end
+
+				return m
+			end)
+
+			self.travelBusy = false
+
+			if not M then
+				if self.activeTween and self.activeTween.sharedTravel and self.activeTween.Cancel then
+					pcall(self.activeTween.Cancel)
+				end
+
+				return false
+			end
+
+			return A == true
+		end
+		function F7:_tweenRoot(S, W, d, M)
+			M = M or {}
+
+			local w = self.planGeneration
+
+			local function A()
+				return self.destroyed or (not M.sharedTravel and (self.planGeneration ~= w or (not self.enabled and not self._externalDeliver)))
+			end
+
+			if A() then
+				if M.onDone then
+					pcall(M.onDone, false)
+				end
+
+				return
+			end
+
+			self:_clearArrivalHold()
+
+			local w, m, p = v8()
+
+			if not m or not p then
+				self.safeStarting = false
+
+				if M.silent then
+					if M.onDone then
+						pcall(M.onDone, false)
+					end
+
+					return
+				end
+
+				self:_finish("Character unavailable")
+
+				return
+			end
+
+			local v = (typeof(S) == "CFrame" and S.Position) or (typeof(S) == "Vector3" and S) or nil
+
+			do
+				local P = genv.__GehleeV4WorldReady
+
+				if type(P) == "function" and not P() then
+					local S7 = os.clock()
+
+					repeat
+						task.wait(0.05)
+					until P() or os.clock() - S7 > 3
+
+					if not P() then
+						return false
+					end
+				end
+			end
+
+			if not v or (LocalPlayer:GetAttribute("InHalloweenDimension") == true) ~= (v.Y < -100.0) or (m.Position.Y < -100.0) ~= (v.Y < -100.0) or genv.__GehleeV4OnTrain == true then
+				self.safeStarting = false
+
+				if M.onDone then
+					pcall(M.onDone, false)
+				end
+
+				if not M.silent then
+					self:_finish("Waiting for the portal")
+				end
+
+				return
+			end
+
+			local P = d or self:_resolveMovementSpeed(p)
+
+			if not P then
+				self.safeStarting = false
+
+				if M.silent then
+					if M.onDone then
+						pcall(M.onDone, false)
+					end
+
+					return
+				end
+
+				self:_finish("Movement unavailable")
+
+				return
+			end
+
+			P = math.clamp(P, MIN_SPEED, N())
+			self:_startMovementProtection()
+
+			if A() then
+				if M.onDone then
+					pcall(M.onDone, false)
+				end
+
+				return
+			end
+
+			pcall(W7, w)
+
+			local S7 = workspace.CurrentCamera
+
+			if S7 and S7.CameraSubject ~= p then
+				pcall(function()
+					S7.CameraSubject = p
+				end)
+			end
+
+			local S7 = p.AutoRotate
+
+			p.AutoRotate = false
+
+			local R7 = M.flightProfile == true and v.Y >= -100.0 and self:_resolveRouteCruiseY(m, S) or nil
+			local _7 = { sharedTravel = M.sharedTravel == true, routeCruiseY = R7, travelPhase = R7 and "takeoff" or nil, zigzag = self.config.stealMode == "Zig-Zag", zigT = 0, zigLast = 0 }
+
+			self.activeTween = _7
+			self:_startHoverPad()
+
+			local R7 = false
+			local Q7
+			local T7 = nil
+			local u2902 = nil
+			local n12 = 0
+
+			local function B7(D7)
+				if R7 then
+					return
+				end
+
+				R7 = true
+				T7 = nil
+
+				if p.Parent ~= nil then
+					p.AutoRotate = S7
+				end
+
+				if D7 and M.holdAfterArrival then
+					self:_setArrivalHold(S, M.holdUid)
+				end
+
+				if M.onDone then
+					pcall(M.onDone, D7 == true)
+				end
+
+				if Q7 then
+					Q7:Disconnect()
+					Q7 = nil
+				end
+
+				if self.activeTween == _7 then
+					self.activeTween = nil
+				end
+
+				if not self.arrivalHold then
+					self:_stopHoverPad()
+				end
+
+				if not self.enabled then
+					self:_stopMovementProtection()
+				end
+
+				pcall(function()
+					if LocalPlayer.Character == w and m.Parent then
+						m.AssemblyLinearVelocity = Vector3.zero
+					end
+				end)
+
+				if D7 and LocalPlayer.Character == w and p.Parent ~= nil then
+					if W then
+						W()
+					end
+				end
+			end
+
+			_7.Cancel = function()
+				B7(false)
+			end
+			Q7 = RunService.Heartbeat:Connect(function(W)
+				if A() or LocalPlayer.Character ~= w or not m.Parent or not genv.__GehleeV4MovementWorldReady(v.Y < -100.0) then
+					B7(false)
+
+					return
+				end
+
+				if M.abort and M.abort() then
+					B7(false)
+
+					return
+				end
+
+				if self.destroyed or self.activeTween ~= _7 then
+					B7(false)
+
+					return
+				end
+
+				if M.carryTarget and os.clock() >= (_7.nextTargetCheck or 0) then
+					_7.nextTargetCheck = os.clock() + 0.1
+
+					local A = M.carryTarget.Uid
+					local v = a.ReadFieldEgg(A)
+					local S7 = v and v.State
+
+					if S7 ~= l.States.Slot and S7 ~= l.States.Dropped and S7 ~= "GuardCarried" and not (v and v.CarrierUserId == LocalPlayer.UserId) and not self:_hasConfirmedCarry(A) then
+						B7(false)
+
+						local v = genv.__GehleeV4PlayerSteal
+						local R7 = S7 == "Carried" and v ~= nil and v:intercept(A)
+
+						self:_finish(R7 and "Target taken - chasing the carrier" or "Target taken by someone else")
+
+						return
+					end
+				end
+
+				pcall(function()
+					local A = math.clamp(d or self.config.speed or P, MIN_SPEED, N())
+
+					v76(w, A * HEADROOM)
+
+					local d = v75()[INTEGRITY_KEY]
+					local k = type(d) == "table" and d.State or nil
+
+					if not v81(k, p, m) then
+						u2902 = nil
+						T7 = nil
+						m.AssemblyLinearVelocity = Vector3.zero
+						m.AssemblyAngularVelocity = Vector3.zero
+						self:_syncHoverPad(m.Position)
+
+						if v80(k, p, m) then
+							v78(k, A * HEADROOM, Vector3.zero)
+						else
+							v82(p, m, A)
+						end
+
+						return
+					end
+
+					local s = m.Position
+					local d = S.Position - s
+					local I = d.Magnitude
+					local x = Vector3.new(d.X, 0, d.Z)
+					local d = x.Magnitude
+					local k = S.Position
+
+					if _7.routeCruiseY then
+						if _7.travelPhase == "takeoff" then
+							if s.Y >= _7.routeCruiseY - 0.5 then
+								_7.travelPhase = "cruise"
+							else
+								k = Vector3.new(s.X, _7.routeCruiseY, s.Z)
+							end
+						end
+
+						if _7.travelPhase == "cruise" then
+							if d <= 4 then
+								_7.travelPhase = "descend"
+							else
+								k = Vector3.new(S.Position.X, _7.routeCruiseY, S.Position.Z)
+							end
+						end
+
+						if _7.travelPhase == "descend" then
+							k = S.Position
+						end
+					end
+
+					local f = k - s
+					local k = f.Magnitude
+					local u = _7.routeCruiseY and d or I
+
+					if u2902 and u > u2902 + 2 then
+						n12 = os.clock() + 0.5
+					end
+
+					u2902 = u
+
+					local u = os.clock() < n12 and math.max(MIN_SPEED, A * 0.45) or A
+
+					if M.carryTarget and not _7.__earlyCarrySpam and I <= 30 then
+						_7.__earlyCarrySpam = true
+
+						local _ = M.carryTarget
+						local M = _.Uid
+						local O = i.LooksLikeFirstAreaUid(M) and i.SlotKey(_.AreaId, _.NestId) or nil
+
+						task.spawn(function()
+							while not self.destroyed and self.enabled and self.activeTween == _7 and not self:_hasConfirmedCarry(M) do
+								pcall(v2296, M, O)
+								task.wait(0.08)
+							end
+						end)
+					end
+
+					local _ = math.max(math.min(W, CLAMP), 0.004166666666666667)
+					local W = u * _
+					local M = x
+					local x = Vector3.new(m.CFrame.LookVector.X, 0, m.CFrame.LookVector.Z)
+					local y = M.Magnitude > 0.001 and M.Unit or (x.Magnitude > 0.001 and x.Unit or Vector3.new(0, 0, -1.0))
+					local M = not _7.routeCruiseY or _7.travelPhase == "descend"
+
+					if M and I <= math.max(W, 0.05) then
+						if I > 0.5 then
+							T7 = nil
+						end
+
+						self:_syncHoverPad(S.Position)
+						m.CFrame = CFrame.lookAt(S.Position, S.Position + y)
+						m.AssemblyLinearVelocity = Vector3.zero
+						self:_syncHoverPad(S.Position)
+						v83(p, m, A, Vector3.zero)
+						T7 = T7 or os.clock()
+
+						if os.clock() - T7 >= n3 then
+							B7(true)
+						end
+
+						return
+					end
+
+					T7 = nil
+
+					if k <= 0.001 then
+						m.AssemblyLinearVelocity = Vector3.zero
+						m.AssemblyAngularVelocity = Vector3.zero
+						self:_syncHoverPad(s)
+
+						return
+					end
+
+					if not self.hoverPad or not self.hoverPad.Parent then
+						self:_startHoverPad()
+					end
+
+					local S = math.min(W, k)
+					local W = s + f.Unit * S
+
+					if _ >= 0.03333333333333333 and (not _7.routeCruiseY or _7.travelPhase ~= "cruise") then
+						local M = self:_groundYAt(W.X, W.Z, w)
+
+						if M then
+							local I = M + self:_feetOffset(m, p)
+
+							if W.Y < I then
+								W = Vector3.new(W.X, I, W.Z)
+							end
+						end
+					end
+
+					if _7.zigzag and (not _7.routeCruiseY or _7.travelPhase == "cruise") then
+						local M = Vector3.new(f.X, 0, f.Z)
+
+						if M.Magnitude > 1 and d > 12 then
+							local I = M.Unit
+							local M = Vector3.new(-I.Z, 0, I.X)
+							local I = math.min(30, d * 0.30)
+
+							if d < 120 then
+								I = I * (d / 120)
+							end
+
+							_7.zigT = (_7.zigT or 0) + S
+
+							local S = I * math.sin(_7.zigT / 900 * math.pi * 2)
+							local d = S - (_7.zigLast or 0)
+
+							_7.zigLast = S
+							W = W + M * d
+
+							if not _7.zigLaneMin then
+								_7.zigLaneMin, _7.zigLaneMax = b()
+							end
+
+							local S = math.clamp(W.Z, _7.zigLaneMin, _7.zigLaneMax)
+
+							if S ~= W.Z then
+								W = Vector3.new(W.X, W.Y, S)
+							end
+						else
+							_7.zigLast = 0
+						end
+					end
+
+					local S = (W - s) / _
+
+					self:_syncHoverPad(W)
+					m.CFrame = CFrame.lookAt(W, W + y)
+					m.AssemblyLinearVelocity = Vector3.zero
+					self:_syncHoverPad(W)
+
+					if not v83(p, m, A, S) then
+						v82(p, m, A)
+						v83(p, m, A, S)
+					end
+				end)
+			end)
+		end
+		function F7:_reStealDroppedEgg(S)
+			if LocalPlayer:GetAttribute("InHalloweenDimension") == true then
+				return
+			end
+
+			if type(S) ~= "string" or S == "" then
+				self:_finish("Egg lost — retrying")
+
+				return
+			end
+
+			if self:isSkippedEgg(S) then
+				return
+			end
+
+			if self.tweenRecoveryUid == S then
+				self.running = false
+				self.activeTarget = nil
+				self:_releaseOperation()
+				self:_scheduleMovementRetry()
+
+				return
+			end
+
+			local F = self:_claimCarryWorker("re-steal", S)
+
+			if not F then
+				return
+			end
+
+			if genv.__GehleeV4GodMode then
+				genv.__GehleeV4GodMode:startDefend(S)
+			end
+
+			local _ = nil
+			local s = os.clock() + 5
+
+			self._reStealUntil = os.clock() + 6
+			self:_setStatus("Re-stealing dropped egg")
+
+			while self:_isCarryWorkerCurrent(F) and os.clock() < s do
+				local s = a.ReadFieldEgg(S) or self.records[S]
+
+				if s and (s.State == l.States.Dropped or s.State == l.States.Slot) then
+					_ = s
+
+					break
+				end
+
+				task.wait(0.03)
+			end
+
+			if not self:_isCarryWorkerCurrent(F) then
+				return
+			end
+
+			if not _ or not self:_wallOpen() then
+				self:_releaseCarryWorker(F)
+				self:_finish("Egg lost — retrying")
+
+				return
+			end
+
+			self:_cancelTween("Re-stealing dropped egg", true)
+
+			local _, S, s = v8()
+			local W = self:_resolveEggDestination(_, S, s)
+
+			W = W and self:_resolveElevatedDestination(S, W) or nil
+
+			if not W then
+				self:_releaseCarryWorker(F)
+				self:_finish("Character unavailable")
+
+				return
+			end
+
+			self.running = true
+			self.activeTarget = _
+			self:_setStatus("Bringing egg home")
+
+			if self:_regrabBurst(F, _.Uid, 3.5) or not self:_isCarryWorkerCurrent(F) then
+				return
+			end
+
+			self:_setStatus("Re-stealing egg")
+
+			if not self:_teleportRoot(S, s, W) then
+				self:_releaseCarryWorker(F)
+				self:_finish("Re-steal failed — retrying")
+
+				return
+			end
+
+			self:_setArrivalHold(W, _.Uid)
+			self:_setStatus("Re-stealing egg")
+
+			if self:_isCarryWorkerCurrent(F) then
+				self:_requestCarry(_, true)
+			end
+		end
+		function F7:_fightNearby(S, F, _, s)
+			local W = genv.__GehleeV4PlayerSteal
+
+			if not (W and type(W._bats) == "function" and F and _) then
+				return
+			end
+
+			local d, M
+
+			for I, I in ipairs(game:GetService("Players"):GetPlayers()) do
+				if I ~= LocalPlayer and not (type(W.isFriend) == "function" and W.isFriend(I)) then
+					local Q = I.Character and I.Character:FindFirstChild("HumanoidRootPart")
+					local x = Q and (Q.Position - F.Position).Magnitude
+
+					if x and x <= 18 and (not M or x < M) then
+						d, M = I, x
+					end
+				end
+			end
+
+			if not d then
+				return
+			end
+
+			local F
+
+			S.bat, F = W:_rotateBat(S.bat)
+
+			if not S.bat then
+				S.bat = W:_bats()[1]
+
+				local M = _:FindFirstChildOfClass("Humanoid")
+
+				if S.bat and S.bat.Parent ~= _ and M then
+					pcall(M.EquipTool, M, S.bat)
+					W.batSwapAt = os.clock()
+				end
+			end
+
+			local M = S.bat
+
+			if not M or M.Parent ~= _ then
+				return
+			end
+
+			if os.clock() - (S.last or 0) < (F and 0.12 or 0.35) or os.clock() - (W.batSwapAt or 0) < 0.15 then
+				return
+			end
+
+			if workspace:GetServerTimeNow() < (tonumber(M:GetAttribute("CooldownEndTime")) or 0) or M:GetAttribute("CooldownActive") == true then
+				return
+			end
+
+			S.last = os.clock()
+			self.stats[s or "fightSwings"] = (self.stats[s or "fightSwings"] or 0) + 1
+			task.spawn(W._swingBatAt, W, d, M)
+		end
+		function F7:_putAwayFightBat()
+			local S = LocalPlayer.Character
+			local F = S and S:FindFirstChildOfClass("Tool")
+			local _ = genv.__GehleeV4Bats
+
+			if F and _ and type(_.isBat) == "function" and _.isBat(F) then
+				local F = S:FindFirstChildOfClass("Humanoid")
+
+				if F then
+					pcall(F.UnequipTools, F)
+				end
+			end
+		end
+		function F7:_regrabBurst(S, F, _)
+			local function s()
+				local W = a.ReadFieldEgg(F)
+
+				return W ~= nil and W.State == l.States.Carried and W.CarrierUserId == LocalPlayer.UserId
+			end
+
+			local W = nil
+
+			pcall(function()
+				W = require(ReplicatedStorage.Shared.Modules.RagdollJoints)
+			end)
+
+			local d, M = false, false
+			local I = os.clock() + _
+			local _ = tonumber(genv.__GehleeV4RegrabExtend) or 0.7
+			local Q = I + _
+			local x = nil
+			local k = {}
+
+			local function B(w, A)
+				if not (S and S.kind == "instant-regrab") then
+					return
+				end
+
+				self:_fightNearby(k, w, A, "regrabSwings")
+			end
+			local function k(w)
+				local A = tostring(w or ""):lower()
+
+				return A:find("knocked", 1, true) or A:find("downed", 1, true) or A:find("closer", 1, true) or A:find("reach", 1, true) or A:find("gameplay area", 1, true) or A:find("not currently trusted", 1, true)
+			end
+
+			while not self.destroyed and (self.enabled or self._externalDeliver) do
+				if os.clock() >= I then
+					if not (_ > 0 and k(x) and os.clock() < Q) then
+						break
+					end
+				end
+
+				if s() then
+					return true
+				end
+
+				if not self:_isCarryWorkerCurrent(S) then
+					return s()
+				end
+
+				local I = a.ReadFieldEgg(F)
+
+				if not I or (I.State ~= l.States.Dropped and I.State ~= l.States.Slot) then
+					return false
+				end
+
+				local k, w, A = v8()
+
+				if not w or not A then
+					return false
+				end
+
+				pcall(function()
+					if W and W.Release then
+						W.Release(k)
+					end
+
+					A.PlatformStand = false
+					A.Sit = false
+
+					if A:GetState() ~= Enum.HumanoidStateType.Running then
+						A:ChangeState(Enum.HumanoidStateType.GettingUp)
+					end
+				end)
+
+				local W = self:_resolveEggDestination(I, w, A)
+
+				if W then
+					w.CFrame = W
+
+					if S and S.kind == "instant-regrab" and gehleeV4Config.StealJump ~= false then
+						pcall(function()
+							A.Jump = true
+						end)
+						w.AssemblyLinearVelocity = Vector3.new(0, 45, 0)
+					else
+						w.AssemblyLinearVelocity = Vector3.zero
+					end
+
+					w.AssemblyAngularVelocity = Vector3.zero
+					self:_syncHoverPad(W.Position)
+				end
+
+				pcall(B, w, k)
+
+				if not d then
+					d = true
+					task.spawn(function()
+						pcall(function()
+							n.AskFieldEggCarry:InvokeServer({ Uid = F })
+						end)
+						d = false
+					end)
+				end
+
+				if not M then
+					M = true
+					task.spawn(function()
+						local S, W, d = pcall(a.CarryFieldEgg, F)
+
+						if S and W ~= true and type(d) == "string" then
+							x = d
+
+							if _ > 0 and (d:lower():find("knocked", 1, true) or d:lower():find("downed", 1, true)) then
+								local S = (tonumber(LocalPlayer:GetAttribute("RagdollEndTime")) or 0) - workspace:GetServerTimeNow()
+
+								if S > 0 then
+									Q = math.max(Q, os.clock() + math.min(S + 0.15, 2))
+								end
+							end
+						end
+
+						M = false
+					end)
+				end
+
+				pcall(function()
+					local S = workspace:FindFirstChild("AreaEggSlotsClient")
+					local _ = S and S:FindFirstChild(tostring(F))
+					local S = _ and (_:FindFirstChild("CarryAreaEgg", true) or _:FindFirstChildWhichIsA("ProximityPrompt", true))
+
+					if S and S.Enabled and type(fireproximityprompt) == "function" then
+						S.HoldDuration = 0
+						S.RequiresLineOfSight = false
+						fireproximityprompt(S, 0)
+					end
+				end)
+				task.wait(0.06)
+			end
+
+			return s()
+		end
+		function F7:_recoverCarryConfirmationTimeout(S, F)
+			if self.destroyed or not self.enabled or self.carryAttemptToken ~= S or self:_hasConfirmedCarry(F) then
+				return false
+			end
+
+			local S = LocalPlayer.Character
+			local _ = S and S:FindFirstChild("HumanoidRootPart")
+			local S = _ and self:_resolveSafeCFrame(_)
+
+			S = S and self:_resolveElevatedDestination(_, S) or nil
+			self.carryTimeouts = self.carryTimeouts or {}
+
+			local s = (self.carryTimeouts[F] or 0) + 1
+			local W = s >= 2
+
+			if W then
+				self.carryTimeouts[F] = nil
+				self.skippedEggs[F] = os.clock() + 45
+				self.tweenRecoveryUid = nil
+			else
+				self.carryTimeouts[F] = s
+				self.tweenRecoveryUid = not self:_isPrimerEgg(F) and F or nil
+			end
+
+			local s = self.stats.lastCarryReject
+
+			if type(s) == "string" and s:lower():find("inventory is full", 1, true) then
+				self.eggFullCount = self:_eggCount() or math.huge
+				self._fullConfirmedCount = self.eggFullCount
+			end
+
+			local d = self.records[F] or a.ReadFieldEgg(F)
+			local M = self.config.stealMode == "Instant" and (F == self.primerUid or (type(d) == "table" and d.AreaId == "Forest"))
+
+			self.carry.generation += 1
+			self:_invalidateCarryWorker()
+			self.carryAttemptToken = nil
+			self:_clearArrivalHold(F)
+
+			if self.activeTween and self.activeTween.Cancel then
+				pcall(self.activeTween.Cancel, self.activeTween)
+			end
+
+			self.activeTween = nil
+			self.running = true
+			self.activeTarget = nil
+			self.stats.lastResult = "Carry confirmation timeout"
+
+			if _ and S then
+				pcall(function()
+					_.AssemblyLinearVelocity = Vector3.zero
+					_.AssemblyAngularVelocity = Vector3.zero
+				end)
+				self:_setStatus("Carry timeout - returning to safe area")
+				pcall(self._glideRoot, self, S, function()
+					return self.destroyed or not self.enabled
+				end)
+
+				if W then
+					self:_setStatus(s and ("Carry refused (" .. s .. ") — skipping egg") or "Carry timed out twice — skipping egg")
+				else
+					self:_setStatus("Carry timeout — retrying")
+				end
+			else
+				self:_setStatus("Carry timeout — safe area unavailable")
+			end
+
+			self.running = false
+			self:_releaseOperation()
+
+			if M then
+				self.running = true
+			end
+
+			task.delay(0.35, function()
+				if M then
+					if not self.destroyed and self.enabled then
+						self:_setStatus("Retrying steal")
+						pcall(self._treadmillReset, self, function()
+							return self.destroyed or not self.enabled
+						end)
+					end
+
+					self.running = false
+				end
+
+				if not self.destroyed and self.enabled and self.carryAttemptToken == nil then
+					self:_schedule()
+				end
+			end)
+
+			return true
+		end
+		function F7:_requestCarry(S, F)
+			if not self:_wallOpen() then
+				self:_finish("Wall closed before carry")
+
+				return
+			end
+
+			local _ = S.Uid
+			local s = {}
+			local W = nil
+
+			self.stats.lastCarryReject = nil
+			self._untrustedSince = nil
+
+			local d = self.instantPhase == "priming" and _ == self.primerUid
+			local M = d and 5 or math.max(5, self:_resolveSettleSeconds(S) + 3)
+
+			self.carryAttemptToken = s
+			self.stats.lastResult = "Carry requested"
+			self:_setStatus("Securing egg")
+
+			local S = LocalPlayer.Character
+			local d = S and S:FindFirstChildOfClass("Humanoid")
+
+			if d then
+				pcall(d.UnequipTools, d)
+			end
+
+			if self.coordinator then
+				local S = os.clock() + 0.35
+
+				while self.coordinator:isBackgroundBusy() and not self.destroyed and self.enabled and self.carryAttemptToken == s and os.clock() < S do
+					task.wait(0.02)
+				end
+
+				if d and d.Parent then
+					pcall(d.UnequipTools, d)
+				end
+			end
+
+			local S = {}
+
+			task.spawn(function()
+				local d = false
+
+				while not self.destroyed and self.enabled and self.running and self.carryAttemptToken == s and self.activeTarget and self.activeTarget.Uid == _ do
+					if not self:_hasConfirmedCarry(_) and self:_recordShowsCarried(_) then
+						self:_adoptCarryFromRecord(_)
+					end
+
+					if self:_hasConfirmedCarry(_) then
+						if self:_recordShowsCarried(_) then
+							self:_clearArrivalHold(_)
+							self.carryAttemptToken = nil
+
+							if self.activeTween then
+								pcall(self.activeTween.Cancel, self.activeTween)
+								self.activeTween = nil
+							end
+
+							if self.instantPhase == "priming" and _ == self.primerUid then
+								self.carry.active = true
+								self.carry.uid = _
+								self.stats.lastResult = "Preparing steal"
+								self:_enterBaitWait()
+
+								return
+							end
+
+							self.carry.active = true
+							self.carry.uid = _
+							self.stats.lastResult = "Carry confirmed"
+							self:_setStatus("Carry confirmed")
+
+							if S.bat then
+								self:_putAwayFightBat()
+							end
+
+							task.defer(function()
+								if not self.destroyed and self.enabled and self:_hasConfirmedCarry(_) then
+									self:_returnToSafe()
+								end
+							end)
+
+							return
+						end
+
+						self:_setStatus("Confirming carry record")
+						task.wait(0.05)
+
+						continue
+					end
+
+					if W and os.clock() >= W then
+						self:_recoverCarryConfirmationTimeout(s, _)
+
+						return
+					end
+
+					if not self:_wallOpen() then
+						self:_finish("Wall closed before carry")
+
+						return
+					end
+
+					local I = a.ReadFieldEgg(_) or self.records[_]
+
+					if not I then
+						self:_finish("Target unavailable")
+
+						return
+					end
+
+					if I.State == l.States.Carried then
+						if I.CarrierUserId == LocalPlayer.UserId then
+							self:_setStatus("Confirming carry state")
+							task.wait(0.05)
+
+							continue
+						end
+
+						local Q = genv.__GehleeV4PlayerSteal
+						local x = Q ~= nil and Q:intercept(_, true)
+
+						if x then
+							self.stats.snatchChases = (self.stats.snatchChases or 0) + 1
+						end
+
+						self:_finish(x and "Target taken - chasing the carrier" or "Egg carried by another player")
+
+						return
+					end
+
+					if I.State ~= l.States.Slot and I.State ~= l.States.Dropped then
+						self:_finish("Target changed")
+
+						return
+					end
+
+					local Q = LocalPlayer.Character
+					local x = Q and Q:FindFirstChild("HumanoidRootPart")
+
+					if not x then
+						self:_finish("Character unavailable")
+
+						return
+					end
+
+					local k = Q and Q:FindFirstChildOfClass("Humanoid")
+
+					if not k then
+						self:_finish("Character unavailable")
+
+						return
+					end
+
+					local B = self:_resolveEggDestination(I, x, k)
+					local w = B and self:_resolveElevatedDestination(x, B) or nil
+
+					if not w then
+						self:_finish("Character unavailable")
+
+						return
+					end
+
+					local A = w.Position
+
+					if (x.Position - A).Magnitude > 10 then
+						if F then
+							self:_setStatus("Re-stealing egg")
+
+							if not self:_teleportRoot(x, k, w) then
+								self:_finish("Re-steal failed — retrying")
+
+								return
+							end
+
+							self:_setArrivalHold(w, _)
+							self:_setStatus("Re-stealing egg")
+							d = false
+						else
+							self:_setStatus("Re-approaching egg")
+
+							local F = false
+
+							self:_tweenRoot(B, function()
+								F = true
+
+								if self.carryAttemptToken == s and not self:_hasConfirmedCarry(_) then
+									self:_setStatus("Securing egg")
+								end
+							end, nil, { holdAfterArrival = true, holdUid = _, flightProfile = true })
+
+							while not self.destroyed and self.enabled and self.carryAttemptToken == s and not self:_hasConfirmedCarry(_) and not F do
+								task.wait(0.25)
+							end
+
+							d = false
+
+							continue
+						end
+					end
+
+					local F = i.LooksLikeFirstAreaUid(I.Uid) and i.SlotKey(I.AreaId, I.NestId) or nil
+
+					pcall(self._fightNearby, self, S, x, Q, "carrySwings")
+
+					local S, s, Q = pcall(v2296, I.Uid, F, d)
+
+					d = true
+
+					if not S then
+						Q = tostring(s)
+					elseif s == true then
+						Q = nil
+					end
+
+					if Q then
+						self.stats.lastCarryReject = Q
+
+						if Q ~= self._lastCarryRejectLogged then
+							self._lastCarryRejectLogged = Q
+							warn("[Gehlee Steal] carry refused: " .. Q)
+						end
+					end
+
+					local S = Q and tostring(Q):lower() or ""
+
+					if S:find("full", 1, true) and not S:find("pet", 1, true) then
+						self.eggFullCount = self:_eggCount() or math.huge
+						self._fullConfirmedCount = self.eggFullCount
+						self.carryAttemptToken = nil
+						self:_clearArrivalHold(_)
+
+						local F = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+						local s = F and not self:_isInSafeArea(F) and self:_resolveSafeCFrame(F)
+
+						if s then
+							self:_setStatus("Egg inventory full, heading back")
+							self:_tweenRoot(s, nil, nil, { flightProfile = true, onDone = function()
+								self:_finish("Egg inventory full")
+							end })
+						else
+							self:_finish("Egg inventory full")
+						end
+
+						return
+					end
+
+					if S:find("unavailable", 1, true) then
+						self.skippedEggs[_] = os.clock() + 20
+						self.carryAttemptToken = nil
+						self:_clearArrivalHold(_)
+						self:_finish("Egg is gone — next egg")
+
+						return
+					end
+
+					if Q and tostring(Q):lower():find("not currently trusted", 1, true) then
+						self._untrustedSince = self._untrustedSince or os.clock()
+
+						if os.clock() - self._untrustedSince > 3 then
+							self._untrustedSince = nil
+							self.skippedEggs[_] = os.clock() + 20
+							self.carryAttemptToken = nil
+							self:_clearArrivalHold(_)
+							self:_finish("Carry refused — next egg")
+
+							return
+						end
+					else
+						self._untrustedSince = nil
+					end
+
+					W = W or (os.clock() + M)
+					self.stats.lastResult = "Carry requested"
+					self:_setStatus(Q and ("Waiting for carry · " .. Q) or "Waiting for carry confirmation")
+					task.wait(Q and 0.05 or 0.25)
+				end
+			end)
+		end
+
+		local S = { ["Titan Temple"] = true, ["Light Dark"] = true, ["Enchanted Forest"] = true, ["Cherry Blossom"] = true, ["Cosmic"] = true, ["Prehistoric"] = true, ["Abyss Ocean"] = true, ["Volcano"] = true, ["Snow"] = true, ["Jungle"] = true, ["Desert"] = true, ["Lake"] = true }
+
+		function F7:_nearestRival(F, _)
+			local s, W
+
+			for d, d in ipairs(game:GetService("Players"):GetPlayers()) do
+				if d ~= LocalPlayer and d.Character then
+					local M = d.Character:FindFirstChild("HumanoidRootPart")
+
+					if M then
+						local I = (M.Position - F).Magnitude
+
+						if I <= _ and (not s or I < W) then
+							s, W = d, I
+						end
+					end
+				end
+			end
+
+			return s
+		end
+		function F7:_ensureFieldBat()
+			local F = LocalPlayer.Character
+			local _ = F and F:FindFirstChildOfClass("Humanoid")
+
+			if not F or not _ then
+				return
+			end
+
+			local s = genv.__GehleeV4IsBatTool or function(W)
+				return W:GetAttribute("IsBat") == true
+			end
+
+			for W, W in ipairs(F:GetChildren()) do
+				if s(W) then
+					return
+				end
+			end
+
+			local F = LocalPlayer:FindFirstChildOfClass("Backpack")
+			local W = genv.__GehleeV4Bats and genv.__GehleeV4Bats.best(F)
+
+			if W then
+				pcall(function()
+					_:EquipTool(W)
+				end)
+
+				return
+			end
+
+			if F then
+				for W, W in ipairs(F:GetChildren()) do
+					if s(W) then
+						pcall(function()
+							_:EquipTool(W)
+						end)
+
+						return
+					end
+				end
+			end
+
+			pcall(function()
+				J.Codex.AskWearFieldBat:InvokeServer()
+			end)
+		end
+		function F7:_spamPunch(F, _)
+			local s = J.BatSwing and J.BatSwing.Trigger
+
+			if not s then
+				return
+			end
+
+			self:_ensureFieldBat()
+
+			local W = 0
+
+			while not _() and not self.destroyed and self.enabled do
+				local _ = F()
+				local F = _ and self:_nearestRival(_, 60)
+
+				if F then
+					W += 1
+
+					local _ = ("%d:%d:%d"):format(LocalPlayer.UserId, W, math.floor(workspace:GetServerTimeNow() * 1000))
+
+					pcall(function()
+						s:FireServer(F, _)
+					end)
+				end
+
+				task.wait(0.05)
+			end
+		end
+		function F7:_snipeGrab(F)
+			local _ = self.planGeneration
+			local s, W = xpcall(function()
+				local d = F.Uid
+				local M = self.operationToken ~= nil
+
+				local function I()
+					local Q = LocalPlayer.Character
+
+					return Q and Q:FindFirstChild("HumanoidRootPart"), Q and Q:FindFirstChildOfClass("Humanoid")
+				end
+				local function Q(x)
+					if not M then
+						self:_releaseOperation()
+					end
+
+					if not self.destroyed and self.enabled then
+						self:_finish(x)
+					end
+				end
+
+				local x, k = I()
+
+				if not x or not k then
+					return Q("Snipe — no character")
+				end
+
+				if not M then
+					local M = self:_acquireOperation()
+
+					if not M then
+						return Q("Snipe cancelled")
+					end
+				end
+
+				local M = self.treadmillManager
+
+				if M and not M.destroyed and M:isEngaged() then
+					pcall(function()
+						M:_cancelIdle(true)
+					end)
+
+					local M = os.clock() + 4
+
+					while os.clock() < M and not self.destroyed and self.enabled do
+						if self:_leftTreadmill(LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) then
+							break
+						end
+
+						task.wait(0.1)
+					end
+
+					x, k = I()
+
+					if not x or not k then
+						return Q("Snipe — no character")
+					end
+				end
+
+				local function M()
+					local B = a.ReadFieldEgg(d)
+
+					return B ~= nil and B.State == l.States.Carried and B.CarrierUserId == LocalPlayer.UserId
+				end
+
+				self:_setStatus("Sniping dropped egg")
+
+				local B = true
+
+				local function w()
+					if B then
+						pcall(function()
+							n.AskFieldEggCarry:InvokeServer({ Uid = d })
+						end)
+					end
+				end
+
+				for A = 1, 3 do
+					task.spawn(w)
+				end
+
+				local A = self:_resolveEggDestination(F, x, k)
+
+				if A then
+					task.spawn(function()
+						self:_teleportRoot(x, k, A)
+						self:_setArrivalHold(A, d)
+					end)
+				end
+
+				if gehleeV4Config.SnipePunch then
+					task.spawn(function()
+						self:_spamPunch(function()
+							return F.BottomCFrame and F.BottomCFrame.Position
+						end, function()
+							return not B
+						end)
+					end)
+				end
+
+				local x = false
+				local k = os.clock() + 2.5
+
+				while os.clock() < k and not self.destroyed and self.enabled do
+					if M() then
+						x = true
+
+						break
+					end
+
+					local M = a.ReadFieldEgg(d)
+
+					if not M or (M.State ~= l.States.Dropped and M.State ~= l.States.Slot) then
+						break
+					end
+
+					if A then
+						local M, k = I()
+
+						if M and k and (M.Position - A.Position).Magnitude > 6 then
+							self:_teleportRoot(M, k, A)
+						end
+					end
+
+					task.spawn(w)
+					task.wait(0.04)
+				end
+
+				B = false
+				self:_clearArrivalHold(d)
+
+				if x then
+					if self._snipeFirstMiss then
+						self._snipeFirstMiss[d] = nil
+					end
+
+					self:deliverCarriedEgg(d, F)
+
+					local F = os.clock() + 8
+
+					while os.clock() < F and not self.destroyed and self.enabled do
+						local F, M = I()
+
+						if F and M then
+							local I = self:_resolveSafeCFrame(F)
+
+							if I and (F.Position - I.Position).Magnitude > 3 then
+								self:_teleportRoot(F, M, I)
+							end
+						end
+
+						local F = a.ReadFieldEgg(d)
+
+						if F == nil or F.State == l.States.Claimed then
+							break
+						end
+
+						task.wait(0.05)
+					end
+
+					Q("Stole from another script")
+				else
+					local F = os.clock()
+
+					self._snipeFirstMiss = self._snipeFirstMiss or {}
+					self._snipeFirstMiss[d] = self._snipeFirstMiss[d] or F
+
+					if F - self._snipeFirstMiss[d] > 5 then
+						self.skippedEggs[d] = F + 20
+						self._snipeFirstMiss[d] = nil
+						Q("Snipe gone — normal carrier, skipping")
+					else
+						self.skippedEggs[d] = F + 0.4
+						Q("Snipe missed — watching re-drop")
+					end
+				end
+			end, debug.traceback)
+
+			if not s and not self.destroyed and self.planGeneration == _ then
+				warn("[Gehlee] Dropped egg steal failed: " .. tostring(W))
+				self:_finish("Snipe error — retrying")
+			end
+		end
+		function F7:_boostOn()
+			return gehleeV4Config.LowSpeedBoost == true and self.config.stealMode == "Instant"
+		end
+		function F7:_usesPortalBoost(F)
+			if not self:_boostOn() or type(F) ~= "table" or typeof(F.BottomCFrame) ~= "CFrame" then
+				return false
+			end
+
+			return not (self.portalBoostFailed and (self.portalBoostFailed[F.Uid] or 0) > os.clock())
+		end
+
+		local function F(_, s)
+			local W = v14()
+			local d = W and W:FindFirstChild("Build")
+			local W = d and d:FindFirstChild(_)
+
+			if not W then
+				return nil
+			end
+
+			local _ = s and W:FindFirstChild(s) or W:FindFirstChildWhichIsA("BasePart", true)
+
+			return _ and _:IsA("BasePart") and _ or nil
+		end
+		local function _()
+			local s = LocalPlayer:GetAttribute("RagdollEndTime")
+
+			if type(s) ~= "number" then
+				return 0
+			end
+
+			return math.max(s + 0.15 - workspace:GetServerTimeNow(), 0)
+		end
+		local function s(W)
+			local d = W
+
+			if type(W) == "string" then
+				local M, I = pcall(function()
+					return game:GetService("HttpService"):JSONDecode(W)
+				end)
+
+				d = M and I or nil
+			end
+
+			if type(d) ~= "table" then
+				return nil
+			end
+
+			local W = d.Arguments
+			local M = type(W) == "table" and type(W[3]) == "number" and Vector3.new(W[1], W[2], W[3]) or nil
+
+			return d.Action, M
+		end
+
+		function F7:_guardLagback(W)
+			local d = J.RigSync and J.RigSync.Refresh
+
+			if not d then
+				return
+			end
+
+			if not W then
+				for W, W in ipairs(self._lagbackHooks or {}) do
+					pcall(W.forward.Disconnect, W.forward)
+					pcall(W.connection.Enable, W.connection)
+				end
+
+				self._lagbackHooks = nil
+
+				return
+			end
+
+			if self._lagbackHooks or type(getconnections) ~= "function" then
+				return
+			end
+
+			local W = {}
+
+			self._lagbackHooks = W
+
+			local M, I = pcall(getconnections, d.OnClientEvent)
+
+			for Q, Q in ipairs(M and type(I) == "table" and I or {}) do
+				local M = Q.Function
+				local I, x = false, nil
+
+				if type(M) == "function" then
+					I, x = pcall(debug.info, M, "s")
+				end
+
+				if I and tostring(x):find("ContentCatalog", 1, true) and type(Q.Disable) == "function" and pcall(Q.Disable, Q) then
+					local I = d.OnClientEvent:Connect(function(d, ...)
+						local x, k = s(d)
+
+						if x == "Relocate" and k and k.Y < 5000 then
+							return
+						end
+
+						M(d, ...)
+					end)
+
+					table.insert(W, { connection = Q, forward = I })
+				end
+			end
+		end
+		function F7:_crossPortal(s, W, d)
+			local M = LocalPlayer.Character
+			local I = M and M:FindFirstChild("HumanoidRootPart")
+
+			if not s or not I or type(firetouchinterest) ~= "function" then
+				return false
+			end
+
+			local Q = I.Position
+			local x = os.clock() + (d or 8)
+			local d = x + 6
+			local k = 0
+
+			while os.clock() < x do
+				if W and W() then
+					return false
+				end
+
+				M = LocalPlayer.Character
+				I = M and M:FindFirstChild("HumanoidRootPart")
+
+				if not I then
+					return false
+				end
+
+				if (I.Position - Q).Magnitude >= 200 then
+					if (Q.Y > 5000) ~= (I.Position.Y > 5000) then
+						return true
+					end
+
+					Q = I.Position
+				end
+
+				local W = _()
+
+				if W > 0 then
+					x = math.min(math.max(x, os.clock() + W + 1), d)
+				elseif os.clock() - k >= 0.1 then
+					k = os.clock()
+					pcall(function()
+						firetouchinterest(I, s, 0)
+						task.wait()
+						firetouchinterest(I, s, 1)
+					end)
+				end
+
+				task.wait(0.05)
+			end
+
+			return false
+		end
+		function F7:_mutePortalFx(s, W)
+			local d = J.FuseBiome and J.FuseBiome.PortalTransition
+
+			if not d then
+				return
+			end
+
+			if s then
+				self._portalFxMuteCount = (self._portalFxMuteCount or 0) + 1
+
+				if self._portalFxMuted or type(getconnections) ~= "function" then
+					return
+				end
+
+				self._portalFxMuted = {}
+
+				local s, M = pcall(getconnections, d.OnClientEvent)
+
+				for I, I in ipairs(s and type(M) == "table" and M or {}) do
+					local s = I.Function
+					local M, Q = false, nil
+
+					if type(s) == "function" then
+						M, Q = pcall(debug.info, s, "s")
+					end
+
+					if M and tostring(Q):find("FuseBiomePortalController", 1, true) and type(I.Disable) == "function" then
+						if pcall(I.Disable, I) then
+							table.insert(self._portalFxMuted, I)
+						end
+					end
+				end
+
+				if #self._portalFxMuted > 0 then
+					self._portalFxHandshake = d.OnClientEvent:Connect(function(s, s, M)
+						if s ~= nil and not M then
+							pcall(function()
+								d:FireServer(s)
+							end)
+						end
+					end)
+				end
+
+				self:_filterPortalToasts(true)
+			else
+				self._portalFxMuteCount = W and 0 or math.max((self._portalFxMuteCount or 0) - 1, 0)
+
+				if self._portalFxMuteCount > 0 then
+					return
+				end
+
+				self:_filterPortalToasts(false, W)
+
+				for s, s in ipairs(self._portalFxMuted or {}) do
+					pcall(s.Enable, s)
+				end
+
+				self._portalFxMuted = nil
+
+				if self._portalFxHandshake then
+					pcall(self._portalFxHandshake.Disconnect, self._portalFxHandshake)
+					self._portalFxHandshake = nil
+				end
+			end
+		end
+
+		local s = { { "Toasts", "Line" }, { "Alerts", "Raise" } }
+
+		function F7:_filterPortalToasts(W, d)
+			if W then
+				self._portalToastUntil = math.huge
+
+				if self._portalToastHooks or type(getconnections) ~= "function" then
+					return
+				end
+
+				local W = {}
+
+				self._portalToastHooks = W
+
+				for M, M in ipairs(s) do
+					local s, I = pcall(function()
+						return J[M[1]][M[2]]
+					end)
+
+					if not s then
+						I = nil
+					end
+
+					local s, M = false, nil
+
+					if I then
+						s, M = pcall(getconnections, I.OnClientEvent)
+					end
+
+					for Q, Q in ipairs(s and type(M) == "table" and M or {}) do
+						local s = Q.Function
+
+						if type(s) == "function" and type(Q.Disable) == "function" and pcall(Q.Disable, Q) then
+							local M = I.OnClientEvent:Connect(function(I, ...)
+								local x = type(I) == "table" and (I.Body or I.Text)
+
+								if type(x) == "string" and x:lower():find("portal", 1, true) and os.clock() < (self._portalToastUntil or 0) then
+									return
+								end
+
+								s(I, ...)
+							end)
+
+							table.insert(W, { connection = Q, forward = M })
+						end
+					end
+				end
+
+				return
+			end
+
+			local function s()
+				local W = self._portalToastHooks
+
+				self._portalToastHooks = nil
+
+				for M, M in ipairs(W or {}) do
+					pcall(M.forward.Disconnect, M.forward)
+					pcall(M.connection.Enable, M.connection)
+				end
+			end
+
+			if d then
+				s()
+
+				return
+			end
+
+			local W = os.clock() + 2
+
+			self._portalToastUntil = W
+			task.delay(2.1, function()
+				if self._portalToastUntil == W and (self._portalFxMuteCount or 0) == 0 then
+					s()
+				end
+			end)
+		end
+		function F7:_portalBoostSteal(s)
+			self:_mutePortalFx(true)
+			self._boostHopUid = s.Uid
+
+			local W, d = pcall(self._portalBoostHop, self, s)
+
+			self:_guardLagback(false)
+
+			if self._boostHopUid == s.Uid then
+				self._boostHopUid = nil
+			end
+
+			if self._treeHopUid == s.Uid then
+				self._treeHopUid = nil
+			end
+
+			self:_mutePortalFx(false)
+			self:_muteTreeFx(false)
+
+			if not W then
+				warn("[Gehlee Steal] steal error: " .. tostring(d))
+
+				if not self.destroyed and self.enabled then
+					self:_finish("Steal error — retrying")
+				end
+
+				return
+			end
+
+			if self.running and not (self.carry and self.carry.active) and self._instantReturnToken == nil and self.carryAttemptToken == nil and not self.destroyed and self.enabled then
+				self:_finish("Low Speed Boost — next egg")
+			end
+		end
+		function F7:_muteTreeFx(s)
+			if type(getconnections) ~= "function" then
+				return
+			end
+
+			if s then
+				self._treeFxToken = (self._treeFxToken or 0) + 1
+
+				if self._treeFxMuted then
+					return
+				end
+
+				self._treeFxMuted = {}
+
+				local s = J.EnchantedTree and J.EnchantedTree.Transition
+				local W = { { s and s.OnClientEvent, "EnchantedTreeController" }, { LocalPlayer:GetAttributeChangedSignal("InEnchantedTree"), "EnchantedTreeController" } }
+
+				for s, s in ipairs(W) do
+					local W, d = false, nil
+
+					if s[1] then
+						W, d = pcall(getconnections, s[1])
+					end
+
+					for M, M in ipairs(W and type(d) == "table" and d or {}) do
+						local W = M.Function
+						local d, I = false, nil
+
+						if type(W) == "function" then
+							d, I = pcall(debug.info, W, "s")
+						end
+
+						if d and tostring(I):find(s[2], 1, true) and type(M.Disable) == "function" then
+							if pcall(M.Disable, M) then
+								table.insert(self._treeFxMuted, M)
+							end
+						end
+					end
+				end
+			else
+				if not self._treeFxMuted then
+					return
+				end
+
+				local s = self._treeFxToken
+
+				task.spawn(function()
+					local W = os.clock() + 12
+
+					while os.clock() < W and (LocalPlayer:GetAttribute("InEnchantedTree") == true or (self._treePromptAt and os.clock() - self._treePromptAt < 2.5)) do
+						task.wait(0.1)
+					end
+
+					task.wait(1.5)
+
+					if self._treeFxToken ~= s then
+						return
+					end
+
+					for s, s in ipairs(self._treeFxMuted or {}) do
+						pcall(s.Enable, s)
+					end
+
+					self._treeFxMuted = nil
+				end)
+			end
+		end
+		function F7:_isStealPrompt(s)
+			if typeof(s) ~= "Instance" then
+				return false
+			end
+
+			if s.Name == "EnchantedTreePrompt" then
+				return true
+			end
+
+			local W = workspace:FindFirstChild("AreaEggSlotsClient")
+
+			if W and s:IsDescendantOf(W) then
+				return true
+			end
+
+			if s:FindFirstAncestor("FuseBiomeLanePortals") or s:FindFirstAncestor("FuseBiomeZone") then
+				return true
+			end
+
+			return false
+		end
+		function F7:_installPromptFilter()
+			if self._promptFilter or type(getconnections) ~= "function" then
+				return
+			end
+
+			local s = { muted = {}, forwarders = {} }
+
+			self._promptFilter = s
+
+			local function W()
+				if self.destroyed then
+					return false
+				end
+
+				return self.userStealEnabled == true or self.running == true or (self.carry ~= nil and self.carry.active == true) or self._externalDeliver ~= nil or self._recalling == true or self._treeFxMuted ~= nil
+			end
+
+			for d, d in ipairs({ ProximityPromptService.PromptShown, ProximityPromptService.PromptHidden }) do
+				local M, I = pcall(getconnections, d)
+
+				for Q, Q in ipairs(M and type(I) == "table" and I or {}) do
+					local M = Q.Function
+					local I, x = false, nil
+
+					if type(M) == "function" then
+						I, x = pcall(debug.info, M, "s")
+					end
+
+					if I and tostring(x):find("ProximityPromptScriptController", 1, true) and type(Q.Disable) == "function" then
+						if pcall(Q.Disable, Q) then
+							table.insert(s.muted, Q)
+							table.insert(s.forwarders, d:Connect(function(d, ...)
+								if W() and self:_isStealPrompt(d) then
+									return
+								end
+
+								M(d, ...)
+							end))
+						end
+					end
+				end
+			end
+
+			pcall(function()
+				local d = workspace:FindFirstChild("World") and workspace.World:FindFirstChild("Machines")
+				local M = d and d:FindFirstChild("FuseMachine")
+				local d = M and M:FindFirstChildWhichIsA("ProximityPrompt", true)
+
+				if not d then
+					return
+				end
+
+				local M, I = pcall(getconnections, d.Triggered)
+
+				for Q, Q in ipairs(M and type(I) == "table" and I or {}) do
+					local M = Q.Function
+
+					if type(M) == "function" and type(Q.Disable) == "function" and pcall(Q.Disable, Q) then
+						table.insert(s.muted, Q)
+						table.insert(s.forwarders, d.Triggered:Connect(function(...)
+							if W() then
+								return
+							end
+
+							M(...)
+						end))
+					end
+				end
+			end)
+		end
+		function F7:_removePromptFilter()
+			local s = self._promptFilter
+
+			if not s then
+				return
+			end
+
+			self._promptFilter = nil
+
+			for W, W in ipairs(s.forwarders) do
+				pcall(W.Disconnect, W)
+			end
+
+			for W, W in ipairs(s.muted) do
+				pcall(W.Enable, W)
+			end
+		end
+		function F7:_leaveTreeHidden(s)
+			local W = v14()
+			local d = W and W:FindFirstChild("Build")
+			local W = d and d:FindFirstChild("EnchantedTreeInterior")
+			local d = W and W:FindFirstChild("Markers")
+			local W = d and d:FindFirstChild("ExitTrigger")
+			local d = os.clock() + 2.5
+
+			while LocalPlayer:GetAttribute("InEnchantedTree") ~= true and self._treePromptAt and os.clock() - self._treePromptAt < 2.5 and os.clock() < d do
+				task.wait(0.05)
+			end
+
+			local d = os.clock() + 10
+
+			while LocalPlayer:GetAttribute("InEnchantedTree") == true and os.clock() < d do
+				if s and s() then
+					break
+				end
+
+				local s = LocalPlayer.Character
+				local d = s and s:FindFirstChild("HumanoidRootPart")
+
+				if d and W then
+					pcall(firetouchinterest, d, W, 0)
+					task.wait()
+					pcall(firetouchinterest, d, W, 1)
+				end
+
+				task.wait(0.2)
+			end
+
+			return LocalPlayer:GetAttribute("InEnchantedTree") ~= true
+		end
+
+		F7.WALK_REGRAB_RANGE = 600
+		F7.LANE_DROP_RANGE = 150
+
+		function F7:_wantsWalkRegrab(s, W)
+			local d = self.walkRegrab and type(s) == "table" and self.walkRegrab[s.Uid]
+
+			if not d or d < os.clock() or s.State ~= l.States.Dropped or not self:_boostOn() then
+				return false
+			end
+
+			local d = s.BottomCFrame or s.BoundsCFrame
+
+			return typeof(d) == "CFrame" and W ~= nil and (d.Position - W.Position).Magnitude <= F7.WALK_REGRAB_RANGE
+		end
+		function F7:_walkRegrab(s)
+			local W = s.Uid
+
+			if self.walkRegrab then
+				self.walkRegrab[W] = nil
+			end
+
+			local function s()
+				return self.destroyed or not self.enabled or self.instantPhase ~= "hunting" or not self.activeTarget or self.activeTarget.Uid ~= W
+			end
+			local function d()
+				local M = LocalPlayer.Character
+
+				return M and M:FindFirstChild("HumanoidRootPart"), M and M:FindFirstChildOfClass("Humanoid")
+			end
+
+			local M = os.clock() + 4
+
+			while _() > 0 and os.clock() < M do
+				if s() then
+					return
+				end
+
+				task.wait(0.05)
+			end
+
+			local M, I = d()
+			local Q = a.ReadFieldEgg(W) or self.records[W]
+
+			if not M or not I or not Q or Q.State ~= l.States.Dropped then
+				if not s() then
+					self:_finish("Target egg no longer available")
+				end
+
+				return
+			end
+
+			local x = self:_resolveEggDestination(Q, M, I)
+
+			if not x then
+				return self:_finish("Target destination unavailable")
+			end
+
+			self:_clearArrivalHold(W)
+			self:_stopHoverPad()
+			self:_setStatus("Walking back to the dropped egg")
+			self:_walkTo(x, s, 4)
+
+			if s() then
+				return
+			end
+
+			M, I = d()
+
+			if not M or not I or (M.Position - x.Position).Magnitude > 25 then
+				return self:_finish("Could not reach the egg — retrying")
+			end
+
+			local d = os.clock() + 0.35
+
+			while os.clock() < d do
+				if s() then
+					return
+				end
+
+				RunService.Heartbeat:Wait()
+			end
+
+			self:_setArrivalHold(x, W)
+			self.boostedUid = W
+			self.treeBoostedUid = W
+			self:_setStatus("Securing target egg")
+			self:_requestCarry(Q, false)
+		end
+
+		F7.relocate = { serial = 0, position = nil }
+
+		function F7._watchRelocate()
+			if genv.__GehleeV4RelocateConn and genv.__GehleeV4RelocateOwner == F7 then
+				return
+			end
+
+			if genv.__GehleeV4RelocateConn then
+				pcall(function()
+					genv.__GehleeV4RelocateConn:Disconnect()
+				end)
+			end
+
+			local s, W = pcall(function()
+				local d = game:GetService("HttpService")
+
+				return require(ReplicatedStorage.Shared.Remotes).RigSync.Refresh.OnClientEvent:Connect(function(M)
+					local I, Q = pcall(d.JSONDecode, d, M)
+					local d = I and type(Q) == "table" and Q.Action == "Relocate" and Q.Arguments
+
+					if type(d) == "table" and #d >= 3 then
+						F7.relocate.serial += 1
+						F7.relocate.position = Vector3.new(tonumber(d[1]) or 0, tonumber(d[2]) or 0, tonumber(d[3]) or 0)
+					end
+				end)
+			end)
+
+			if s then
+				genv.__GehleeV4RelocateConn, genv.__GehleeV4RelocateOwner = W, F7
+			end
+		end
+
+		F7._portalBoostHop = function(s, W)
+			local d = W.Uid
+
+			local function M()
+				return s.destroyed or not s.enabled or s.instantPhase ~= "hunting" or not s.activeTarget or s.activeTarget.Uid ~= d
+			end
+			local function I()
+				local Q = LocalPlayer.Character
+
+				return Q and Q:FindFirstChild("HumanoidRootPart"), Q and Q:FindFirstChildOfClass("Humanoid")
+			end
+			local function Q(x)
+				if M() then
+					return
+				end
+
+				s.portalBoostMisses = s.portalBoostMisses or {}
+
+				local k = (s.portalBoostMisses[d] or 0) + 1
+
+				s.portalBoostMisses[d] = k
+
+				if k >= 2 then
+					s.portalBoostMisses[d] = nil
+					s.portalBoostFailed = s.portalBoostFailed or {}
+					s.portalBoostFailed[d] = os.clock() + 60
+				end
+
+				s:_finish(x)
+			end
+
+			local x = v14()
+			local k = x and x:FindFirstChild("Build")
+			local x = k and k:FindFirstChild("EnchantedTreeInterior")
+			local k = x and x:FindFirstChild("Markers")
+			local x = k and k:FindFirstChild("Spawn")
+			local k, B = I()
+
+			if not (x and x:IsA("BasePart") and k and B) then
+				return Q("Steal unavailable — retrying")
+			end
+
+			local D = s:_resolveEggDestination(W, k, B)
+
+			if not D then
+				return Q("Target destination unavailable")
+			end
+
+			local w = {}
+
+			local function A(f, m)
+				local y = os.clock() + m
+
+				while os.clock() < y do
+					if M() then
+						return false
+					end
+
+					local m, y = I()
+
+					if not (m and y) or not s:_teleportRoot(m, y, f) then
+						return false
+					end
+
+					s:_syncHoverPad(f.Position)
+
+					if f == D then
+						pcall(s._fightNearby, s, w, m, LocalPlayer.Character, "pulseSwings")
+					end
+
+					RunService.PreSimulation:Wait()
+				end
+
+				return not M()
+			end
+
+			if genv.__GehleeV4PulseSnapshot == "async" then
+				task.spawn(function()
+					pcall(function()
+						require(ReplicatedStorage.Shared.Remotes).Treadmill.AskRenderSnapshot:InvokeServer()
+					end)
+				end)
+			else
+				pcall(function()
+					require(ReplicatedStorage.Shared.Remotes).Treadmill.AskRenderSnapshot:InvokeServer()
+				end)
+			end
+
+			if M() then
+				return
+			end
+
+			local f = type(genv.__GehleeV4PulseTune) == "table" and genv.__GehleeV4PulseTune or nil
+			local m = f and tonumber(f[1]) or 0.25
+			local y = f and tonumber(f[2]) or 0.12
+			local u = f and tonumber(f[3]) or 0.10
+			local p = f and tonumber(f[4]) or 0.05
+
+			F7._watchRelocate()
+
+			local f = F7.relocate.serial
+
+			s:_startHoverPad()
+			s:_setStatus("Heading to target egg")
+
+			if not A(D, m) then
+				s:_stopHoverPad()
+
+				return Q("Could not reach the egg — retrying")
+			end
+
+			s:_setStatus("Securing target egg")
+
+			if not A(x.CFrame, y) then
+				s:_stopHoverPad()
+
+				return Q("Could not reach the egg — retrying")
+			end
+
+			if not A(D, u) then
+				s:_stopHoverPad()
+
+				return Q("Could not reach the egg — retrying")
+			end
+
+			s:_stopHoverPad()
+
+			local x = a.ReadFieldEgg(d) or s.records[d]
+
+			if not x or (x.State ~= l.States.Slot and x.State ~= l.States.Dropped) then
+				s:_finish("Target egg no longer available")
+
+				return
+			end
+
+			k, B = I()
+
+			if not k or not B then
+				return Q("Character unavailable")
+			end
+
+			D = s:_resolveEggDestination(x, k, B) or D
+
+			if not s:_teleportRoot(k, B, D) then
+				return Q("Target destination unavailable")
+			end
+
+			s:_setArrivalHold(D, d)
+			s.boostedUid = d
+			s.treeBoostedUid = d
+			s:_setStatus("Securing target egg")
+			task.wait(p)
+
+			if M() then
+				return
+			end
+
+			if genv.__GehleeV4RelocateWait ~= false then
+				local Q = false
+				local k = os.clock() + 1.6
+
+				while os.clock() < k do
+					if M() then
+						return
+					end
+
+					local M = F7.relocate
+
+					do
+						local k = I()
+
+						if k then
+							pcall(s._fightNearby, s, w, k, LocalPlayer.Character, "pulseSwings")
+						end
+					end
+
+					if M.serial ~= f then
+						f = M.serial
+
+						if M.position and (M.position - D.Position).Magnitude <= 25 then
+							Q = true
+
+							break
+						end
+					end
+
+					RunService.Heartbeat:Wait()
+				end
+
+				s._pulseRetry = s._pulseRetry or {}
+
+				if not Q and not s._pulseRetry[d] then
+					s._pulseRetry[d] = true
+					s.stats.pulseRetries = (s.stats.pulseRetries or 0) + 1
+					s:_clearArrivalHold(d)
+
+					return F7._portalBoostHop(s, W)
+				end
+
+				s._pulseRetry[d] = nil
+
+				if Q then
+					s.stats.pulseTrusted = (s.stats.pulseTrusted or 0) + 1
+				end
+			end
+
+			if s.portalBoostMisses then
+				s.portalBoostMisses[d] = nil
+			end
+
+			task.spawn(function()
+				pcall(function()
+					n.AskFieldEggCarry:InvokeServer({ Uid = d })
+				end)
+			end)
+			s:_requestCarry(x, true)
+		end
+
+		function F7:_needsHiddenRecall()
+			if self.destroyed then
+				return false
+			end
+
+			local s = LocalPlayer.Character
+			local W = s and s:FindFirstChild("HumanoidRootPart")
+
+			if not W then
+				return false
+			end
+
+			if W.Position.Y > 5000 then
+				return true
+			end
+
+			if LocalPlayer:GetAttribute("InEnchantedTree") == true then
+				return true
+			end
+
+			if self._treePromptAt and os.clock() - self._treePromptAt < 2.5 then
+				return true
+			end
+
+			if self._treeHopUid ~= nil then
+				return true
+			end
+
+			return self.treadmillDecoy ~= nil and self.treadmillDecoy.Parent ~= nil and not self:_isInSafeArea(W)
+		end
+		function F7:_finishBoostedEgg(s)
+			local W = a.ReadFieldEgg(s) or self.records[s]
+
+			if not W or (W.State ~= l.States.Slot and W.State ~= l.States.Dropped) then
+				return false
+			end
+
+			local d, M, I = v8()
+			local Q = M and I and self:_resolveEggDestination(W, M, I)
+
+			if not Q or (M.Position - Q.Position).Magnitude > 25 then
+				return false
+			end
+
+			self:_setArrivalHold(Q, s)
+			self:_setStatus("Finishing target egg")
+
+			local function I()
+				local Q = a.ReadFieldEgg(s)
+
+				return Q ~= nil and Q.State == l.States.Carried and Q.CarrierUserId == LocalPlayer.UserId
+			end
+
+			local Q = false
+			local x = os.clock() + 3
+
+			while not Q and os.clock() < x and not self.destroyed and not self.enabled do
+				task.spawn(function()
+					pcall(function()
+						n.AskFieldEggCarry:InvokeServer({ Uid = s })
+					end)
+				end)
+
+				local x = os.clock() + 0.25
+
+				while os.clock() < x do
+					if I() then
+						Q = true
+
+						break
+					end
+
+					task.wait(0.03)
+				end
+			end
+
+			self:_clearArrivalHold(s)
+
+			if not Q or self.destroyed or self.enabled then
+				return false
+			end
+
+			self.boostedUid = nil
+
+			if not self:deliverCarriedEgg(s, W) then
+				return false
+			end
+
+			local W = os.clock() + 30
+
+			while self._instantReturnToken ~= nil and os.clock() < W and not self.destroyed do
+				task.wait(0.1)
+			end
+
+			self.boostedUid = nil
+
+			local W = a.ReadFieldEgg(s)
+			local s = W == nil or W.State == l.States.Claimed or (gehleeV4Config.HelpFriend and W.State == l.States.Dropped)
+
+			d = LocalPlayer.Character
+			M = d and d:FindFirstChild("HumanoidRootPart")
+
+			return s and M ~= nil and self:_isInSafeArea(M)
+		end
+		function F7:_finishTreeEgg(s)
+			local W = a.ReadFieldEgg(s) or self.records[s]
+
+			if not W or (W.State ~= l.States.Slot and W.State ~= l.States.Dropped) then
+				return false
+			end
+
+			local _, d, M = v8()
+			local I = d and M and self:_resolveEggDestination(W, d, M)
+
+			if not I or (d.Position - I.Position).Magnitude > 400 then
+				return false
+			end
+
+			self:_setStatus("Finishing target egg")
+
+			local W = self._externalDeliver
+
+			self._externalDeliver = true
+			self:_walkTo(I, function()
+				return self.destroyed or self.enabled
+			end, 4)
+			self._externalDeliver = W
+
+			if self.destroyed or self.enabled then
+				return false
+			end
+
+			self.treeBoostedUid = s
+
+			return self:_finishBoostedEgg(s)
+		end
+		function F7:_recallHidden()
+			self._recalling = true
+
+			local s = self._boostHopUid
+			local W = self._treeHopUid
+
+			task.spawn(function()
+				local function d()
+					return self.destroyed or self.enabled
+				end
+
+				local M, I = pcall(function()
+					self:_startMovementProtection()
+					self:_mutePortalFx(true)
+
+					local Q = LocalPlayer:GetAttribute("InEnchantedTree") == true or (self._treePromptAt ~= nil and os.clock() - self._treePromptAt < 2.5)
+
+					if Q or W then
+						self:_muteTreeFx(true)
+						self:_setStatus("Finishing target egg")
+
+						local x = self:_leaveTreeHidden(d)
+						local k = x and not d() and W ~= nil and self:_finishTreeEgg(W)
+
+						self:_muteTreeFx(false)
+
+						if k or d() then
+							return
+						end
+					end
+
+					local W = LocalPlayer.Character
+					local x = W and W:FindFirstChild("HumanoidRootPart")
+					local k = not Q and x ~= nil and x.Position.Y > 5000
+
+					if k then
+						self:_setStatus("Returning to safe area")
+						self:_crossPortal(F("FuseBiomeZone", "ExitPart"), d, 8)
+					end
+
+					if d() then
+						return
+					end
+
+					if k and s and self:_finishBoostedEgg(s) then
+						return
+					end
+
+					local s = false
+
+					pcall(function()
+						for Q, Q in ipairs(a.ReadFieldEggs().Records or {}) do
+							if Q.State == l.States.Carried and Q.CarrierUserId == LocalPlayer.UserId then
+								s = true
+
+								break
+							end
+						end
+					end)
+
+					if s then
+						pcall(a.DropFieldEgg, "PlayerRequest")
+						task.wait(0.3)
+					end
+
+					W = LocalPlayer.Character
+					x = W and W:FindFirstChild("HumanoidRootPart")
+
+					if x and not self:_isInSafeArea(x) and not d() then
+						self:_setStatus("Returning to safe area")
+
+						local s = self:_resolveSafeCFrame(x)
+						local W = self._externalDeliver
+
+						self._externalDeliver = true
+
+						if s then
+							self:_glideRoot(s, d)
+						end
+
+						self._externalDeliver = W
+
+						if not d() then
+							self:_groundSnap()
+						end
+					end
+				end)
+
+				if not M then
+					warn("[Gehlee Steal] hidden recall error: " .. tostring(I))
+				end
+
+				self:_mutePortalFx(false)
+				self._recalling = nil
+
+				if not self.destroyed and not self.enabled then
+					self:_hideTreadmillDecoy()
+					self:_removeGuardHitDistanceBoost()
+					self:_stopMovementProtection()
+					v2313(self)
+					self:_setStatus("Idle")
+				end
+			end)
+		end
+		function F7:_treadmillReset(s)
+			self._treadmillResetting = true
+
+			local W, d = pcall(self._treadmillResetInner, self, s)
+
+			self._treadmillResetting = false
+
+			return W and d
+		end
+		function F7:_treadmillResetInner(s)
+			local function W()
+				return s ~= nil and s()
+			end
+
+			local s = J and J.Treadmill
+
+			if not s or W() then
+				return false
+			end
+
+			local function d()
+				local M, I = pcall(function()
+					return s.AskRenderSnapshot:InvokeServer()
+				end)
+
+				if not M or type(I) ~= "table" then
+					return nil
+				end
+
+				return table.find(I, LocalPlayer.UserId) ~= nil
+			end
+			local function M()
+				local I, Q = pcall(function()
+					local x = type(X.ResolveLocalSlot) == "function" and X.ResolveLocalSlot() or X.GetMySlot()
+					local k = type(X.ResolveFolder) == "function" and X.ResolveFolder() or X.GetPlotsFolder()
+					local B = k and x and k:FindFirstChild(tostring(x))
+					local x = B and B:FindFirstChild("TreadmillBottom")
+
+					if not (x and x:IsA("BasePart")) then
+						return nil
+					end
+
+					local _, k, B = v8()
+
+					if not k or not B then
+						return nil
+					end
+
+					local D = B.RigType == Enum.HumanoidRigType.R15 and (k.Size.Y * 0.5 + math.max(B.HipHeight, 0.5)) or (k.Size.Y * 0.5 + 2)
+
+					return x.CFrame * CFrame.new(0, x.Size.Y * 0.5 + D + 0.05, 0)
+				end)
+
+				return I and Q or nil
+			end
+
+			local I = M()
+
+			if not I or W() then
+				return false
+			end
+
+			self:_glideRoot(I, function()
+				return W()
+			end)
+
+			if W() then
+				return false
+			end
+
+			local M = false
+			local I = os.clock() + 0.7
+
+			while not W() and os.clock() < I do
+				pcall(function()
+					s.AskWearStill:InvokeServer()
+				end)
+				task.wait(0.08)
+
+				if d() == true then
+					M = true
+
+					break
+				end
+			end
+
+			if M then
+				local I = os.clock() + 0.25
+
+				while not W() and os.clock() < I do
+					task.wait(0.05)
+				end
+			end
+
+			local I = false
+			local Q = os.clock() + 0.7
+
+			while not W() and os.clock() < Q do
+				pcall(function()
+					s.AskDoff:InvokeServer()
+				end)
+				task.wait(0.08)
+
+				if d() == false then
+					I = true
+
+					break
+				end
+			end
+
+			return M and I
+		end
+		function F7:_randomRelayCF()
+			local s = cFrame.Position
+			local W = s.X + math.random() * 16
+			local d = s.Z + math.random() * 16
+			local M = s.Y
+			local s = self._groundYAt and self:_groundYAt(W, d)
+
+			if type(s) == "number" then
+				M = s + 3
+			end
+
+			return CFrame.new(W, M, d) * (cFrame - cFrame.Position)
+		end
+
+		F7.RESCUE_TRIES = 3
+		F7.RESCUE_WINDOW = 90
+
+		function F7:_markRescue(s)
+			if type(s) ~= "string" or s == "" or not self:_boostOn() then
+				return false
+			end
+
+			local W, d = pcall(a.ReadFieldEgg, s)
+
+			if not W or type(d) ~= "table" or (d.State ~= l.States.Slot and d.State ~= l.States.Dropped and d.State ~= l.States.GuardCarried) then
+				return false
+			end
+
+			local W = os.clock()
+
+			self.rescueTries = self.rescueTries or {}
+
+			local d = self.rescueTries[s]
+
+			if not d or W > d.untilAt then
+				d = { n = 0, untilAt = W + F7.RESCUE_WINDOW }
+				self.rescueTries[s] = d
+			end
+
+			if d.n >= F7.RESCUE_TRIES then
+				return false
+			end
+
+			d.n += 1
+			self.rescueQueue = self.rescueQueue or {}
+
+			if not table.find(self.rescueQueue, s) then
+				table.insert(self.rescueQueue, s)
+			end
+
+			if self.skippedEggs then
+				self.skippedEggs[s] = nil
+			end
+
+			return true
+		end
+		function F7:_dropRescue(s)
+			local W = self.rescueQueue and table.find(self.rescueQueue, s)
+
+			if W then
+				table.remove(self.rescueQueue, W)
+			end
+		end
+		function F7:_rescueTarget()
+			local s = self.rescueQueue
+
+			if not s or #s == 0 then
+				return nil
+			end
+
+			local W = 1
+
+			while W <= #s do
+				local d = s[W]
+				local M = a.ReadFieldEgg(d) or self.records[d]
+
+				if type(M) == "table" and M.BottomCFrame and self:_boostOn() and (M.State == l.States.Slot or M.State == l.States.Dropped) then
+					return M
+				end
+
+				if type(M) == "table" and M.State == l.States.GuardCarried and self:_boostOn() then
+					W += 1
+				else
+					table.remove(s, W)
+				end
+			end
+
+			return nil
+		end
+		function F7:_instantReturn(s)
+			if self._instantReturnToken ~= nil then
+				return
+			end
+
+			local W = {}
+
+			self._instantReturnToken = W
+
+			local d = self.planGeneration
+
+			self._flyDeparting = false
+			task.spawn(function()
+				local M, I = xpcall(function()
+					if self.config.stealMode == "Fly" then
+						self:_showTreadmillDecoy()
+					end
+
+					local function Q()
+						return not self.destroyed and (self.enabled or self._externalDeliver) and self._instantReturnToken == W
+					end
+					local function x()
+						local k = LocalPlayer.Character
+
+						return k and k:FindFirstChild("HumanoidRootPart"), k and k:FindFirstChildOfClass("Humanoid")
+					end
+					local function k()
+						return a.ReadFieldEgg(s)
+					end
+					local function B()
+						local D = k()
+
+						return D ~= nil and D.State == l.States.Carried and D.CarrierUserId == LocalPlayer.UserId
+					end
+					local function D()
+						local w = k()
+
+						if not w then
+							return true
+						end
+
+						return w.State == l.States.Claimed
+					end
+					local function w()
+						local A = (x())
+
+						return A and self:_resolveSafeCFrame(A) or nil
+					end
+					local function A(f)
+						self.settleBonus = self.settleBonus or {}
+
+						if f then
+							self.settleBonus[s] = nil
+						elseif self.config.stealMode == "Instant" and self.boostedUid ~= s then
+							self.settleBonus[s] = { seconds = 2, untilAt = os.clock() + 300 }
+						end
+					end
+					local function f(m)
+						if self._instantReturnToken ~= W then
+							return
+						end
+
+						A(m == nil or m == "Safe return complete")
+
+						if m ~= nil and m ~= "Safe return complete" then
+							self:_markRescue(s)
+						end
+
+						self._instantReturnToken = nil
+						self._forestDropInProgress = nil
+
+						local y = self._externalDeliver
+
+						self._externalDeliver = nil
+
+						if self.destroyed then
+							return
+						end
+
+						if self.enabled then
+							self:_reportStolen()
+							self:_finish(m or "Safe return complete")
+						elseif y then
+							self:_reportStolen()
+							self.carry.active = false
+							self.carry.uid = nil
+							self.activeTarget = nil
+							self:_hideTreadmillDecoy()
+						end
+					end
+
+					self:_clearArrivalHold(s)
+
+					local function m()
+						local y = k()
+
+						return y ~= nil and y.State == l.States.Carried and y.CarrierUserId ~= LocalPlayer.UserId
+					end
+					local function y()
+						local u = genv.__GehleeV4PlayerSteal
+
+						if not (u and m()) or self._instantReturnToken ~= W then
+							return false
+						end
+
+						local m = u:intercept(s, true)
+
+						if m then
+							self.stats.snatchChases = (self.stats.snatchChases or 0) + 1
+							f("Egg snatched — chasing the carrier")
+						end
+
+						return m
+					end
+					local function m(u)
+						if not u then
+							return
+						end
+
+						local p = genv.__GehleeV4PlayerSteal
+						local O = LocalPlayer.Character
+						local J = O and O:FindFirstChildOfClass("Humanoid")
+
+						if not (p and J) then
+							return
+						end
+
+						local i, b
+
+						for v, v in ipairs(game:GetService("Players"):GetPlayers()) do
+							if v ~= LocalPlayer and not (type(p.isFriend) == "function" and p.isFriend(v)) then
+								local N = v.Character and v.Character:FindFirstChild("HumanoidRootPart")
+								local P = N and (N.Position - u).Magnitude
+
+								if P and P <= 18 and (not b or P < b) then
+									i, b = v, P
+								end
+							end
+						end
+
+						if not i then
+							return
+						end
+
+						local u = genv.__GehleeV4Bats and genv.__GehleeV4Bats.isBat
+						local b
+
+						for v, v in ipairs({ O, LocalPlayer:FindFirstChildOfClass("Backpack") }) do
+							for N, N in ipairs(v and v:GetChildren() or {}) do
+								if N:IsA("Tool") and type(u) == "function" and u(N) then
+									b = N
+
+									break
+								end
+							end
+
+							if b then
+								break
+							end
+						end
+
+						if not b then
+							return
+						end
+
+						if b.Parent ~= O then
+							pcall(J.EquipTool, J, b)
+							task.wait(0.1)
+						end
+
+						if b.Parent == O and p:_swingBatAt(i, b) then
+							self.stats.dropGuardSwings = (self.stats.dropGuardSwings or 0) + 1
+						end
+
+						task.wait(0.05)
+						pcall(J.UnequipTools, J)
+					end
+					local function u(p)
+						if not p then
+							return false
+						end
+
+						local O = genv.__GehleeV4PlayerSteal
+
+						for J, J in ipairs(game:GetService("Players"):GetPlayers()) do
+							if J ~= LocalPlayer and not (O and type(O.isFriend) == "function" and O.isFriend(J)) then
+								local O = J.Character and J.Character:FindFirstChild("HumanoidRootPart")
+
+								if O and (O.Position - p).Magnitude <= 14 then
+									return true
+								end
+							end
+						end
+
+						return false
+					end
+
+					local p = self.treeBoostedUid == s and (self.treeRegrabMode or "glideSafe") or "glide"
+
+					local function O()
+						local J = (x())
+
+						return J ~= nil and self:_isInSafeArea(J)
+					end
+					local function J(i, b, v)
+						return self:_walkTo(i, b, v or 4)
+					end
+					local function i(b, v, N, P)
+						local v3361 = p == "walk" or (P == "egg" and (p == "glideSafe" or p == "skipSafe")) or (P == "safe" and p == "glideEgg")
+
+						if v3361 and P == "safe" then
+							return self:_walkTo(b, function()
+								return v() or O()
+							end, N or 4)
+						end
+
+						if v3361 then
+							return self:_walkTo(b, v, N or 4)
+						end
+
+						return self:_glideRoot(b, v)
+					end
+
+					local O = (self.boostedUid == s or self._walkHunt == true) and not gehleeV4Config.HelpFriend
+					local b = self.config.stealMode == "Fly" or O
+					local v = O and type(genv.__GehleeV4RelayTune) == "table" and genv.__GehleeV4RelayTune or nil
+					local N = (O and (v and tonumber(v[1]) or 0.3)) or (b and 0.15) or 0.4
+					local O = (v and tonumber(v[2])) or (b and 0.45) or 0.85
+					local v = B()
+
+					if not v then
+						self:_setStatus("Confirming carry record")
+
+						local P = os.clock() + 2.5
+
+						while Q() and os.clock() < P do
+							v = B()
+
+							if v then
+								break
+							end
+
+							local P = k()
+
+							if P and P.State == l.States.Claimed then
+								break
+							end
+
+							RunService.Heartbeat:Wait()
+						end
+
+						if not Q() then
+							return
+						end
+					end
+
+					local P = v
+
+					if P then
+						self._forestDropInProgress = s
+
+						for v = 1, F7.RELAY_ROUNDS do
+							local P = self:_randomRelayCF()
+
+							self._forestDropInProgress = s
+							self:_setStatus("Bringing egg home")
+							self:_hopRoot(P, function()
+								return not Q() or not B()
+							end)
+
+							if not Q() then
+								return
+							end
+
+							local v3373 = false
+
+							for S7 = 1, 3 do
+								if not Q() or not B() then
+									break
+								end
+
+								self:_setStatus("Bringing egg home")
+								self:_hopRoot(P, function()
+									return not Q() or not B()
+								end)
+
+								if not Q() then
+									return
+								end
+
+								if B() then
+									task.wait(b and N or math.max(N, self:_relaySettle()))
+
+									if not Q() then
+										return
+									end
+
+									if B() then
+										pcall(a.DropFieldEgg, "PlayerRequest")
+									end
+
+									local b = os.clock() + O
+
+									while Q() and B() and os.clock() < b do
+										RunService.Heartbeat:Wait()
+									end
+								end
+
+								local O = k()
+
+								if O and O.State == l.States.Dropped then
+									v3373 = true
+
+									break
+								end
+
+								if not B() then
+									break
+								end
+							end
+
+							if not Q() then
+								return
+							end
+
+							if not v3373 then
+								if self._instantReturnToken == W then
+									self._instantReturnToken = nil
+								end
+
+								self._forestDropInProgress = nil
+								A(false)
+								pcall(function()
+									local A = os.clock() + 3
+
+									while _() > 0 and os.clock() < A and Q() do
+										RunService.Heartbeat:Wait()
+									end
+
+									local _, _, A = v8()
+
+									if _ and A and not self:_isInSafeArea(_) then
+										local O = self:_resolveSafeCFrame(_)
+
+										if O then
+											self:_teleportRoot(_, A, O)
+										end
+									end
+								end)
+								self:_markRescue(s)
+								self:_finish("Drop failed — retrying")
+
+								return
+							end
+
+							if gehleeV4Config.HelpFriend then
+								self.skippedEggs[s] = os.clock() + 1800
+								self._forestDropInProgress = nil
+								self.carry.active = false
+								self.carry.uid = nil
+								self.stats.lastResult = "Dropped for a friend"
+								self:_setStatus("Egg dropped for a friend, heading back")
+
+								local _ = w()
+
+								if _ then
+									self:_glideRoot(_, function()
+										return not Q()
+									end)
+								end
+
+								if not Q() then
+									return
+								end
+
+								local _ = self._externalDeliver
+
+								self._instantReturnToken = nil
+								self._externalDeliver = nil
+
+								if self.enabled then
+									self:_finish("Dropped for a friend")
+								elseif _ then
+									self.activeTarget = nil
+									self:_hideTreadmillDecoy()
+								end
+
+								return
+							end
+
+							local _
+							local A = os.clock() + 3
+
+							while Q() and os.clock() < A do
+								local A = k()
+
+								if A and A.State == l.States.Dropped then
+									local k = A.BottomCFrame or A.BoundsCFrame
+
+									_ = k and k.Position
+
+									if _ then
+										break
+									end
+								elseif A and A.State ~= l.States.Carried then
+									break
+								end
+
+								task.wait(0.1)
+							end
+
+							if not Q() then
+								return
+							end
+
+							self._forestDropInProgress = nil
+
+							if _ then
+								self:_noteRelayLanding((_ - P.Position).Magnitude)
+							end
+
+							if y() then
+								return
+							end
+
+							m(_)
+							self:_setStatus("Bringing egg home")
+
+							local k = p ~= "skipSafe" and w() or nil
+
+							if k then
+								i(k, function()
+									return not Q()
+								end, nil, "safe")
+							end
+
+							if not Q() then
+								return
+							end
+
+							local k = self:_claimCarryWorker("instant-regrab", s)
+							local A = _ and CFrame.new(_ + Vector3.new(0, 3.2, 0)) or P
+
+							local function p()
+								i(A, function()
+									return not Q() or B()
+								end, 3, "egg")
+							end
+
+							local A = false
+
+							if k then
+								self:_setStatus("Bringing egg home")
+								p()
+
+								if not Q() then
+									return
+								end
+
+								A = self:_regrabBurst(k, s, 0.5)
+								self:_putAwayFightBat()
+
+								if not Q() then
+									return
+								end
+
+								if B() then
+									A = true
+								end
+
+								local O = 0
+
+								while Q() and not A and not B() and u(_) and O < 2 and self:_isCarryWorkerCurrent(k) do
+									O = O + 1
+									self.stats.regrabContest = (self.stats.regrabContest or 0) + 1
+									m(_)
+									p()
+
+									if not Q() then
+										return
+									end
+
+									A = self:_regrabBurst(k, s, 0.6)
+									self:_putAwayFightBat()
+
+									if B() then
+										A = true
+									end
+								end
+
+								if not A and not B() and y() then
+									return
+								end
+
+								if not A and not B() and self:_isCarryWorkerCurrent(k) then
+									self:_setStatus("Bringing egg home")
+
+									local m = w()
+
+									if m then
+										self:_glideRoot(m, function()
+											return not Q()
+										end)
+									end
+
+									if not Q() then
+										return
+									end
+
+									self:_setStatus("Bringing egg home")
+									self:_treadmillReset(function()
+										return not Q()
+									end)
+
+									if not Q() then
+										return
+									end
+
+									self:_setStatus("Bringing egg home")
+
+									local m = w()
+
+									if m then
+										self:_glideRoot(m, function()
+											return not Q()
+										end)
+									end
+
+									if not Q() then
+										return
+									end
+
+									if self:_isCarryWorkerCurrent(k) then
+										self:_setStatus("Bringing egg home")
+										p()
+
+										if not Q() then
+											return
+										end
+
+										A = self:_regrabBurst(k, s, 0.6)
+										self:_putAwayFightBat()
+
+										if not Q() then
+											return
+										end
+									end
+								end
+							end
+
+							if not A and not B() then
+								if y() then
+									return
+								end
+
+								f(D() and "Safe return complete" or "Re-grab failed — retrying")
+
+								return
+							end
+
+							local k = _ ~= nil and (_ - P.Position).Magnitude > F7.RELAY_LAND_OK
+
+							if not (k and B()) or v >= F7.RELAY_ROUNDS then
+								break
+							end
+
+							self:_setStatus("Bringing egg home")
+						end
+					end
+
+					local function _(k, A)
+						local m, y = x()
+
+						if m and y and (m.Position - k.Position).Magnitude <= 80 then
+							return self:_teleportRoot(m, y, k)
+						end
+
+						return J(k, A)
+					end
+
+					if B() then
+						self:_setStatus("Bringing egg home")
+
+						local k = w()
+
+						if k then
+							_(k, function()
+								return not Q() or not B()
+							end)
+						end
+					end
+
+					self:_setStatus("Waiting for deposit")
+
+					local k = os.clock() + 8
+
+					while Q() and not D() and os.clock() < k do
+						local k, B = x()
+
+						if k and B and not self:_isInSafeArea(k) then
+							local x = self:_resolveSafeCFrame(k)
+
+							if x then
+								_(x, function()
+									return not Q() or D()
+								end)
+							end
+						end
+
+						task.wait(0.1)
+					end
+
+					f(D() and "Safe return complete" or "Bank not confirmed — retrying")
+				end, debug.traceback)
+
+				if not M and not self.destroyed and self.planGeneration == d and (self._instantReturnToken == W or self._instantReturnToken == nil) then
+					self._externalDeliver = nil
+					warn("[Gehlee] Egg delivery failed: " .. tostring(I))
+					self:_markRescue(s)
+					self:_finish("Delivery error — retrying")
+				end
+			end)
+		end
+		function F7:deliverCarriedEgg(_, s)
+			if type(_) ~= "string" or _ == "" or self.destroyed then
+				return false
+			end
+
+			if self._instantReturnToken ~= nil then
+				return false
+			end
+
+			self._externalDeliver = true
+
+			if type(s) == "table" then
+				self.activeTarget = s
+			end
+
+			self.carry.active = true
+			self.carry.uid = _
+			self.reportedUid = nil
+			self:_instantReturn(_)
+
+			if self._instantReturnToken == nil then
+				self._externalDeliver = nil
+				self.carry.active = false
+				self.carry.uid = nil
+
+				return false
+			end
+
+			local _ = self._instantReturnToken
+
+			task.spawn(function()
+				local s = os.clock() + 30
+
+				while self._instantReturnToken == _ and not self.destroyed and os.clock() < s do
+					task.wait(0.25)
+				end
+
+				if self._externalDeliver and self._instantReturnToken == _ then
+					self._externalDeliver = nil
+					self:_finish("Delivery timed out — retrying")
+				end
+			end)
+
+			return true
+		end
+		function F7:_adminSteal(_)
+			local s = _.Uid
+
+			self._adminBusyUid = s
+
+			local function W()
+				local d = a.ReadFieldEgg(s)
+
+				return d ~= nil and d.State == l.States.Carried and d.CarrierUserId == LocalPlayer.UserId
+			end
+			local function d()
+				return not self.destroyed and self.enabled and genv.__GehleeV4AdminBoost == true and self._adminBusyUid == s
+			end
+
+			local M, I = pcall(function()
+				self.instantPhase = nil
+				self.primerUid = nil
+				self.targetUid = nil
+				self.activeTarget = _
+				self.stats.lastResult = "Admin Abuse"
+				self:_setStatus("Heading to target egg")
+
+				local _ = os.clock() + 3
+				local Q, x = 0, nil
+
+				while d() and not x and not W() do
+					if os.clock() >= _ then
+						self.skippedEggs[s] = os.clock() + 10
+
+						return self:_finish("Carry refused — next egg")
+					end
+
+					local _ = a.ReadFieldEgg(s)
+
+					if not _ or (_.State ~= l.States.Slot and _.State ~= l.States.Dropped) then
+						return self:_finish("Target egg no longer available")
+					end
+
+					local _, W, k = v8()
+
+					if not W or not k then
+						return self:_finish("Character unavailable")
+					end
+
+					local B = self:_resolveEggDestination(_, W, k)
+
+					if B and (W.Position - B.Position).Magnitude > 4 then
+						self:_teleportRoot(W, k, B)
+						self:_setStatus("Securing egg")
+					end
+
+					if Q < 3 then
+						Q += 1
+						task.spawn(function()
+							local _, W = pcall(function()
+								return n.AskFieldEggCarry:InvokeServer({ Uid = s })
+							end)
+
+							Q -= 1
+
+							if _ and W == true and not x then
+								x = os.clock()
+							end
+						end)
+					end
+
+					RunService.PreSimulation:Wait()
+				end
+
+				if not d() then
+					return
+				end
+
+				self.carry.active = true
+				self.carry.uid = s
+				self:_adminDeliver(s, x)
+			end)
+
+			if self._adminBusyUid == s then
+				self._adminBusyUid = nil
+			end
+
+			if not M then
+				warn("[Gehlee Steal] admin steal error: " .. tostring(I))
+
+				if not self.destroyed and self.enabled then
+					self:_finish("Steal error — retrying")
+				end
+			end
+		end
+
+		F7._adminDeliver = function(_, s, W)
+			if _._adminDeliverUid == s then
+				return
+			end
+
+			_._adminDeliverUid = s
+			_._adminBusyUid = s
+
+			local function d()
+				return a.ReadFieldEgg(s)
+			end
+			local function M()
+				local I = d()
+
+				if I ~= nil and I.State == l.States.Carried and I.CarrierUserId == LocalPlayer.UserId then
+					return true
+				end
+
+				return W ~= nil and os.clock() - W < 1 and I ~= nil and I.State ~= l.States.Claimed and not (I.State == l.States.Carried and I.CarrierUserId ~= LocalPlayer.UserId)
+			end
+			local function W()
+				local I = d()
+
+				return I == nil or I.State == l.States.Claimed
+			end
+
+			_:_clearArrivalHold(s)
+			_:_setStatus("Bringing egg home")
+
+			local d = os.clock() + 4
+
+			while not _.destroyed and _.enabled and not W() and M() and os.clock() < d do
+				local _, d, I = v8()
+				local Q = d and _:_resolveSafeCFrame(d)
+
+				if Q and I and (d.Position - Q.Position).Magnitude > 4 then
+					_:_teleportRoot(d, I, Q)
+					_:_setStatus("Waiting for deposit")
+				end
+
+				RunService.PreSimulation:Wait()
+			end
+
+			_._adminDeliverUid = nil
+
+			if _._adminBusyUid == s then
+				_._adminBusyUid = nil
+			end
+
+			if _.destroyed or not _.enabled then
+				return
+			end
+
+			if W() then
+				_:_reportStolen()
+				_:_finish("Safe return complete")
+			else
+				_:_finish(M() and "Bank not confirmed — retrying" or "Egg lost — retrying")
+			end
+		end
+
+		function F7:_crossPrefersHalloween(_, s, W)
+			if not _ then
+				return true
+			end
+
+			local d, M = pcall(self.catalog.resolve, _)
+			local I = (d and M and tonumber(M.rarityRank)) or 0
+
+			if (s.rank or 0) ~= I then
+				return (s.rank or 0) > I
+			end
+
+			local d = v2310(_) or 0
+
+			if (s.value or 0) ~= d then
+				return (s.value or 0) > d
+			end
+
+			return W ~= nil and W.Position.Y < -100.0
+		end
+		function F7:_adminHwSteal(_)
+			local s, W = self:_acquireOperation()
+
+			if not s then
+				self:_setStatus("Waiting · " .. tostring(W or "another operation"))
+				task.delay(0.5, function()
+					if not self.destroyed and self.enabled and not self.running then
+						self:_schedule()
+					end
+				end)
+
+				return
+			end
+
+			self.running = true
+			self.safeStarting = false
+			self.activeTarget = nil
+			self.stats.lastResult = "Admin Abuse"
+			self.stats.lastTarget = _ and string.format("%s · %s · Halloween Zone %s", tostring(_.rarity or "?"), tostring(_.name), tostring(_.zone or "?")) or "Halloween egg in hand"
+			self:_setStatus(_ and "Heading to Halloween egg" or "Bringing Halloween egg home")
+
+			local s = self.planGeneration
+
+			task.spawn(function()
+				local W, d = pcall(genv.__GehleeV4HwCrossSteal, _ and _.model, function()
+					return self.destroyed or not self.enabled or self.planGeneration ~= s
+				end)
+
+				if self.destroyed then
+					return
+				end
+
+				d = W and d or "error"
+
+				if d == "delivered" then
+					self.stats.delivered = (self.stats.delivered or 0) + 1
+					genv.__GehleeV4LastStealWorld = "halloween"
+
+					local W = genv.__GehleeV4Webhook
+
+					if W and type(W.stolen) == "function" and _ then
+						local M = nil
+
+						pcall(function()
+							local I = genv.__GehleeV4RarityMod
+							local Q = I and I.Get and I.Get(_.rarity)
+
+							M = Q and (Q.Color or Q.TextColor)
+						end)
+						task.spawn(pcall, W.stolen, { AssetCategory = _.name, Mutations = {}, AreaId = "Halloween Zone " .. tostring(_.zone or "?") }, { name = _.name, rarity = _.rarity or "Unknown", rarityColor = typeof(M) == "Color3" and M or nil }, "Halloween dimension (Admin Abuse)")
+					end
+				end
+
+				if self.planGeneration ~= s then
+					return
+				end
+
+				self:_finish(({ delivered = "Halloween egg banked", refused = "Carry refused — next egg", lost = "Egg lost — retrying", held = "Bank not confirmed — retrying" })[d] or "Steal error — retrying")
+			end)
+		end
+        -- GEHLEE_INSTANT_ADAPTER_BEGIN
+        function F7:_allowsS2RTarget(record, resumeCarry)
+            if type(record) ~= "table" or type(record.Uid) ~= "string" or record.Uid == "" then return false end
+            local ok, allowed = pcall(function()
+            -- Filters choose the next pickup; never discard an egg already held.
+            if self.carry and self.carry.active == true and self.carry.uid == record.Uid then return true end
+            if self.manualQueue and self.manualQueue[record.Uid] == true then
+                return self:_matchesNormalFilter(record)
+            end
+            -- These separately enabled objectives retain their own selectors.
+            if self.riftWants and self.riftWants[record.AssetCategory] then return true end
+            if self.indexObjectiveEnabled and self:_isIndexObjective(record) then return true end
+            if self.wispObjective and self:_isWispObjective(record) then return true end
+            return self:_matchesNormalFilter(record)
+            end)
+            return ok and allowed == true
+        end
+        function F7:_isS2RTreadmillParked()
+            local parked = self._s2rTreadmillParked
+            if not parked then return false end
+            local character = LocalPlayer.Character
+            if self.destroyed or gehleeV4Config.AntiTreadmill == true or character ~= parked.Character
+                or not parked.Root or parked.Root.Parent ~= character
+                or character:FindFirstChild("HumanoidRootPart") ~= parked.Root
+                or (self.carry and self.carry.active == true) then
+                self._s2rTreadmillParked = nil
+                return false
+            end
+            local manager = self.treadmillManager or genv.__GehleeV4TreadmillManager
+            if parked.Root.Anchored == true or (manager and not manager.destroyed and manager.activeTreadmill ~= nil)
+                or os.clock() - parked.At < 2 then return true end
+            self._s2rTreadmillParked = nil
+            return false
+        end
+        function F7:_runS2RInstant(target, resumeCarry)
+            if self._s2rInstantToken or self.destroyed or not self.enabled then return false end
+            if type(target) ~= "table" or type(target.Uid) ~= "string" or target.Uid == "" then
+                self:_finish("Target unavailable")
+                return false
+            end
+            if not self:_allowsS2RTarget(target, resumeCarry) then
+                self:_finish("Egg does not match your filters")
+                return false
+            end
+            local factory = genv.GehleeInstantStealEngine
+            if type(factory) ~= "function" then
+                self:_finish("Instant Steal module unavailable")
+                return false
+            end
+            -- The normal scheduler acquires ownership before selecting a trip;
+            -- its already-carrying recovery branch reaches us before that step.
+            if self.coordinator and not self.operationToken then
+                local acquired, blockedBy = self:_acquireOperation()
+                if not acquired then
+                    self:_setStatus("Waiting · " .. tostring(blockedBy or "another operation"))
+                    self:_scheduleMovementRetry()
+                    return false
+                end
+            end
+            local character, rootPart, firstHumanoid = v8()
+            if not character or not rootPart or not firstHumanoid or firstHumanoid.Health <= 0 then
+                self:_finish("Character unavailable")
+                return false
+            end
+            local operationToken = self.operationToken
+            local token = {Uid = target.Uid, Character = character, Root = rootPart,
+                Generation = self.planGeneration, Started = os.clock(), Cancelled = false}
+            self._s2rInstantToken = token
+            self.instantPhase = "s2r-instant"
+            self.running, self.safeStarting, self.activeTarget = true, false, target
+            self.primerUid, self.targetUid, self._walkHunt = nil, nil, nil
+            self.carryAttemptToken = nil
+
+            local function owns()
+                return self._s2rInstantToken == token and not token.Cancelled
+            end
+            local function sameLifetime()
+                return not self.destroyed and v20() and self.planGeneration == token.Generation
+                    and self.operationToken == operationToken and LocalPlayer.Character == character
+            end
+            local function valid()
+                if not owns() or not sameLifetime() or not self.enabled or self.config.stealMode ~= "S2RInstant" then return false end
+                -- World modules can temporarily disappear during a handover.
+                -- A failed probe must cancel this trip, not strand its token.
+                local checked, result = pcall(function()
+                if rootPart.Parent ~= character or character:FindFirstChild("HumanoidRootPart") ~= rootPart then return false end
+                -- The original donor temporarily swaps Humanoids. The character
+                -- and root stay fixed; a detached original is not a respawn.
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health <= 0 then return false end
+                -- Keep the donor's three bounded attempts plus startup/cleanup.
+                if os.clock() - token.Started > 760 then return false end
+                if LocalPlayer:GetAttribute("InHalloweenDimension") == true or genv.__GehleeV4OnTrain == true then return false end
+                if not self:_wallOpen() or self:_eventBlocksSteal() then return false end
+                local ready = genv.__GehleeV4NormalWorldReady
+                return type(ready) ~= "function" or ready() == true
+                end)
+                if not checked then
+                    token.ValidationError = tostring(result)
+                    return false
+                end
+                return result == true
+            end
+            local function invoke(object, key, ...)
+                if object and type(object[key]) == "function" then return pcall(object[key], object, ...) end
+                return true
+            end
+            local function disposeEngine()
+                local engine = token.Engine
+                token.Engine = nil
+                if engine then
+                    invoke(engine, "Cancel", "Host operation ended")
+                    invoke(engine, "Destroy")
+                end
+            end
+            local function cancel()
+                if token.Cancelled then return end
+                token.Cancelled = true
+                -- Keep the ownership flag set throughout restoration, so no
+                -- host heartbeat writes into the donor's cleanup midway.
+                disposeEngine()
+                if self._s2rInstantToken == token then
+                    self._s2rInstantToken = nil
+                    self._s2rInstantCancel = nil
+                    self._treadmillResetting = false
+                    if sameLifetime() and self.enabled then
+                        invoke(self, "_installGuardHitDistanceBoost")
+                        if token.RestorePromptFilter then invoke(self, "_installPromptFilter") end
+                        local readParked, parked = invoke(self, "_isS2RTreadmillParked")
+                        if readParked and not parked then invoke(self, "_startMovementProtection") end
+                    end
+                end
+            end
+            self._s2rInstantCancel = cancel
+
+            local function finishHost(message)
+                if not sameLifetime() or self._s2rInstantToken ~= nil then return false end
+                local finishGeneration = self.planGeneration
+                local finished, finishError = invoke(self, "_finish", message)
+                if finished then return true end
+                warn("[Gehlee Hub] Instant Steal cleanup: " .. tostring(finishError))
+                -- _finish may have incremented the generation or released the
+                -- operation before a listener failed. Never reset a newer trip.
+                local function canRecover()
+                    return not self.destroyed and v20() and LocalPlayer.Character == character
+                        and self.config.stealMode == "S2RInstant"
+                        and self._s2rInstantToken == nil
+                        and (self.planGeneration == finishGeneration or self.planGeneration == finishGeneration + 1)
+                        and (self.operationToken == operationToken or self.operationToken == nil)
+                        and (self.activeTarget == target or self.activeTarget == nil)
+                end
+                if not canRecover() then return false end
+                self.planGeneration += 1
+                local recoveryGeneration = self.planGeneration
+                self.running, self.safeStarting, self.activeTarget = false, false, nil
+                invoke(self, "_invalidateCarryWorker")
+                invoke(self, "_clearArrivalHold")
+                invoke(self, "_cancelTween", message)
+                if self.destroyed or not v20() or LocalPlayer.Character ~= character
+                    or self.planGeneration ~= recoveryGeneration or self._s2rInstantToken ~= nil
+                    or (self.operationToken ~= operationToken and self.operationToken ~= nil) then return false end
+                if self.operationToken == operationToken then invoke(self, "_releaseOperation") end
+                invoke(self, "_setStatus", self.enabled and "Retrying after cleanup error" or "Idle")
+                if self.enabled then invoke(self, "_scheduleMovementRetry") end
+                return false
+            end
+
+            -- Donor shield, view, walking and treadmill phases own the body for
+            -- this trip. Existing features resume after this ownership ends.
+            invoke(self, "_invalidateCarryWorker")
+            invoke(self, "_clearArrivalHold")
+            invoke(self, "_stopGuardStick")
+            invoke(self, "_kbCancelTimer")
+            invoke(self, "_stopMovementProtection")
+            invoke(self, "_removeGuardHitDistanceBoost")
+            token.RestorePromptFilter = self._promptFilter ~= nil
+            if token.RestorePromptFilter then invoke(self, "_removePromptFilter") end
+            if self.activeTween then
+                invoke(self.activeTween, "Cancel")
+                self.activeTween = nil
+            end
+            local antiGuard = genv.__GehleeV4AntiGuard
+            if antiGuard and antiGuard.eggRuntime == self then
+                antiGuard._stickyToken = (antiGuard._stickyToken or 0) + 1
+            end
+            local godMode = genv.__GehleeV4GodMode
+            if godMode and godMode.eggRuntime == self then invoke(godMode, "stopDefend") end
+
+            local function allowedTarget(record)
+                if not valid() or type(record) ~= "table" or record.Uid ~= token.Uid then return false end
+                return self:_allowsS2RTarget(record, resumeCarry)
+            end
+            local function updateCarry(active, uid)
+                if not owns() or not sameLifetime() then return end
+                self.carry.active = active == true
+                self.carry.uid = active == true and uid or nil
+            end
+
+            task.spawn(function()
+                local ok, delivered, reason = xpcall(function()
+                    if not valid() then return false, "Instant Steal cancelled" end
+                    local engine = factory({Valid = valid, Target = target, ResumeCarry = resumeCarry == true,
+                        InitialCarry = {IsCarrying = self.carry.active == true, Uid = self.carry.uid},
+                        Status = function(text) if valid() then self:_setStatus("Instant Steal: " .. tostring(text)) end end,
+                        AllowTarget = allowedTarget, CarryChanged = updateCarry,
+                        HelpFriend = function() return gehleeV4Config.HelpFriend == true end,
+                        AutoTreadmill = function()
+                            return valid() and gehleeV4Config.ReturnTreadmillAfterSteal == true
+                                and gehleeV4Config.AntiTreadmill ~= true
+                        end})
+                    if type(engine) ~= "table" or type(engine.Run) ~= "function" or type(engine.Destroy) ~= "function" then
+                        invoke(engine, "Destroy")
+                        return false, "Instant Steal engine did not initialize"
+                    end
+                    if not owns() or not valid() then
+                        invoke(engine, "Cancel", "Cancelled during startup")
+                        invoke(engine, "Destroy")
+                        return false, "Instant Steal cancelled"
+                    end
+                    token.Engine = engine
+                    local completed, result = engine:Run(token.Uid)
+                    token.HandedOff = engine.HandedOff == true
+                    token.TreadmillAttempted = engine.TreadmillAttempted == true
+                    token.TreadmillReturned = engine.TreadmillReturned
+                    token.TreadmillReason = engine.TreadmillReason
+                    if owns() and type(engine.ReadCarry) == "function" then
+                        local readOk, held, heldUid = pcall(engine.ReadCarry, engine)
+                        if readOk then updateCarry(held, heldUid) end
+                    end
+                    return completed == true, result
+                end, debug.traceback)
+                if not owns() then return end
+                local current = valid()
+                local canFinish = sameLifetime()
+                if ok and delivered == true and token.TreadmillReturned == true and current
+                    and not self.carry.active and gehleeV4Config.AntiTreadmill ~= true then
+                    self._s2rTreadmillParked = {Character = character, Root = rootPart, At = os.clock()}
+                end
+                cancel()
+                if not canFinish or not sameLifetime() then return end
+                if ok and delivered == true then
+                    if not self.carry.active or self.carry.uid == token.Uid then
+                        self.carry.active, self.carry.uid = false, nil
+                    end
+                    invoke(self, "_reportStolen")
+                    local finished = finishHost("Safe return complete")
+                    if finished and token.TreadmillAttempted then
+                        self.stats.lastResult = token.TreadmillReturned == true and "Egg delivered; treadmill active"
+                            or ("Egg delivered; " .. tostring(token.TreadmillReason or "treadmill return unavailable"))
+                        invoke(self, "_notify")
+                    end
+                elseif ok and token.HandedOff and current then
+                    self.skippedEggs[token.Uid] = os.clock() + 1800
+                    if not self.carry.active or self.carry.uid == token.Uid then
+                        self.carry.active, self.carry.uid = false, nil
+                    end
+                    finishHost("Dropped for a friend")
+                else
+                    if not ok then warn("[Gehlee Hub] Instant Steal: " .. tostring(delivered)) end
+                    self.skippedEggs[token.Uid] = os.clock() + 5
+                    finishHost(token.ValidationError and "World state unavailable; retrying"
+                        or (ok and tostring(reason or "Instant Steal not completed") or "Instant Steal error; see console"))
+                end
+            end)
+            return true
+        end
+        -- GEHLEE_INSTANT_ADAPTER_END
+
+		function F7:_returnToSafe()
+			if self:_isPrimerEgg(self.carry.uid) then
+				local _ = self.carry.uid
+
+				self.stats.lastResult = "Steal not banked — retrying"
+				self.carry.active = false
+				self.carry.uid = nil
+				self.carry.generation += 1
+				self:_invalidateCarryWorker()
+				self.skippedEggs[_] = os.clock() + 30
+				pcall(a.DropFieldEgg, "PlayerRequest")
+
+				if self.instantPhase == "priming" then
+					self:_startPrimerTargetHunt()
+				else
+					task.delay(0.5, function()
+						if not self.destroyed and self.enabled and not self.running then
+							self:_schedule()
+						end
+					end)
+				end
+
+				self:_notify()
+
+				return
+			end
+
+			if self.captureObjectiveEnabled and self:_isCaptureEgg(self.carry.uid) then
+				self:_captureHold(self.carry.uid)
+
+				return
+			end
+
+            if self.config.stealMode == "S2RInstant" then
+                if self._s2rInstantToken then return end
+                local uid = self.carry.uid
+                local current = uid and (a.ReadFieldEgg(uid) or self.records[uid]) or self.activeTarget
+                if type(current) == "table" then self:_runS2RInstant(current, true)
+                else self:_finish("Carry target unavailable") end
+                return
+            end
+			if genv.__GehleeV4AdminBoost == true then
+				local _ = self.carry.uid or (self.activeTarget and self.activeTarget.Uid)
+
+				if _ and self._adminBusyUid ~= _ then
+					task.spawn(self._adminDeliver, self, _)
+				end
+
+				return
+			end
+
+			if gehleeV4Config.FastPull and not self._fpOn then
+				local _ = self.carry.uid and (self.records[self.carry.uid] or a.ReadFieldEgg(self.carry.uid))
+
+				if type(_) == "table" and self:_areaOverSpeed(_.AreaId) then
+					self._fpOn = true
+					self._fpSavedSpeed = self.config.speed
+					self.config.speed = tonumber(gehleeV4Config.FastPullSpeed) or self.config.speed
+					genv.__GehleeV4FastPull = true
+				end
+			end
+
+			if self.grabHandoff ~= nil and self.config.stealMode == "Instant" then
+				local huid = self.carry.uid or (self.activeTarget and self.activeTarget.Uid)
+
+				if huid then
+					local cb = self.grabHandoff
+
+					self.grabHandoff = nil
+					task.spawn(cb, huid)
+
+					return
+				end
+			end
+
+			if self.config.stealMode == "Instant" or self.config.stealMode == "Fly" then
+				local _ = self.carry.uid or (self.activeTarget and self.activeTarget.Uid)
+
+				if _ then
+					self:_instantReturn(_)
+
+					return
+				end
+
+				self:_finish("Carry lost — retrying")
+
+				return
+			end
+
+			local _ = self.carry.uid
+			local s = self:_claimCarryWorker("return", _)
+
+			if not s then
+				return
+			end
+
+			self:_clearArrivalHold(_)
+
+			if not self:_wallOpen() then
+				self:_releaseCarryWorker(s)
+				self:_finish("Reset interrupted carry")
+
+				return
+			end
+
+			local W = LocalPlayer.Character
+			local d = W and W:FindFirstChild("HumanoidRootPart")
+
+			if not d then
+				self:_releaseCarryWorker(s)
+				self:_finish("Character unavailable")
+
+				return
+			end
+
+			if not self:_hasConfirmedCarry(_) or self:_recordShowsForeignCarry(_) then
+				self:_releaseCarryWorker(s)
+				self:_finish("Carry not confirmed — retrying")
+
+				return
+			end
+
+			if self:_isInSafeArea(d) then
+				self:_finalizeReturn(s)
+
+				return
+			end
+
+			if gehleeV4Config.HelpFriend then
+				self.handoffLane = ((self.handoffLane or 0) % #t30) + 1
+
+				local W = CFrame.new(612, t.Y, t30[self.handoffLane]) * d.CFrame.Rotation
+
+				self:_setStatus("Taking the egg to the friend drop")
+				self:_tweenRoot(W, function()
+					if self:_isCarryWorkerCurrent(s) then
+						task.spawn(self._handOffEgg, self, s, _, W)
+					end
+				end, nil, { flightProfile = true })
+
+				return
+			end
+
+			local _ = self:_resolveSafeCFrame(d)
+
+			if not _ then
+				self:_releaseCarryWorker(s)
+				self:_finish("Safe destination unavailable")
+
+				return
+			end
+
+			self:_setStatus("Returning to safe area")
+			self:_tweenRoot(_, function()
+				if self:_isCarryWorkerCurrent(s) then
+					self:_finalizeReturn(s)
+				end
+			end, nil, { flightProfile = true })
+		end
+
+		F7._handOffEgg = function(_, s, W, d)
+			local function M()
+				local I = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+				if not I then
+					return false
+				end
+
+				I.CFrame = d
+				I.AssemblyLinearVelocity = Vector3.zero
+				I.AssemblyAngularVelocity = Vector3.zero
+
+				return true
+			end
+			local function d()
+				local I = a.ReadFieldEgg(W)
+
+				return I ~= nil and I.State == l.States.Carried and I.CarrierUserId == LocalPlayer.UserId
+			end
+
+			_:_setStatus("Dropping the egg for a friend")
+
+			local I = 0.1
+
+			pcall(function()
+				I = LocalPlayer:GetNetworkPing() or 0.1
+			end)
+
+			local Q = os.clock() + math.max(0.3, 0.2 + 2 * I)
+
+			while os.clock() < Q do
+				if not M() then
+					break
+				end
+
+				RunService.Heartbeat:Wait()
+			end
+
+			_.skippedEggs[W] = os.clock() + 1800
+			_:_reportStolen()
+
+			local I = false
+
+			for Q = 1, 4 do
+				M()
+
+				if not d() then
+					I = true
+
+					break
+				end
+
+				pcall(a.DropFieldEgg, "PlayerRequest")
+
+				local M = os.clock() + 0.6
+
+				repeat
+					RunService.Heartbeat:Wait()
+					I = not d()
+				until I or os.clock() >= M
+
+				if I then
+					break
+				end
+			end
+
+			if not I then
+				_.skippedEggs[W] = nil
+
+				if _:_isCarryWorkerCurrent(s) then
+					_:_releaseCarryWorker(s)
+					_:_finish("Friend drop failed — retrying")
+				end
+
+				return
+			end
+
+			local s = os.clock() + 1
+
+			while _.carry.active and os.clock() < s do
+				RunService.Heartbeat:Wait()
+			end
+
+			_.carry.active = false
+			_.carry.uid = nil
+			_.stats.lastResult = "Dropped for a friend"
+
+			local s = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			local W = s and _:_resolveSafeCFrame(s)
+
+			if not W then
+				_:_finish("Dropped for a friend")
+
+				return
+			end
+
+			_:_setStatus("Egg dropped for a friend, heading back")
+			_:_tweenRoot(W, nil, nil, { flightProfile = true, onDone = function()
+				_:_finish("Dropped for a friend")
+			end })
+		end
+
+		function F7:_reportStolen()
+			local _ = self.activeTarget
+
+			if type(_) ~= "table" or not _.Uid then
+				return
+			end
+
+			if self.reportedUid == _.Uid then
+				return
+			end
+
+			self.reportedUid = _.Uid
+			task.delay(1.5, function()
+				if self.destroyed then
+					return
+				end
+
+				local s = nil
+
+				pcall(function()
+					s = a.ReadFieldEgg(_.Uid)
+				end)
+
+				local W = type(s) == "table" and (s.State == l.States.Slot or s.State == l.States.Dropped or s.State == l.States.GuardCarried or (s.State == l.States.Carried and s.CarrierUserId ~= LocalPlayer.UserId))
+
+				if W then
+					self.reportedUid = nil
+					self.stats.deliveryFailed = (self.stats.deliveryFailed or 0) + 1
+					self.stats.lastResult = "Delivery failed — retrying"
+					self.walkRegrab = self.walkRegrab or {}
+					self.walkRegrab[_.Uid] = os.clock() + 90
+
+					if s.State == l.States.Carried and s.CarrierUserId ~= LocalPlayer.UserId then
+						local s = genv.__GehleeV4PlayerSteal
+
+						if s and s:intercept(_.Uid, true) then
+							self.stats.snatchChases = (self.stats.snatchChases or 0) + 1
+							self.stats.lastResult = "Egg stolen - chasing the carrier"
+							self:_notify()
+
+							return
+						end
+					end
+
+					self:_markRescue(_.Uid)
+					self:_notify()
+
+					if self.enabled and not self.running then
+						self:_schedule()
+					end
+
+					return
+				end
+
+				self.stats.delivered = (self.stats.delivered or 0) + 1
+
+				local s = genv.__GehleeV4Webhook
+
+				if not s then
+					return
+				end
+
+				local W, d = pcall(self.catalog.resolve, _)
+
+				pcall(s.stolen, _, W and d or nil, nil)
+			end)
+		end
+		function F7:_startWatchdog()
+			if self.watchdogRunning then
+				return
+			end
+
+			self.watchdogRunning = true
+			task.spawn(function()
+				local _, s, W = nil, os.clock(), nil
+				local d, M, I = nil, nil, nil
+
+				while v20() and not self.destroyed and self.enabled do
+					task.wait(2)
+                    if not v20() or self.destroyed or not self.enabled then break end
+                    local healthy, failure = pcall(function()
+
+					if self:_eventBlocksSteal() and self.enabled and (self.running or (self.carry and self.carry.active)) then
+						pcall(function()
+							self:_invalidateCarryWorker()
+						end)
+						self.carry.active = false
+						self:_finish("Paused - race/event in progress")
+						self:_releaseOperation()
+					end
+
+					if self.running and not self.carry.active and not t8.stealCarrying() then
+						local Q = t8.blocker("auto_steal")
+
+						if Q then
+							self:_finish("Yielding to " .. t8.TITLES[Q])
+						end
+					end
+
+					local Q = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+					local x = tostring(self.stats.status)
+
+					if self.enabled and not self._s2rInstantToken and Q and Q.Position.Y > 5000 and self._boostHopUid == nil and not self._recalling then
+						if self._biomeStrandedSince and os.clock() - self._biomeStrandedSince >= 2 then
+							self._biomeStrandedSince = nil
+							self.stats.watchdogResets = (self.stats.watchdogResets or 0) + 1
+							self:_setStatus("Leaving the portal biome")
+							self:_mutePortalFx(true)
+							pcall(self._crossPortal, self, F("FuseBiomeZone", "ExitPart"), nil, 8)
+							self:_mutePortalFx(false)
+
+							if self.running then
+								self:_finish("Left the portal biome")
+							end
+						else
+							self._biomeStrandedSince = self._biomeStrandedSince or os.clock()
+						end
+					else
+						self._biomeStrandedSince = nil
+					end
+
+					if self.enabled and self.running and not self._s2rInstantToken and not self.carry.active and self.carryAttemptToken == nil and self._instantReturnToken == nil and not self._captureHoldUid and Q and x == d and M and (Q.Position - M).Magnitude < 3 then
+						if os.clock() - I > 12 then
+							d, M, I = nil, nil, nil
+							_ = nil
+							self.stats.watchdogResets = (self.stats.watchdogResets or 0) + 1
+							pcall(function()
+								self:_invalidateCarryWorker()
+							end)
+							self:_finish("Stuck - retrying")
+							self:_releaseOperation()
+						end
+					else
+						d, M, I = x, Q and Q.Position, os.clock()
+					end
+
+					if not self.enabled or self._captureHoldUid or self._s2rInstantToken then
+						_, W = nil, nil
+					elseif self.running then
+						W = nil
+
+						local F = tostring(self.activeTarget and self.activeTarget.Uid) .. "|" .. tostring(self.carry.active)
+
+						if F ~= _ then
+							_, s = F, os.clock()
+						elseif os.clock() - s > 60 then
+							_ = nil
+							self.stats.watchdogResets = (self.stats.watchdogResets or 0) + 1
+
+							local F = self.activeTarget and self.activeTarget.Uid
+
+							if F and not self.carry.active then
+								self.skippedEggs[F] = os.clock() + 45
+
+								if self.tweenRecoveryUid == F then
+									self.tweenRecoveryUid = nil
+								end
+							end
+
+							pcall(function()
+								self:_invalidateCarryWorker()
+							end)
+							self:_finish("Stuck — retrying")
+						end
+					else
+						_ = nil
+
+						local F, candidate = pcall(self._chooseTarget, self)
+
+						if self:_wallOpen() and F and candidate ~= nil then
+							W = W or os.clock()
+
+							if os.clock() - W > 6 then
+								W = nil
+								self.stats.watchdogResets = (self.stats.watchdogResets or 0) + 1
+								self:_releaseOperation()
+								self:_schedule()
+							end
+						else
+							W = nil
+						end
+					end
+                    end)
+                    if not healthy then
+                        self.stats.lastError = "Auto Steal watchdog: " .. tostring(failure)
+                        if os.clock() - (self._watchdogErrorAt or -math.huge) >= 10 then
+                            self._watchdogErrorAt = os.clock()
+                            warn("[Gehlee Auto Steal] " .. self.stats.lastError)
+                        end
+                        if not self.running then self:_queueAutoStealWake(1) end
+                    end
+				end
+
+				self.watchdogRunning = false
+			end)
+		end
+		function F7:_finalizeReturn(F)
+			if not self:_isCarryWorkerCurrent(F) then
+				return
+			end
+
+			if not self.carry.active then
+				self:_releaseCarryWorker(F)
+				self:_reportStolen()
+				self:_finish("Safe return complete")
+
+				return
+			end
+
+			self:_setStatus("Validating safe arrival")
+
+			local _ = os.clock()
+			local s = os.clock() + 6
+
+			while self:_isCarryWorkerCurrent(F) and self.carry.active and os.clock() < s do
+				local s = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+				if not s then
+					self:_releaseCarryWorker(F)
+					self:_finish("Character unavailable")
+
+					return
+				end
+
+				if not self:_isInSafeArea(s) then
+					self:_setStatus("Rollback detected — returning again")
+					self:_releaseCarryWorker(F)
+					task.defer(function()
+						if not self.destroyed and self.enabled and self.carry.active then
+							self:_returnToSafe()
+						end
+					end)
+
+					return
+				end
+
+				if os.clock() - _ >= 0.35 then
+					self:_setStatus("Waiting for deposit")
+				end
+
+				task.wait(0.08)
+			end
+
+			if not self:_isCarryWorkerCurrent(F) then
+				return
+			end
+
+			if not self.carry.active then
+				self:_releaseCarryWorker(F)
+				self:_reportStolen()
+				self:_finish("Safe return complete")
+
+				return
+			end
+
+			self:_setStatus("Deposit pending — validating again")
+			task.defer(function()
+				if self:_isCarryWorkerCurrent(F) and self.carry.active then
+					self:_finalizeReturn(F)
+				end
+			end)
+		end
+		function F7:_finish(F)
+			self._reStealUntil = nil
+			if self.onFinish then pcall(self.onFinish, F) end
+			self._walkHunt = nil
+
+			if F == "Safe return complete" then
+				genv.__GehleeV4LastStealWorld = "normal"
+			end
+
+			local _ = genv.__GehleeV4GodMode
+
+			if _ and _.eggRuntime == self then
+				_:stopDefend()
+			end
+
+			if self._fpOn then
+				self.config.speed = self._fpSavedSpeed
+				self._fpOn = nil
+				self._fpSavedSpeed = nil
+				genv.__GehleeV4FastPull = nil
+			end
+
+			self:_noteLowSpeedOutcome(F)
+			self:_hideTreadmillDecoy()
+			self._forestDropInProgress = nil
+			self._instantReturnToken = nil
+			self.boostedUid = nil
+			self:_invalidateCarryWorker()
+			self.planGeneration += 1
+			self:_cancelTween(F)
+
+			local carryReadOk, carryState = pcall(a.ReadCarryState)
+
+			if not self.enabled or (carryReadOk and type(carryState) == "table" and (not carryState.IsCarrying or carryState.Uid ~= self.carry.uid)) then
+				self.carry.generation += 1
+				self.carry.active = false
+				self.carry.uid = nil
+			end
+
+			self:_setStatus(self.enabled and "Searching" or "Idle")
+
+			if self.enabled then
+				task.delay(genv.__GehleeV4AdminBoost == true and 0 or 0.05, function()
+					if self.destroyed or not self.enabled then
+						self:_releaseOperation()
+
+						return
+					end
+
+					self:_schedule()
+				end)
+			end
+		end
+		function F7:_scheduleMovementRetry()
+			if self.movementRetryPending or self.destroyed or not self.enabled then
+				return
+			end
+
+			self.movementRetryPending = true
+			task.delay(0.2, function()
+				self.movementRetryPending = false
+
+				if not self.destroyed and self.enabled then
+					self:_schedule()
+				end
+			end)
+		end
+		function F7:_eggCount()
+			local okCount, count = pcall(function()
+				local s = 0
+
+				for W in pairs(require(ReplicatedStorage.Shared.Save).Peek().EggInventory or {}) do
+					s += 1
+				end
+
+				return s
+			end)
+
+			return okCount and count or nil
+		end
+		function F7.maxInventory()
+			if F7._maxInventory == nil then
+				local okLimit, limits = pcall(function()
+					return require(ReplicatedStorage.Shared.Types.Eggs)
+				end)
+
+				F7._maxInventory = okLimit and type(limits) == "table" and tonumber(limits.MAX_INVENTORY) or false
+			end
+
+			return F7._maxInventory or nil
+		end
+		function F7.resetSoon()
+			local okReset, seconds = pcall(function()
+				local s = require(ReplicatedStorage.Shared.Util.AreaEggCycle)
+				local W = Workspace:GetServerTimeNow()
+
+				return s.NextResetTime(W) - W
+			end)
+
+			return okReset and type(seconds) == "number" and seconds > 0 and seconds < (genv.__GehleeV4AdminBoost == true and 2 or 10)
+		end
+		function F7:_eggInventoryFull()
+			local F = self.eggFullCount
+
+			if not F then
+				local R = not self._bagCapUnsure and F7.maxInventory()
+				local _ = R and self:_eggCount()
+
+				if not (_ and _ >= R) then
+					return false
+				end
+
+				self.eggFullCount, F = _, _
+			end
+
+			local R = self:_eggCount()
+
+			if not R then
+				return true
+			end
+
+			if R > F then
+				self.eggFullCount, self._eggFullHold, self._bagCapUnsure = nil, false, true
+
+				return false
+			end
+
+			if R >= F then
+				self._eggFullHold = true
+
+				local _ = genv.__GehleeV4IsAutoSellEggBusy and genv.__GehleeV4IsAutoSellEggBusy()
+
+				self._eggFullAt = self._eggFullAt or os.clock()
+
+				if not _ and os.clock() - self._eggFullAt > 60 and self._fullConfirmedCount ~= R then
+					self.eggFullCount, self._eggFullHold, self._eggFullAt, self._bagCapUnsure = nil, false, nil, true
+
+					return false
+				end
+
+				return true
+			end
+
+			self._eggFullAt = nil
+			self._fullConfirmedCount = nil
+
+			if self._eggFullHold then
+				local _ = genv.__GehleeV4IsAutoSellEggBusy and genv.__GehleeV4IsAutoSellEggBusy()
+
+				if _ and R > F - F7.EGG_FREE_SLOTS then
+					return true
+				end
+
+				self._eggFullHold = false
+				self.eggFullNotified = nil
+			end
+
+			return false
+		end
+		function F7:_eventBlocksSteal()
+			if LocalPlayer:GetAttribute("RaceId") ~= nil then
+				return true
+			end
+
+			if gehleeV4Config.RaceAuto == true then
+				local F = genv.__GehleeV4RaceRuntime
+
+				if F and type(F.wantsJoin) == "function" then
+					local R, wantsJoin = pcall(F.wantsJoin)
+
+					if R and wantsJoin == true then
+						return true
+					end
+				end
+			end
+
+			return false
+		end
+        -- GEHLEE_V8_SCHEDULER_ENTRY_BEGIN
+        function F7:_queueAutoStealWake(delay)
+            if self.destroyed or not self.enabled or self._autoStealWakeToken then return end
+            local token = {}
+            self._autoStealWakeToken = token
+            task.delay(math.max(0.05, tonumber(delay) or 1), function()
+                if self._autoStealWakeToken ~= token then return end
+                self._autoStealWakeToken = nil
+                if not self.destroyed and self.enabled and not self.running then self:_schedule() end
+            end)
+        end
+        function F7:_schedule()
+            if self.destroyed or not self.enabled or self.running then return end
+            if self._autoStealScheduleToken then
+                self._autoStealScheduleAgain = true
+                return
+            end
+            if (self._autoStealRetryAt or 0) > os.clock() then
+                self:_queueAutoStealWake(self._autoStealRetryAt - os.clock())
+                return
+            end
+            local token = {}
+            self._autoStealScheduleToken = token
+            local generation, character = self.planGeneration, LocalPlayer.Character
+            local ok, failure = pcall(self._scheduleStep, self)
+            if self._autoStealScheduleToken ~= token then return end
+            local again = self._autoStealScheduleAgain
+            if not ok and not self.destroyed and self.enabled
+                and self.planGeneration == generation and LocalPlayer.Character == character then
+                self.stats.lastError = "Auto Steal setup: " .. tostring(failure)
+                self.stats.lastResult = "Setup interrupted; retrying"
+                self._autoStealErrorCount = math.min((self._autoStealErrorCount or 0) + 1, 4)
+                local retryDelay = math.min(4, 0.5 * 2 ^ (self._autoStealErrorCount - 1))
+                self._autoStealRetryAt = os.clock() + retryDelay
+                local operation, coordinator, tween = self.operationToken, self.coordinator, self.activeTween
+                local cancel = self._s2rInstantCancel
+                self.planGeneration += 1
+                generation = self.planGeneration
+                -- Detach only this failed setup's state before any cleanup can
+                -- yield. A replacement character/trip must never be cleared.
+                self.operationToken, self.activeTween = nil, nil
+                self.carryWorker, self.carryAttemptToken, self.arrivalHold = nil, nil, nil
+                self.instantPhase, self.primerUid, self.targetUid = nil, nil, nil
+                self._flyDeparting = false
+                self.running, self.safeStarting, self.activeTarget = false, false, nil
+                local function current()
+                    return not self.destroyed and self.enabled and self.planGeneration == generation
+                        and LocalPlayer.Character == character and self.operationToken == nil
+                end
+                if cancel then pcall(cancel) end
+                if tween and type(tween.Cancel) == "function" then pcall(tween.Cancel, tween) end
+                if operation and coordinator then pcall(coordinator.release, coordinator, operation) end
+                for _, method in ipairs({"_stopGuardStick", "_kbCancelTimer", "_setInstantAnchored", "_hideTreadmillDecoy"}) do
+                    if not current() then break end
+                    if type(self[method]) == "function" then pcall(self[method], self, false) end
+                end
+                if current() then
+                    pcall(self._setStatus, self, "Setup interrupted; retrying")
+                    if current() then
+                        if os.clock() - (self._autoStealErrorAt or -math.huge) >= 10 then
+                            self._autoStealErrorAt = os.clock()
+                            warn("[Gehlee Auto Steal] " .. self.stats.lastError)
+                        end
+                        self:_queueAutoStealWake(retryDelay)
+                    end
+                end
+            elseif ok then
+                self._autoStealErrorCount = 0
+                self._autoStealRetryAt = nil
+                if again and not self.running then self:_queueAutoStealWake(0.1) end
+            end
+            self._autoStealScheduleToken = nil
+            if self._autoStealScheduleAgain and not self.running then self:_queueAutoStealWake(0.1) end
+            self._autoStealScheduleAgain = nil
+        end
+        -- GEHLEE_V8_SCHEDULER_ENTRY_END
+
+		function F7:_scheduleStep()
+			if not self.running then
+				self.safeStarting = false
+			end
+
+			if self.destroyed or not self.enabled or self.running then
+				return
+			end
+
+			local F = self.planGeneration
+
+			if self:_eventBlocksSteal() then
+				self:_releaseOperation()
+				self:_setStatus("Paused - race/event in progress")
+				task.delay(1, function()
+					if not self.destroyed and self.enabled and not self.running then
+						self:_schedule()
+					end
+				end)
+
+				return
+			end
+
+			if not self.carry.active and self:_eggInventoryFull() then
+				self:_releaseOperation()
+				self:_setStatus("Egg inventory full - place, hatch or sell eggs")
+
+				if not self.eggFullNotified then
+					self.eggFullNotified = true
+					pcall(function()
+						game:GetService("StarterGui"):SetCore("SendNotification", { Title = "Auto Steal", Text = "Egg inventory full. Place, hatch or sell eggs and it continues by itself.", Duration = 6 })
+					end)
+				end
+
+				task.delay(3, function()
+					if not self.destroyed and self.enabled and not self.running then
+						self:_schedule()
+					end
+				end)
+
+				return
+			end
+
+			local _, R = v8()
+
+			if not R or not _ then
+				self:_releaseOperation()
+				self:_setStatus("Character unavailable")
+                self:_queueAutoStealWake(0.5)
+
+				return
+			end
+
+			local z = genv.__GehleeV4NormalWorldReady
+
+			if type(z) == "function" and not z() then
+				self:_releaseOperation()
+				self:_setStatus("Waiting for world handover")
+
+				if not self._yieldRetryPending then
+					self._yieldRetryPending = true
+					task.delay(0.3, function()
+						self._yieldRetryPending = nil
+
+						if not self.destroyed and self.enabled then
+							self:_schedule()
+						end
+					end)
+				end
+
+				return
+			end
+
+			if self.carry.active and self.carry.uid ~= nil then
+                if self.config.stealMode == "S2RInstant" then
+                    self:_returnToSafe()
+                    return
+                end
+				self:_startMovementProtection()
+
+				if self.instantPhase == "priming" and self.carry.uid == self.primerUid then
+					return
+				end
+
+				if self:_isPrimerEgg(self.carry.uid) then
+					self:_setStatus("Dropping primer egg")
+					self.skippedEggs[self.carry.uid] = os.clock() + 30
+					pcall(a.DropFieldEgg, "PlayerRequest")
+					task.delay(0.5, function()
+						if not self.destroyed and self.enabled then
+							self:_schedule()
+						end
+					end)
+
+					return
+				end
+
+				local z = self.records[self.carry.uid] or a.ReadFieldEgg(self.carry.uid)
+				local s = type(z) == "table" and (self.riftWants[z.AssetCategory] or (self.captureObjectiveEnabled and self:_isCaptureEgg(z.Uid)) or (self.indexObjectiveEnabled and self:_isIndexObjective(z)) or (self.wispObjective and self:_isWispObjective(z)) or ((self.userStealEnabled or gehleeV4Config.SnipeDroppedEggs) and not self.riftOnly and self:_matchesNormalFilter(z, gehleeV4Config.SnipeDroppedEggs == true)))
+
+				if type(z) == "table" and not s then
+					self:_setStatus("Dropping unwanted egg")
+					self.skippedEggs[self.carry.uid] = os.clock() + 30
+					pcall(a.DropFieldEgg, "PlayerRequest")
+					task.delay(0.5, function()
+						if not self.destroyed and self.enabled then
+							self:_schedule()
+						end
+					end)
+
+					return
+				end
+
+				self:_returnToSafe()
+
+				return
+			end
+
+			if not self:_wallOpen() then
+				self:_releaseOperation()
+				self:_setStatus("Waiting for reset wall")
+                self:_queueAutoStealWake(1)
+
+				return
+			end
+
+			local z = genv.__GehleeV4PlayerSteal
+			local s = t8.blocker("auto_steal")
+			local W = not s and t8.holder("auto_steal") or nil
+
+			if s or W or (z and z.running) then
+				self:_releaseOperation()
+				self:_setStatus(s and ("Yielding to " .. t8.TITLES[s]) or W and ("Waiting for " .. t8.TITLES[W] .. " to hand over") or "Yielding to Steal Players")
+
+				if self._yieldRetryPending then
+					return
+				end
+
+				self._yieldRetryPending = true
+				task.delay((s or W) and 1 or 0.5, function()
+					self._yieldRetryPending = nil
+
+					if not self.destroyed and self.enabled then
+						self:_schedule()
+					end
+				end)
+
+				return
+			end
+
+			local z = self.tweenRecoveryUid
+
+			if not z and F7.resetSoon() then
+				self:_releaseOperation()
+				self:_setStatus("Field resets in a few seconds - waiting")
+
+				if not self._yieldRetryPending then
+					self._yieldRetryPending = true
+					task.delay(1, function()
+						self._yieldRetryPending = nil
+
+						if not self.destroyed and self.enabled then
+							self:_schedule()
+						end
+					end)
+				end
+
+				return
+			end
+
+			self:_startMovementProtection()
+
+			local s = z and (a.ReadFieldEgg(z) or self.records[z]) or nil
+
+			if z and (type(s) ~= "table" or (s.State ~= l.States.Slot and s.State ~= l.States.Dropped)
+                or (self.config.stealMode == "S2RInstant" and not self:_allowsS2RTarget(s, false))) then
+				self.tweenRecoveryUid = nil
+				z = nil
+				s = nil
+			end
+
+			if not s then
+				s = self:_chooseTarget()
+			end
+
+			local a = not z and genv.__GehleeV4CrossByAutoSteal and genv.__GehleeV4CrossByAutoSteal() and not self.manualObjectiveEnabled and not self.captureObjectiveEnabled
+
+			if a then
+				local W = LocalPlayer:GetAttribute("HalloweenCarrying") == true
+				local d = not W and genv.__GehleeV4HwCrossPick and genv.__GehleeV4HwCrossPick() or nil
+
+				if W or (d and self:_crossPrefersHalloween(s, d, R)) then
+					return self:_adminHwSteal(d)
+				end
+			end
+
+			if not s then
+                self:_queueAutoStealWake(1)
+				if self.stats.matching == 0 and self.stats.available > 0 and (self.config.minWeightKg or 0) > 0 then
+					self:_setStatus(string.format("No eggs ≥ %dKg", self.config.minWeightKg))
+				else
+					self:_setStatus("No matching eggs")
+				end
+
+				self:_releaseOperation()
+
+				if a then
+					task.delay(0.3, function()
+						if not self.destroyed and self.enabled and not self.running then
+							self:_schedule()
+						end
+					end)
+
+					return
+				end
+
+                if self:_isS2RTreadmillParked() then
+                    self:_setStatus("Training; waiting for matching eggs")
+                    return
+                end
+				if not self.activeTween and self:_isInField(R) and not self:_isInSafeArea(R) then
+					local a = self:_resolveSafeCFrame(R)
+
+					if a then
+						self:_tweenRoot(a, nil, nil, { silent = true, flightProfile = true, abort = function()
+							return not self.enabled or self.running
+						end })
+					end
+				end
+
+				return
+			end
+
+			if self.treadmillManager and self.treadmillManager:isEngaged() then
+				self.treadmillManager:_cancelIdle(false) -- Owned _leftTreadmill requests the asynchronous dismount.
+			end
+
+			if self.destroyed or not self.enabled or self.running or self.planGeneration ~= F then
+				return
+			end
+
+			local a, W = self:_acquireOperation()
+
+			if not a then
+				self:_setStatus("Waiting · " .. tostring(W or "another operation"))
+				task.delay(0.5, function()
+					if not self.destroyed and self.enabled and self.planGeneration == F then
+						self:_schedule()
+					end
+				end)
+
+				return
+			end
+
+			self.safeStarting = true
+			self.running = true
+			self.activeTarget = s
+			self:_dropRescue(s.Uid)
+
+			local a = self:_candidateMetadata(s) or {}
+
+			self.stats.lastTarget = string.format("%s · %s · %s", tostring(a.rarity or "Unknown rarity"), tostring(a.name or s.AssetCategory or "Egg"), tostring(s.AreaId or "Unknown area"))
+
+			if z then
+				self.safeStarting = false
+				self.stats.lastResult = "Recovering with tween"
+
+				local a = self:_resolveEggDestination(s, R, _)
+
+				if not a then
+					self.tweenRecoveryUid = nil
+					self:_finish("Recovery destination unavailable")
+
+					return
+				end
+
+				self:_setStatus("Returning to egg")
+				self:_tweenRoot(a, function()
+					if self.tweenRecoveryUid == s.Uid then
+						self:_requestCarry(s, false)
+					end
+				end, nil, { holdAfterArrival = true, holdUid = s.Uid, flightProfile = true, carryTarget = s })
+
+				return
+			end
+
+			if not self:_leftTreadmill(R) then
+				self.running = false
+				self.safeStarting = false
+				self.activeTarget = nil
+				self:_releaseOperation()
+				self:_setStatus("Preparing steal")
+				task.delay(0.3, function()
+					if not self.destroyed and self.enabled and self.planGeneration == F then
+						self:_schedule()
+					end
+				end)
+
+				return
+			end
+
+            self._s2rTreadmillParked = nil
+            if self.config.stealMode == "S2RInstant" then
+                self:_runS2RInstant(s, false)
+                return
+            end
+            self:_startMovementProtection()
+			if genv.__GehleeV4AdminBoost == true and not (self.captureObjectiveEnabled and self:_isCaptureEgg(s.Uid)) then
+				self.safeStarting = false
+				task.spawn(self._adminSteal, self, s)
+
+				return
+			end
+
+			local a = R.Position - t
+			local z = Vector2.new(a.X, a.Z).Magnitude
+			local a = false
+			local W = self:_boostOn() and not self:_usesPortalBoost(s)
+
+			self._walkHunt = nil
+
+			if self:_usesPortalBoost(s) then
+				a = true
+			end
+
+			if s.State == l.States.Dropped then
+				a = true
+			end
+
+			local d = (self.config.stealMode == "Fly" or W) and os.clock() - (genv.__GehleeV4WorldFlipAt or -99.0) < 6
+
+			if d and not self:_isInSafeArea(R) then
+				local M = self:_resolveSafeCFrame(R)
+
+				if M then
+					self:_teleportRoot(R, _, M)
+					self.lastSafeRepositionAt = os.clock()
+				end
+			end
+
+			if d then
+				a = true
+			end
+
+			if self.config.stealMode == "Fly" or W then
+				local d = s.BottomCFrame or s.BoundsCFrame
+
+				if d then
+					local M = d.Position - R.Position
+
+					if Vector2.new(M.X, M.Z).Magnitude < z then
+						a = true
+					end
+				end
+			end
+
+			if not a and z > 3 and os.clock() - (self.lastSafeRepositionAt or 0) > 5 then
+				local a = self:_resolveSafeCFrame(R)
+
+				if a then
+					self.safeStarting = true
+					self.running = true
+					self.lastSafeRepositionAt = os.clock()
+					self:_setStatus("Repositioning to safe area")
+					self:_tweenRoot(a, function()
+						self:_groundSnap()
+						self.safeStarting = false
+						self.running = false
+						task.delay(0.15, function()
+							if not self.destroyed and self.enabled and self.planGeneration == F then
+								self:_schedule()
+							end
+						end)
+					end, nil, { flightProfile = true })
+
+					return
+				end
+			end
+
+			self.safeStarting = false
+
+			if self:_wantsWalkRegrab(s, R) then
+				self.instantPhase = "hunting"
+				self.primerUid = nil
+				self.targetUid = nil
+				self.activeTarget = s
+				self.running = true
+				self:_installGuardHitDistanceBoost()
+				self:_startMovementProtection()
+				self.stats.lastResult = "Re-grabbing on foot"
+				task.spawn(function()
+					local a, z = pcall(self._walkRegrab, self, s)
+
+					if not a then
+						warn("[Gehlee Steal] walk regrab error: " .. tostring(z))
+
+						if not self.destroyed and self.enabled then
+							self:_finish("Steal error — retrying")
+						end
+					end
+				end)
+
+				return
+			end
+
+			local a = s.State == l.States.Dropped and (s.BottomCFrame or s.BoundsCFrame)
+			local z = a and self:_usesPortalBoost(s) and not self:_inSnipeZone(s) and (a.Position - t).Magnitude > F7.LANE_DROP_RANGE
+
+			if s.State == l.States.Dropped and not z then
+				self.instantPhase = "hunting"
+				self.primerUid = nil
+				self.targetUid = nil
+				self.activeTarget = s
+				self.running = true
+				self:_installGuardHitDistanceBoost()
+				self:_startMovementProtection()
+				self.stats.lastResult = "Sniping drop"
+				task.spawn(self._snipeGrab, self, s)
+
+				return
+			end
+
+			if self:_usesPortalBoost(s) then
+				self.instantPhase = "hunting"
+				self.primerUid = nil
+				self.targetUid = nil
+				self.activeTarget = s
+				self._flyDeparting = false
+				self.running = true
+				self:_installGuardHitDistanceBoost()
+				self:_startMovementProtection()
+				self:_showTreadmillDecoy()
+				self.stats.lastResult = "Low Speed Boost"
+				task.spawn(self._portalBoostSteal, self, s)
+
+				return
+			end
+
+			if self.config.stealMode == "Fly" or W then
+				self.instantPhase = "priming"
+				self.primerUid = nil
+				self.targetUid = s.Uid
+				self.activeTarget = s
+				self._flyDeparting = false
+				self._walkHunt = W
+
+				if W then
+					self:_showTreadmillDecoy()
+				end
+
+				self.lowFpsPrime = false
+				self:_installGuardHitDistanceBoost()
+				self:_startMovementProtection()
+				self.stats.lastResult = W and "Low Speed walking" or "High Speed departing"
+				self:_startPrimerTargetHunt()
+
+				return
+			end
+
+			local a = self:_choosePrimerEgg(s.Uid)
+
+			if not a then
+				self.running = false
+				self.activeTarget = nil
+				self:_releaseOperation()
+				self:_setStatus("Preparing steal")
+				task.delay(0.25, function()
+					if not self.destroyed and self.enabled and self.planGeneration == F then
+						self:_schedule()
+					end
+				end)
+
+				return
+			end
+
+			self.instantPhase = "priming"
+			self.primerUid = a.Uid
+			self.primerUids[a.Uid] = os.clock() + 120
+			self.skippedEggs[a.Uid] = os.clock() + 30
+			self.targetUid = s.Uid
+			self.activeTarget = a
+			self._flyDeparting = (self.config.stealMode == "Fly")
+
+			if self.config.stealMode == "Instant" then
+				self:_showTreadmillDecoy()
+			end
+
+			self:_installGuardHitDistanceBoost()
+			self.stats.lastResult = self.config.stealMode .. " priming"
+			self.lowFpsPrime = v63() < 30
+
+			local F = self:_resolveEggDestination(a, R, _)
+
+			if not F then
+				self:_finish("Steal unavailable — retrying")
+
+				return
+			end
+
+			if self.lowFpsPrime then
+				self:_setStatus("Preparing steal")
+				self:_tweenRoot(F, function()
+					if self.instantPhase == "priming" and self.primerUid == a.Uid then
+						self:_requestCarry(a, false)
+					end
+				end, nil, { holdAfterArrival = true, holdUid = a.Uid, flightProfile = true, carryTarget = a })
+
+				return
+			end
+
+			if self.config.stealMode == "Fly" then
+				self:_setStatus("Preparing steal")
+
+				local z = self:_glideRoot(F, function()
+					return self.destroyed or not self.enabled or self.instantPhase ~= "priming" or self.primerUid ~= a.Uid
+				end)
+
+				if not z then
+					if self.instantPhase == "priming" and self.primerUid == a.Uid then
+						self:_finish("Steal unavailable — retrying")
+					end
+
+					return
+				end
+
+				self:_setArrivalHold(F, a.Uid)
+				self:_requestCarry(a, true)
+
+				return
+			end
+
+			self:_setStatus("Preparing steal")
+
+			if not self:_teleportRoot(R, _, F) then
+				self:_finish("Steal unavailable — retrying")
+
+				return
+			end
+
+			self:_setArrivalHold(F, a.Uid)
+			self:_requestCarry(a, true)
+		end
+		function F7:_leftTreadmill(a)
+			local F = self.treadmillManager
+
+			if not F or F.destroyed then
+				return true
+			end
+
+			local R = F.activeTreadmill ~= nil or F.treadmillEquipPending == true or F.travelingToTreadmill == true or (a ~= nil and a.Anchored)
+
+			if not R then
+				self.treadmillLeaveAt = nil
+
+				return true
+			end
+
+			local R = os.clock()
+
+			self.treadmillLeaveAt = self.treadmillLeaveAt or R
+			F.idleGeneration += 1
+
+			if not self.treadmillDoffBusy and R - (self.treadmillDoffAt or 0) > 0.6 then
+				self.treadmillDoffBusy = true
+				self.treadmillDoffAt = R
+				task.spawn(function()
+					pcall(F._requestUnequip, F)
+					pcall(F._syncActiveTreadmillSnapshot, F)
+					self.treadmillDoffBusy = false
+				end)
+			end
+
+			if a and a.Anchored and R - self.treadmillLeaveAt > 1 then
+				pcall(function()
+					a.Anchored = false
+				end)
+			end
+
+			if R - self.treadmillLeaveAt > 8 then
+				self.treadmillLeaveAt = nil
+
+				return true
+			end
+
+			return false
+		end
+		function F7:_reconcileRunningState()
+			if self.destroyed then
+				return
+			end
+
+			local a = (self.userStealEnabled == true) or (next(self.riftWants) ~= nil) or (self.indexObjectiveEnabled == true) or (self.wispObjective ~= nil) or (self.manualObjectiveEnabled == true) or (self.captureObjectiveEnabled == true) or (gehleeV4Config.SnipeDroppedEggs == true)
+
+			if self.enabled == a then
+				if self.enabled then
+                    if self.userStealEnabled or gehleeV4Config.SnipeDroppedEggs then self:_startWatchdog() end
+					self:_refreshCounts()
+					self:_schedule()
+				end
+
+				return
+			end
+
+			self.enabled = a
+
+			if self.enabled then
+				if LocalPlayer.Character then
+					W7(LocalPlayer.Character)
+					M7(self, LocalPlayer.Character)
+				end
+
+				self:_installGuardHitDistanceBoost()
+				self:_startMovementProtection()
+				pcall(self._installPromptFilter, self)
+
+				if gehleeV4Config.SnipeDroppedEggs then
+					self:_installSnipeHook()
+				end
+
+				if self.userStealEnabled or gehleeV4Config.SnipeDroppedEggs then
+					self:_startWatchdog()
+				end
+
+				self:_setStatus("Searching")
+				self:_schedule()
+			else
+				self:_removeSnipeHook()
+
+				if self._instantReturnToken ~= nil and self.carry.uid ~= nil and not self._externalDeliver then
+					self._externalDeliver = true
+					self.planGeneration += 1
+					self.running = false
+					self:_setStatus("Finishing target egg")
+					task.spawn(function()
+						local a = os.clock() + 45
+
+						while self._instantReturnToken ~= nil and os.clock() < a and not self.destroyed do
+							task.wait(0.2)
+						end
+
+						if self.destroyed or self.enabled then
+							return
+						end
+
+						self._externalDeliver = nil
+						self._instantReturnToken = nil
+						self.carry.active = false
+						self.carry.uid = nil
+						self.activeTarget = nil
+						self:_cleanupInstantSteal()
+						self:_removeGuardHitDistanceBoost()
+						self:_restoreTreadmillVisualAtSafe()
+						self:_stopMovementProtection()
+						v2313(self)
+						self:_releaseOperation()
+						self:_setStatus("Idle")
+					end)
+					self:_refreshCounts()
+
+					return
+				end
+
+				local a = self:_needsHiddenRecall()
+
+				if a then
+					self._recalling = true
+				end
+
+				self.planGeneration += 1
+				self.carry.generation += 1
+				self:_cleanupInstantSteal()
+
+				if not a then
+					self:_removeGuardHitDistanceBoost()
+				end
+
+				self:_invalidateCarryWorker()
+				self._forestDropInProgress = nil
+				self._instantReturnToken = nil
+				self.carry.active = false
+				self.carry.uid = nil
+				self.tweenRecoveryUid = nil
+				self.claimPresentationSuppression = nil
+				self.safeStarting = false
+				self.movementRetryPending = false
+				self:_cancelTween("Disabled")
+				self:_releaseOperation()
+
+				if a then
+					self:_recallHidden()
+				else
+					self:_restoreTreadmillVisualAtSafe()
+					self:_stopMovementProtection()
+					v2313(self)
+				end
+
+				self.activeTarget = nil
+				self.running = false
+				self:_setStatus("Idle")
+			end
+
+			self:_refreshCounts()
+		end
+		function F7:_installSnipeHook()
+			if self._snipeHookConns then
+				return
+			end
+
+			self._snipeHookConns = {}
+
+			local a, F = pcall(function()
+				return require(ReplicatedStorage.Client.EggState)
+			end)
+
+			if not a or type(F) ~= "table" then
+				return
+			end
+
+			local function a()
+				if self.destroyed or not self.enabled or not gehleeV4Config.SnipeDroppedEggs or LocalPlayer:GetAttribute("InHalloweenDimension") == true or genv.__GehleeV4OnTrain == true then
+					return
+				end
+
+				if LocalPlayer:GetAttribute("InPumpkinArena") == true or (genv.__GehleeV4BossBusy and genv.__GehleeV4BossBusy()) then
+					return
+				end
+
+				if genv.__GehleeV4ManorBusy and genv.__GehleeV4ManorBusy() then
+					return
+				end
+
+				if self._snipeBusy or self.running then
+					return
+				end
+
+				if self:_eventBlocksSteal() then
+					return
+				end
+
+				if self.config.stealMode == "S2RInstant" or (self.userStealEnabled and not self.riftOnly and self:hasPriorityRareEgg()) then
+					self:_schedule()
+
+					return
+				end
+
+				local R = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+				if not R then
+					return
+				end
+
+				local z
+
+				for s, s in pairs(self.records) do
+					if s.State == l.States.Dropped and s.BottomCFrame and s.CarrierUserId ~= LocalPlayer.UserId and not self:isSkippedEgg(s.Uid) and self:_matchesNormalFilter(s, true) and self:_inSnipeZone(s) then
+						local W = (s.BottomCFrame.Position - R.Position).Magnitude
+
+						if not z or W < _ then
+							z, _ = s, W
+						end
+					end
+				end
+
+				if not z then
+					return
+				end
+
+				for R = 1, 3 do
+					task.spawn(function()
+						pcall(function()
+							n.AskFieldEggCarry:InvokeServer({ Uid = z.Uid })
+						end)
+					end)
+				end
+
+				self._snipeBusy = true
+				self.running = true
+				self.activeTarget = z
+				self.instantPhase = "hunting"
+				self.stats.lastResult = "Sniping drop"
+				task.spawn(function()
+					pcall(self._snipeGrab, self, z)
+					self._snipeBusy = false
+				end)
+			end
+
+			for R, R in ipairs({ "FieldShifted", "CarryChanged", "FieldClaimed", "FieldRefreshed", "SnapshotRefreshed" }) do
+				local z = F[R]
+
+				if type(z) == "table" and type(z.Connect) == "function" then
+					local F, R = pcall(function()
+						return z:Connect(a)
+					end)
+
+					if F and R then
+						table.insert(self._snipeHookConns, R)
+					end
+				end
+			end
+		end
+		function F7:_removeSnipeHook()
+			if not self._snipeHookConns then
+				return
+			end
+
+			for a, a in ipairs(self._snipeHookConns) do
+				pcall(function()
+					a:Disconnect()
+				end)
+			end
+
+			self._snipeHookConns = nil
+			self._snipeBusy = false
+		end
+		function F7:setEnabled(a)
+			self.userStealEnabled = a == true
+			self:_reconcileRunningState()
+			self:_reconcileScramblePortal()
+		end
+		function F7:_neutralizeScramblePortal(a)
+			if typeof(a) ~= "Instance" or a.Name ~= "ScrambleArenaPortal" then
+				return
+			end
+
+			self.scramblePortalOriginals = self.scramblePortalOriginals or {}
+
+			for F, F in ipairs(a:GetDescendants()) do
+				if F:IsA("BasePart") then
+					if self.scramblePortalOriginals[F] == nil then
+						local a = F:GetAttribute("GehleeV4PortalOrig")
+
+						if type(a) == "string" then
+							self.scramblePortalOriginals[F] = { CanCollide = a:sub(1, 1) == "1", CanTouch = a:sub(2, 2) == "1" }
+						else
+							self.scramblePortalOriginals[F] = { CanCollide = F.CanCollide, CanTouch = F.CanTouch }
+							pcall(F.SetAttribute, F, "GehleeV4PortalOrig", (F.CanCollide and "1" or "0") .. (F.CanTouch and "1" or "0"))
+						end
+					end
+
+					pcall(function()
+						F.CanCollide = false
+						F.CanTouch = false
+					end)
+				end
+			end
+		end
+		function F7:_startScramblePortalBypass()
+			local a = workspace:FindFirstChild("ScrambleArenaPortal")
+
+			if a then
+				self:_neutralizeScramblePortal(a)
+			end
+
+			if not self.scramblePortalConn then
+				self.scramblePortalConn = workspace.ChildAdded:Connect(function(a)
+					if self.destroyed or not self.userStealEnabled or self._scramblePortalHold then
+						return
+					end
+
+					if a.Name ~= "ScrambleArenaPortal" then
+						return
+					end
+
+					for F, F in ipairs({ 0, 0.15, 0.4, 0.8 }) do
+						task.delay(F, function()
+							if not self.destroyed and self.userStealEnabled and not self._scramblePortalHold and a.Parent then
+								self:_neutralizeScramblePortal(a)
+							end
+						end)
+					end
+				end)
+			end
+		end
+		function F7:_stopScramblePortalBypass()
+			if self.scramblePortalConn then
+				pcall(self.scramblePortalConn.Disconnect, self.scramblePortalConn)
+				self.scramblePortalConn = nil
+			end
+
+			if self.scramblePortalOriginals then
+				for a, F in pairs(self.scramblePortalOriginals) do
+					if typeof(a) == "Instance" and a.Parent then
+						pcall(function()
+							a.CanCollide = F.CanCollide
+							a.CanTouch = F.CanTouch
+							a:SetAttribute("GehleeV4PortalOrig", nil)
+						end)
+					end
+				end
+
+				self.scramblePortalOriginals = nil
+			end
+		end
+		function F7:_reconcileScramblePortal()
+			if self.userStealEnabled and not self._scramblePortalHold then
+				self:_startScramblePortalBypass()
+			else
+				self:_stopScramblePortalBypass()
+			end
+		end
+		function F7:_resolveWeightKg(a)
+			local F = self.weightUtil
+
+			if not F or not a or not a.AssetScale or not a.AssetCategory then
+				return nil
+			end
+
+			local R, z = pcall(F.WeightKgForScale, a.AssetCategory, a.AssetScale)
+
+			if R and type(z) == "number" then
+				return z
+			end
+
+			return nil
+		end
+		function F7:setHeaviestFirst(a)
+			self.config.heaviestFirst = a == true
+
+			if self.config.heaviestFirst then
+				self.config.highestValueFirst = false
+			end
+
+			self:_schedule()
+		end
+		function F7:setHighestValueFirst(a)
+			self.config.highestValueFirst = a == true
+
+			if self.config.highestValueFirst then
+				self.config.heaviestFirst = false
+			end
+
+			self:_schedule()
+		end
+
+		local a = { rarity = true, name = true, kg = true, mutation = true, value = true, placed = true, icon = true }
+
+		v2310 = function(F)
+			if type(F) ~= "table" then
+				return nil
+			end
+
+			local R = F.Category or F.AssetCategory
+			local z = tonumber(F.Scale or F.AssetScale)
+
+			if type(R) ~= "string" or not z or z <= 0 then
+				return nil
+			end
+
+			local _ = type(F.Mutations) == "table" and table.clone(F.Mutations) or {}
+			local s = { Category = R, Scale = z, Mutations = _, BaseMutation = type(F.BaseMutation) == "string" and F.BaseMutation or nil }
+			local F, R = pcall(c.MutationOnlyRatePerSecond, s)
+
+			return F and type(R) == "number" and R or nil
+		end
+
+		local F
+
+		local function R(z)
+			if type(F) ~= "table" then
+				local _, s = pcall(require, ReplicatedStorage.Packages.FormatNumber.Simple)
+
+				if _ and type(s.FormatCompact) == "function" then
+					F = s
+				end
+			end
+
+			if F then
+				local _, s = pcall(F.FormatCompact, z, ".#")
+
+				if _ and type(s) == "string" then
+					return s
+				end
+			end
+
+			local F = math.abs(z)
+
+			if F >= 1e12 then
+				return string.format("%.2fT", z / 1e12)
+			elseif F >= 1e9 then
+				return string.format("%.2fB", z / 1e9)
+			elseif F >= 1e6 then
+				return string.format("%.1fM", z / 1e6)
+			elseif F >= 1e3 then
+				return string.format("%.1fK", z / 1e3)
+			end
+
+			return string.format("%d", math.floor(z + 0.5))
+		end
+
+		local F = { ["Carry not confirmed — retrying"] = true, ["Carry refused — next egg"] = true, ["Carry lost — retrying"] = true, ["Drop failed — retrying"] = true, ["Egg lost — retrying"] = true, ["Re-steal failed — retrying"] = true, ["Steal timed out — retrying"] = true }
+		local z = {}
+
+		local function _()
+			if next(z) then
+				return z
+			end
+
+			local s = v14()
+			local W = s and s:FindFirstChild("Areas")
+
+			W = W and W:FindFirstChild("GuardAreas")
+
+			for s, s in ipairs(W and W:GetChildren() or {}) do
+				local W = s:FindFirstChild("ClosestExitPoint")
+
+				if W and W:IsA("BasePart") then
+					z[s.Name] = W.Position.X
+				end
+			end
+
+			return z
+		end
+
+		function F7:settleNeed(z, s)
+			local W = _()[z]
+			local z = math.max(0, (W or 597) - 597)
+
+			return 2 + z / (3.2 * math.max(s, 16))
+		end
+		function F7:recommendLowSpeedLevel(z)
+			local s = z or v2338()
+			local z = {}
+
+			if self.config.areaEnabled and #self.config.areas > 0 then
+				z = self.config.areas
+			else
+				for W in pairs(_()) do
+					z[#z + 1] = W
+				end
+			end
+
+			local _, W, d = 10, 10, nil
+
+			for M, M in ipairs(z) do
+				if not (gehleeV4Config.LowSpeedBoost == true and S[M] ~= nil) then
+					local S = self:settleNeed(M, s)
+					local z, I = 1, 1
+
+					for Q = 10, 1, -1.0 do
+						if C(M, Q) >= S then
+							z = Q
+
+							break
+						end
+					end
+
+					for Q = 10, 1, -1.0 do
+						if C(M, Q) >= S * 1.25 then
+							I = Q
+
+							break
+						end
+					end
+
+					if z < W then
+						W, d = z, M
+					end
+
+					_ = math.min(_, I)
+				end
+			end
+
+			local S = self.lowSpeedFailCap
+
+			if S then
+				W = math.min(W, S)
+				_ = math.min(_, S)
+			end
+
+			return math.min(_, W), W, s, d
+		end
+		function F7:_noteLowSpeedOutcome(S)
+			local z = self._untrustedSeen == true
+
+			self._untrustedSeen = nil
+
+			if self.config.stealMode ~= "Instant" then
+				return
+			end
+
+			if self.boostedUid ~= nil or self._boostHopUid ~= nil then
+				return
+			end
+
+			local _ = F[tostring(S)] == true or z
+
+			if not _ and S ~= "Safe return complete" then
+				return
+			end
+
+			local S = math.clamp(tonumber(gehleeV4Config.StealHoldSeconds) or 5, 1, 10)
+
+			self.lowSpeedOutcomes = self.lowSpeedOutcomes or {}
+
+			local F = self.lowSpeedOutcomes[S] or {}
+
+			self.lowSpeedOutcomes[S] = F
+			F[#F + 1] = { at = os.clock(), failed = _ }
+
+			while #F > 8 do
+				table.remove(F, 1)
+			end
+
+			local z, _ = 0, 0
+
+			for s, s in ipairs(F) do
+				if os.clock() - s.at <= 600 then
+					_ = _ + 1
+
+					if s.failed then
+						z = z + 1
+					end
+				end
+			end
+
+			if S > 1 and z >= 3 and z / _ >= 0.4 then
+				local F = S - 1
+
+				if not self.lowSpeedFailCap or F < self.lowSpeedFailCap then
+					self.lowSpeedFailCap = F
+					self.lowSpeedAdvice = { from = S, to = F, fails = z, total = _, fresh = true }
+				end
+			end
+		end
+		function F7:lowSpeedStatus()
+			local S = nil
+
+			pcall(function()
+				S = V.ReadProjected()
+			end)
+
+			local F, z = self:recommendLowSpeedLevel()
+			local s = math.clamp(tonumber(gehleeV4Config.StealHoldSeconds) or 5, 1, 10)
+			local L = self.lowSpeedAdvice
+
+			if L and s <= L.to then
+				L = nil
+			end
+
+			return { speedText = type(S) == "number" and R(S) or "?", walkSpeed = math.floor((_ or 0) + 0.5), safe = F, fast = z, level = s, advice = L }
+		end
+		function F7:setEggEsp(S)
+			self.config.espEnabled = S == true
+
+			if not self.config.espEnabled then
+				pcall(function()
+					self:_clearEsp()
+				end)
+			end
+		end
+		function F7:setEspMinRank(S)
+			self.config.espMinRank = math.max(tonumber(S) or 0, 0)
+		end
+		function F7:setEspMinValue(S)
+			self.config.espMinValue = math.max(tonumber(S) or 0, 0)
+		end
+		function F7:_espPasses(S, F)
+			local z = self.config
+
+			if (z.espMinRank or 0) > 0 and (tonumber(S and S.rarityRank) or 0) < z.espMinRank then
+				return false
+			end
+
+			if (z.espMinValue or 0) > 0 and (tonumber(F) or 0) < z.espMinValue then
+				return false
+			end
+
+			return true
+		end
+		function F7:setEspOption(S, F)
+			if a[S] then
+				self.config["esp" .. S:sub(1, 1):upper() .. S:sub(2)] = F == true
+			end
+		end
+		function F7:_clearEsp()
+			local a = workspace:FindFirstChild("AreaEggSlotsClient")
+
+			if not a then
+				return
+			end
+
+			for S, S in ipairs(a:GetChildren()) do
+				local a = S:FindFirstChild("__GehleeV4EggEsp")
+
+				if a then
+					a:Destroy()
+				end
+
+				local a = S:FindFirstChild("__GehleeV4EggHighlight")
+
+				if a then
+					a:Destroy()
+				end
+			end
+		end
+		function F7:_updateEsp()
+			local a = workspace:FindFirstChild("AreaEggSlotsClient")
+
+			if not a then
+				return
+			end
+
+			local S = self.config
+
+			for F, F in ipairs(a:GetChildren()) do
+				local a = self.records[F.Name]
+				local z = S.espEnabled and a ~= nil and (a.State == l.States.Slot or a.State == l.States.Dropped)
+
+				if z then
+					local L = self.catalog.resolve(a)
+
+					if not self:_espPasses(L, v2310(a)) then
+						z = false
+					end
+				end
+
+				local L = z and (F:FindFirstChild("Hitbox") or F:FindFirstChildWhichIsA("BasePart", true))
+				local _ = F:FindFirstChild("__GehleeV4EggEsp")
+				local s = F:FindFirstChild("__GehleeV4EggHighlight")
+
+				if not z or not L then
+					if _ then
+						_:Destroy()
+					end
+
+					if s then
+						s:Destroy()
+					end
+				else
+					if _ and not _:FindFirstChild("Icon") then
+						_:Destroy()
+						_ = nil
+					end
+
+					if not _ then
+						_ = Instance.new("BillboardGui")
+						_.Name = "__GehleeV4EggEsp"
+						_.AlwaysOnTop = true
+						_.Size = UDim2.fromOffset(220, 72)
+						_.StudsOffset = Vector3.new(0, 4.4, 0)
+						_.MaxDistance = 1000
+						_.Adornee = L
+
+						local z = Instance.new("ImageLabel")
+
+						z.Name = "Icon"
+						z.AnchorPoint = Vector2.new(0.5, 1)
+						z.Position = UDim2.fromScale(0.5, 0.42)
+						z.Size = UDim2.fromOffset(30, 30)
+						z.BackgroundTransparency = 1
+						z.ScaleType = Enum.ScaleType.Fit
+						z.Visible = false
+						z.Parent = _
+
+						local z = Instance.new("TextLabel")
+
+						z.Name = "Text"
+						z.AnchorPoint = Vector2.new(0.5, 0)
+						z.Position = UDim2.fromScale(0.5, 0.45)
+						z.Size = UDim2.new(1, 0, 0.55, 0)
+						z.BackgroundTransparency = 1
+						z.Font = Enum.Font.GothamBold
+						z.TextSize = 13
+						z.TextStrokeTransparency = 0.35
+						z.TextXAlignment = Enum.TextXAlignment.Center
+						z.TextYAlignment = Enum.TextYAlignment.Top
+						z.Parent = _
+						_.Parent = F
+					end
+
+					_.Adornee = L
+
+					local z = self.catalog.resolve(a)
+					local L = _:FindFirstChild("Icon")
+					local W = S.espIcon and type(z.icon) == "string" and z.icon ~= "" and z.icon or nil
+
+					L.Image = W or ""
+					L.Visible = W ~= nil
+
+					local L = typeof(z.rarityColor) == "Color3" and z.rarityColor or Color3.fromRGB(255, 255, 255)
+					local W = {}
+
+					if S.espRarity then
+						W[#W + 1] = string.upper(z.rarity or "?")
+					end
+
+					if S.espName then
+						W[#W + 1] = tostring(z.name)
+					end
+
+					if S.espKg then
+						local z = self:_resolveWeightKg(a)
+
+						if z then
+							W[#W + 1] = string.format("%d Kg", math.floor(z))
+						end
+					end
+
+					if S.espMutation and type(a.Mutations) == "table" and next(a.Mutations) then
+						local z = {}
+
+						for d, d in pairs(a.Mutations) do
+							z[#z + 1] = tostring(d)
+						end
+
+						if #z > 0 then
+							table.sort(z)
+							W[#W + 1] = table.concat(z, ", ")
+						end
+					end
+
+					if S.espValue then
+						local z = v2310(a)
+
+						if z then
+							W[#W + 1] = "$" .. R(z) .. "/s"
+						end
+					end
+
+					local a = _:FindFirstChild("Text")
+
+					a.Text = table.concat(W, " | ")
+					a.TextColor3 = L
+
+					if s and not s:IsA("Highlight") then
+						s:Destroy()
+						s = nil
+					end
+
+					if not s then
+						s = Instance.new("Highlight")
+						s.Name = "__GehleeV4EggHighlight"
+						s.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+						s.Parent = F
+					end
+
+					s.Adornee = F
+					s.FillColor = L
+					s.FillTransparency = 0.72
+					s.OutlineColor = L
+					s.OutlineTransparency = 0
+				end
+			end
+
+			self._placedEspAnchors = self._placedEspAnchors or {}
+
+			local a = os.clock()
+
+			if S.espPlaced then
+				local a = (E.Peek or E.Get)()
+				local F = type(a) == "table" and a.EggInventory or nil
+				local a = X.ResolveLocalSlot()
+				local z = X.ResolveFolder()
+				local L = z and a and z:FindFirstChild(tostring(a))
+				local a = L and L:FindFirstChild("CenterPoint")
+
+				if a and not a:IsA("BasePart") then
+					a = nil
+				end
+
+				local z = {}
+
+				if type(F) == "table" and a then
+					local L = workspace:FindFirstChild("GehleeV4PlacedEggAnchors")
+
+					if not L then
+						L = Instance.new("Folder")
+						L.Name = "GehleeV4PlacedEggAnchors"
+						L.Parent = workspace
+					end
+
+					for _, _ in ipairs(L:GetChildren()) do
+						if _:IsA("Highlight") or _:IsA("BillboardGui") then
+							_:Destroy()
+						end
+					end
+
+					for _, s in pairs(F) do
+						if type(_) == "string" and type(s) == "table" and type(s.Placement) == "table" then
+							z[_] = true
+
+							local F = s.Placement.LocalCFrame
+
+							if typeof(F) ~= "CFrame" then
+								local W, d = pcall(Y.Decode, s)
+								local M = W and type(d) == "table" and d.Placement or nil
+
+								F = type(M) == "table" and M.LocalCFrame or nil
+							end
+
+							if typeof(F) == "CFrame" then
+								local W, d = pcall(Y.Decode, s)
+								local M = W and type(d) == "table" and d or s
+								local W = tonumber(M.AssetScale) or 1
+								local d = a.CFrame * F + Vector3.new(0, 3 + W * 2, 0)
+
+								self._placedEspAnchors[_] = self._placedEspAnchors[_] or {}
+
+								local a = self._placedEspAnchors[_]
+
+								if typeof(a.anchor) ~= "Instance" then
+									local F = Instance.new("Part")
+
+									F.Name = "GehleeV4PE_" .. _
+									F.Size = Vector3.new(1.5, 1.5, 1.5)
+									F.Transparency = 1
+									F.Anchored = true
+									F.CanCollide = false
+									F.CanQuery = false
+									F.CanTouch = false
+									F.Parent = L
+									a.anchor = F
+								end
+
+								a.anchor.CFrame = d
+
+								local F = self.catalog.resolve({ AssetCategory = M.AssetCategory })
+								local L = typeof(F.rarityColor) == "Color3" and F.rarityColor or Color3.fromRGB(255, 255, 255)
+								local d = v2310({ Category = M.AssetCategory, Mutations = type(M.Mutations) == "table" and M.Mutations or {}, Scale = W, BaseMutation = type(M.BaseMutation) == "string" and M.BaseMutation or nil })
+
+								if not self:_espPasses(F, d) then
+									z[_] = nil
+
+									continue
+								end
+
+								local _ = {}
+
+								if S.espRarity then
+									_[#_ + 1] = string.upper(F.rarity or "?")
+								end
+
+								if S.espName then
+									_[#_ + 1] = tostring(F.name)
+								end
+
+								if S.espKg then
+									local I, Q = pcall(Y.WeightKgForScale, M.AssetCategory, W)
+
+									if I and type(Q) == "number" then
+										_[#_ + 1] = string.format("%d Kg", math.floor(Q))
+									end
+								end
+
+								if S.espValue and d then
+									_[#_ + 1] = "$" .. R(d) .. "/s"
+								end
+
+								if type(s.Placement.ReadyAt) == "number" or (type(M.Placement) == "table" and M.Placement.ReadyAt ~= nil) then
+									_[#_ + 1] = "READY"
+								end
+
+								local R = a.anchor:FindFirstChild("__GehleeV4EggEsp")
+
+								if not R then
+									R = Instance.new("BillboardGui")
+									R.Name = "__GehleeV4EggEsp"
+									R.AlwaysOnTop = true
+									R.Size = UDim2.fromOffset(220, 72)
+									R.StudsOffset = Vector3.new(0, 1.4, 0)
+									R.MaxDistance = 1000
+
+									local s = Instance.new("ImageLabel")
+
+									s.Name = "Icon"
+									s.AnchorPoint = Vector2.new(0.5, 1)
+									s.Position = UDim2.fromScale(0.5, 0.42)
+									s.Size = UDim2.fromOffset(34, 34)
+									s.BackgroundTransparency = 1
+									s.ScaleType = Enum.ScaleType.Fit
+									s.Visible = false
+									s.Parent = R
+
+									local s = Instance.new("TextLabel")
+
+									s.Name = "Text"
+									s.AnchorPoint = Vector2.new(0.5, 0)
+									s.Position = UDim2.fromScale(0.5, 0.45)
+									s.Size = UDim2.new(1, 0, 0.55, 0)
+									s.BackgroundTransparency = 1
+									s.Font = Enum.Font.GothamBold
+									s.TextSize = 13
+									s.TextStrokeTransparency = 0.35
+									s.TextXAlignment = Enum.TextXAlignment.Center
+									s.TextYAlignment = Enum.TextYAlignment.Top
+									s.Parent = R
+									R.Parent = a.anchor
+								end
+
+								local s = R:FindFirstChild("Icon")
+
+								if s then
+									local W = S.espIcon and type(F.icon) == "string" and F.icon ~= "" and F.icon or nil
+
+									s.Image = W or ""
+									s.Visible = W ~= nil
+								end
+
+								local S = R:FindFirstChild("Text")
+
+								S.Text = table.concat(_, " | ")
+								S.TextColor3 = L
+
+								local S = a.anchor:FindFirstChild("__GehleeV4EggHighlight")
+
+								if S then
+									S:Destroy()
+								end
+							end
+						end
+					end
+				end
+
+				for a, S in pairs(self._placedEspAnchors) do
+					if not z[a] then
+						if typeof(S.anchor) == "Instance" then
+							S.anchor:Destroy()
+						end
+
+						if typeof(S.highlight) == "Instance" then
+							S.highlight:Destroy()
+						end
+
+						self._placedEspAnchors[a] = nil
+					end
+				end
+			else
+				for a, S in pairs(self._placedEspAnchors or {}) do
+					if typeof(S.anchor) == "Instance" then
+						S.anchor:Destroy()
+					end
+
+					if typeof(S.highlight) == "Instance" then
+						S.highlight:Destroy()
+					end
+
+					self._placedEspAnchors[a] = nil
+				end
+			end
+		end
+		function F7:setMinWeightKg(a)
+			local S = tonumber(a) or 0
+
+			self.config.minWeightKg = math.max(S, 0)
+		end
+		function F7:setMinValuePerSec(a)
+			local S = tonumber(a) or 0
+
+			self.config.minValuePerSec = math.max(S, 0)
+			self:_refreshCounts()
+			self:_schedule()
+		end
+		function F7:setSpeed(a)
+			local S = math.clamp(math.floor((tonumber(a) or DEF_INPUT) + 0.5), MIN_INPUT, MAX_INPUT)
+
+			self.config.speed = S * MULTIPLIER
+
+			if genv.__GehleeV4AdminBoost == true then
+				self.config.speed = 3000
+			end
+
+			if self.enabled or self.activeTween then
+				self:_startMovementProtection()
+			end
+
+			return S
+		end
+		function F7:setFilterEnabled(a, S)
+			self.config[a .. "Enabled"] = S == true
+			self:_refreshCounts()
+			self:_schedule()
+		end
+		function F7:setFilter(a, S)
+			local F = type(S) == "table" and table.clone(S) or {}
+
+			if a == "mutations" and type(self.catalog.resolveMutationId) == "function" then
+				local S = {}
+
+				for R, R in ipairs(F) do
+					local z = self.catalog.resolveMutationId(R)
+
+					if z then
+						table.insert(S, z)
+					end
+				end
+
+				F = S
+			end
+
+			self.config[a] = F
+
+			local S = ({ rarities = "rarity", names = "name", areas = "area", mutations = "mutation" })[a]
+
+			if S then
+				self.config[S .. "Enabled"] = #F > 0
+			end
+
+			local a = self.targetUid and self.records[self.targetUid] or self.activeTarget
+
+			if self.running and a and not self.carry.active and not self.manualObjectiveEnabled and not self.captureObjectiveEnabled and not self:_matches(a) then
+				self:_finish("Filters changed")
+			end
+
+			self:_refreshCounts()
+			self:_schedule()
+		end
+        -- GEHLEE_V10_EGG_DESTROY_BEGIN
+        function F7:destroy()
+            if self.destroyed then return end
+            local character, session = LocalPlayer.Character, genv.__GehleeV4HubSession
+            local operation, coordinator, tween = self.operationToken, self.coordinator, self.activeTween
+            local cancel, token = self._s2rInstantCancel, self._s2rInstantToken
+            local engine = token and token.Engine
+            self.destroyed, self.enabled = true, false
+            self.planGeneration += 1
+            self.carry.generation += 1
+            self.carry.active, self.carry.uid = false, nil
+            self.operationToken, self.activeTween = nil, nil
+            self._autoStealWakeToken, self._autoStealScheduleToken, self._autoStealScheduleAgain = nil, nil, nil
+            self._recalling, self.tweenRecoveryUid, self.safeStarting = nil, nil, false
+            self.running, self.activeTarget = false, nil
+            local function call(name, ...)
+                local method = self[name]
+                if type(method) == "function" then return pcall(method, self, ...) end
+                return false
+            end
+            local function sameBody()
+                local owner = genv.__GehleeV4EggRuntime
+                return LocalPlayer.Character == character and genv.__GehleeV4HubSession == session
+                    and (owner == nil or owner == self)
+            end
+            local function bodyCall(name, ...)
+                if sameBody() then return call(name, ...) end
+                return false
+            end
+            -- Retire exact captured resources before optional visual cleanup.
+            -- A failing portal/GUI helper cannot keep the engine or lease alive.
+            if type(cancel) == "function" then pcall(cancel) end
+            if engine then
+                if type(engine.Cancel) == "function" then pcall(engine.Cancel, engine, "Destroyed") end
+                if type(engine.Destroy) == "function" then pcall(engine.Destroy, engine) end
+            end
+            self._s2rInstantCancel, self._s2rInstantToken = nil, nil
+            if tween then pcall(function() tween:Cancel() end) end
+            if operation and coordinator then pcall(coordinator.release, coordinator, operation) end
+            call("_invalidateCarryWorker")
+            call("_removePromptFilter")
+            call("_removeSnipeHook")
+            bodyCall("_mutePortalFx", false, true)
+            bodyCall("_guardLagback", false)
+            bodyCall("_stopScramblePortalBypass")
+            bodyCall("_hideTreadmillDecoy")
+            bodyCall("_cleanupInstantSteal")
+            -- These fallbacks are independent in case an earlier cleanup
+            -- helper threw before reaching a later owned resource.
+            call("_stopGuardStick")
+            call("_kbCancelTimer")
+            call("_clearArrivalHold")
+            bodyCall("_setInstantAnchored", false)
+            bodyCall("_removeGuardHitDistanceBoost")
+            bodyCall("_stopMovementProtection")
+            -- These instances belong to this runtime even when restoration of
+            -- shared camera/body state is no longer safe after replacement.
+            for _, name in ipairs({"hoverPad", "treadmillDecoy"}) do
+                local owned = self[name]
+                self[name] = nil
+                if typeof(owned) == "Instance" then pcall(function() owned:Destroy() end) end
+            end
+            call("_restoreClaimPresentationFilter")
+            if sameBody() then pcall(I7, character) end
+            bodyCall("_clearEsp")
+            for _, entry in pairs(self._placedEspAnchors or {}) do
+                pcall(function()
+                    if typeof(entry.anchor) == "Instance" then entry.anchor:Destroy() end
+                end)
+            end
+            if sameBody() then
+                pcall(function()
+                    local folder = workspace:FindFirstChild("GehleeV4PlacedEggAnchors")
+                    if folder then folder:Destroy() end
+                end)
+            end
+            -- Disconnect owned handles even if body cleanup was skipped after
+            -- a respawn/new run, or any cleanup callback failed.
+            for key, connection in pairs(self) do
+                if typeof(connection) == "RBXScriptConnection" then
+                    pcall(function() connection:Disconnect() end)
+                    self[key] = nil
+                end
+            end
+            for _, connection in pairs(self.connections or {}) do
+                pcall(function() connection:Disconnect() end)
+            end
+            for _, name in ipairs({"connections", "listeners", "records"}) do
+                if type(self[name]) == "table" then table.clear(self[name]) end
+            end
+        end
+        -- GEHLEE_V10_EGG_DESTROY_END
+
+		return F7
+	end)()
+	local t32 = {
+		k = 1000,
+		m = 1000000,
+		b = 1e9,
+		t = 1e12,
+		q = 1e15
+	}
+
+	v2215 = function(a)
+		local F = tostring(a or ""):lower():gsub("%s+", ""):gsub("%$", ""):gsub("/s$", "")
+		local a, R = F:match("^([%d%.]+)([kmbtq]?)$")
+		local F = tonumber(a)
+
+		if not F then
+			return nil
+		end
+
+		return math.max(0, math.floor(F * (t32[R] or 1) + 0.5))
+	end
+
+	local v3724 = (function()
+		local a = require(ReplicatedStorage.Shared.Remotes)
+		local L = require(ReplicatedStorage.Client.EggState)
+		local _ = require(ReplicatedStorage.Shared.Modules.Ragdoll)
+		local s = require(ReplicatedStorage.Shared.Modules.RagdollJoints)
+		local z = a.EggWorld
+		local a = {}
+
+		a.__index = a
+
+		local function W(d)
+			if d then
+				pcall(d.Disconnect, d)
+			end
+		end
+
+		function a.new(d)
+			local M = setmetatable({}, a)
+
+			M.eggRuntime = d
+			M.enabled = true
+			M.destroyed = false
+			M.connections = {}
+			M.originalRagdoll = {}
+			M.originalHumanoidStates = setmetatable({}, { __mode = "k" })
+			M.stats = { blockedHits = 0, blockedDrops = 0, recarriedEggs = 0 }
+			M.lastHeldEggUid = nil
+			M.lastHeldSlotKey = nil
+			M._installed = false
+			M._stickyToken = 0
+			M._nextBodyRecoveryAt = 0
+			M._nextJointSweepAt = 0
+			M._forestStrikeOldFire = nil
+
+			return M
+		end
+		function a:_liveBody()
+			local d = LocalPlayer.Character
+			local M = d and d:FindFirstChildOfClass("Humanoid")
+			local I = d and d:FindFirstChild("HumanoidRootPart")
+
+			return d, M, I
+		end
+		function a:_recoverBody(d)
+			if not self.enabled or self.destroyed or (self.eggRuntime and (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked())) then
+				return
+			end
+
+			local M, I, Q = self:_liveBody()
+
+			if not M or not I or not Q then
+				return
+			end
+
+			local T = os.clock()
+
+			if not d and T < self._nextBodyRecoveryAt then
+				return
+			end
+
+			self._nextBodyRecoveryAt = T + 0.03
+
+			if not self.originalHumanoidStates[I] then
+				self.originalHumanoidStates[I] = { Physics = I:GetStateEnabled(Enum.HumanoidStateType.Physics), FallingDown = I:GetStateEnabled(Enum.HumanoidStateType.FallingDown), Ragdoll = I:GetStateEnabled(Enum.HumanoidStateType.Ragdoll) }
+			end
+
+			local x = I:GetState()
+			local h = x == Enum.HumanoidStateType.Physics or x == Enum.HumanoidStateType.FallingDown or x == Enum.HumanoidStateType.Ragdoll or x == Enum.HumanoidStateType.PlatformStanding or x == Enum.HumanoidStateType.Seated
+			local x = d or T >= self._nextJointSweepAt or self._sweptHumanoid ~= I
+
+			pcall(function()
+				if x then
+					I.BreakJointsOnDeath = false
+					I.RequiresNeck = false
+					I:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+					I:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+					I:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+					I:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+				end
+
+				if I.PlatformStand then
+					I.PlatformStand = false
+				end
+
+				if I.Sit then
+					I.Sit = false
+				end
+
+				local d = I:GetState()
+
+				if d == Enum.HumanoidStateType.Physics or d == Enum.HumanoidStateType.FallingDown or d == Enum.HumanoidStateType.Ragdoll or d == Enum.HumanoidStateType.PlatformStanding or d == Enum.HumanoidStateType.Seated then
+					I:ChangeState(Enum.HumanoidStateType.GettingUp)
+					I:ChangeState(Enum.HumanoidStateType.Running)
+				end
+			end)
+
+			if x then
+				self._nextJointSweepAt = T + 0.5
+				self._sweptHumanoid = I
+
+				local d = {}
+
+				for T, T in ipairs(M:GetDescendants()) do
+					if T:IsA("Motor6D") then
+						d[#d + 1] = T
+
+						if not T.Enabled then
+							T.Enabled = true
+						end
+					elseif T:IsA("BallSocketConstraint") or T:IsA("HingeConstraint") then
+						if T.Name:find("Ragdoll", 1, true) or T:GetAttribute("RagdollConstraint") then
+							pcall(T.Destroy, T)
+						end
+					end
+				end
+
+				self._motors = d
+			else
+				for d, d in ipairs(self._motors or {}) do
+					if not d.Enabled then
+						d.Enabled = true
+					end
+				end
+			end
+
+			local d = Q.AssemblyLinearVelocity
+			local M = Vector3.new(d.X, 0, d.Z).Magnitude
+			local T = math.max(340, (tonumber(I.WalkSpeed) or 0) * 1.5)
+
+			if h or M > T or math.abs(d.Y) > 240 then
+				Q.AssemblyLinearVelocity = Vector3.zero
+				Q.AssemblyAngularVelocity = Vector3.zero
+				self.stats.blockedHits = self.stats.blockedHits + 1
+			end
+		end
+		function a:_watchCharacter(d)
+			if not d then
+				return
+			end
+
+			local M = d.DescendantAdded:Connect(function(d)
+				if not self.enabled or self.destroyed or (self.eggRuntime and (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked())) then
+					return
+				end
+
+				if d:IsA("BallSocketConstraint") or d:IsA("HingeConstraint") then
+					if d.Name:find("Ragdoll", 1, true) or d:GetAttribute("RagdollConstraint") then
+						pcall(d.Destroy, d)
+						self:_recoverBody(true)
+					end
+				elseif d:IsA("Motor6D") and not d.Enabled then
+					d.Enabled = true
+				end
+			end)
+
+			table.insert(self.connections, M)
+		end
+		function a:_installRagdollHooks()
+			if self._installed then
+				return
+			end
+
+			self._installed = true
+			task.spawn(function()
+				task.wait()
+
+				local d = genv.__GehleeV4ForestGate
+
+				if type(d) == "table" and d.comp and d.orig then
+					pcall(rawset, d.comp, "_attackHandler", d.orig)
+					genv.__GehleeV4ForestGate = nil
+				end
+
+				if type(getgc) ~= "function" then
+					return
+				end
+
+				local d, M = pcall(getgc, true)
+
+				if not d or type(M) ~= "table" then
+					return
+				end
+
+				for d, I in ipairs(M) do
+					if d % 20000 == 0 then
+						RunService.Heartbeat:Wait()
+					end
+
+					if self.destroyed then
+						return
+					end
+
+					if type(I) == "table" and rawget(I, "_areaId") == "Forest" and type(rawget(I, "_attackHandler")) == "function" then
+						local d = rawget(I, "_attackHandler")
+
+						self._forestGate = { comp = I, orig = d }
+						genv.__GehleeV4ForestGate = self._forestGate
+						rawset(I, "_attackHandler", function(...)
+							if self.enabled and not self.destroyed and not (self.eggRuntime and (self.eggRuntime.instantPhase == "priming" or (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked()))) and not (genv.__GehleeV4PlayerSteal and genv.__GehleeV4PlayerSteal.running) then
+								self.stats.blockedHits = self.stats.blockedHits + 1
+								self:_recoverBody(true)
+
+								if genv.__GehleeV4GodMode then
+									genv.__GehleeV4GodMode:startDefend()
+								end
+
+								return
+							end
+
+							return d(...)
+						end)
+
+						break
+					end
+				end
+			end)
+
+			local d = { "ApplyClientRagdoll", "Ragdoll", "TimedRagdoll", "TimedRagdollAsync" }
+
+			for M, M in ipairs(d) do
+				if type(_[M]) == "function" then
+					self.originalRagdoll[M] = _[M]
+					_[M] = function(...)
+						if self.enabled and not self.destroyed and not (self.eggRuntime and (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked())) then
+							self.stats.blockedHits = self.stats.blockedHits + 1
+							self:_recoverBody(true)
+
+							return
+						end
+
+						return self.originalRagdoll[M](...)
+					end
+				end
+			end
+
+			if type(_.IsRagdolled) == "function" then
+				self.originalRagdoll.IsRagdolled = _.IsRagdolled
+				_.IsRagdolled = function(d)
+					if self.enabled and not (self.eggRuntime and (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked())) and d == LocalPlayer.Character then
+						return false
+					end
+
+					return self.originalRagdoll.IsRagdolled(d)
+				end
+			end
+		end
+		function a:_restoreLocalState()
+			for d, M in pairs(self.originalHumanoidStates) do
+				if d.Parent then
+					pcall(function()
+						d:SetStateEnabled(Enum.HumanoidStateType.Physics, M.Physics)
+						d:SetStateEnabled(Enum.HumanoidStateType.FallingDown, M.FallingDown)
+						d:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, M.Ragdoll)
+					end)
+				end
+			end
+
+			self.originalHumanoidStates = setmetatable({}, { __mode = "k" })
+			pcall(s.Release, LocalPlayer.Character)
+		end
+		function a:_slotKey(s)
+			if type(s) ~= "table" or type(s.AreaId) ~= "string" or type(s.NestId) ~= "string" then
+				return nil
+			end
+
+			return string.format("%s:%s", s.AreaId, s.NestId)
+		end
+		function a:_requestCarry(s, d)
+			local M = { Uid = s }
+
+			if d ~= nil then
+				M.FirstAreaSlotKey = d
+			end
+
+			return z.AskFieldEggCarry:InvokeServer(M)
+		end
+		function a:_startSticky(z, s)
+            if self.eggRuntime and (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked()) then return end
+			if type(z) ~= "string" or z == "" then
+				return
+			end
+
+			self._stickyToken = self._stickyToken + 1
+
+			local d = self._stickyToken
+
+			self.stats.recarriedEggs = self.stats.recarriedEggs + 1
+			task.spawn(function()
+				local M = os.clock() + 5
+
+				while not self.destroyed and self.enabled and not (self.eggRuntime and (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked())) and d == self._stickyToken and os.clock() < M do
+					local d = L.ReadFieldEgg(z)
+
+					if d and d.State == "Carried" and d.CarrierUserId == LocalPlayer.UserId then
+						self.lastHeldEggUid = z
+						self.lastHeldSlotKey = s or self:_slotKey(d)
+
+						return
+					end
+
+					if d and (d.State == "Dropped" or d.State == "Slot") then
+						if self.eggRuntime and self.eggRuntime:requestCarryRecovery(z) then
+							return
+						end
+
+						local _, _, M = self:_liveBody()
+
+						if M and d.BottomCFrame and (M.Position - d.BottomCFrame.Position).Magnitude <= 10 then
+							pcall(self._requestCarry, self, z, s or self:_slotKey(d))
+						end
+					end
+
+					task.wait(0.05)
+				end
+			end)
+		end
+		function a:_bindSignals()
+			table.insert(self.connections, L.CarryChanged:Connect(function(z)
+				if not self.enabled or (self.eggRuntime and (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked())) then
+					return
+				end
+
+				if z.IsCarrying and type(z.Uid) == "string" then
+					self._stickyToken = self._stickyToken + 1
+					self.lastHeldEggUid = z.Uid
+
+					local s = L.ReadFieldEgg(z.Uid)
+
+					self.lastHeldSlotKey = self:_slotKey(s)
+
+					return
+				end
+
+				local L = genv.__GehleeV4PlayerSteal
+
+				if L and L.running then
+					return
+				end
+
+				local L = z.Uid or self.lastHeldEggUid
+				local z = self.lastHeldSlotKey
+
+				if self.eggRuntime and self.eggRuntime:isSkippedEgg(L) then
+					return
+				end
+
+				if L then
+					self.stats.blockedDrops = self.stats.blockedDrops + 1
+					self:_startSticky(L, z)
+
+					if genv.__GehleeV4GodMode then
+						genv.__GehleeV4GodMode:startDefend(L)
+					end
+				end
+			end))
+			table.insert(self.connections, LocalPlayer.CharacterAdded:Connect(function(z)
+				self:_watchCharacter(z)
+				task.defer(function()
+					self:_recoverBody(true)
+				end)
+			end))
+
+			if LocalPlayer.Character then
+				self:_watchCharacter(LocalPlayer.Character)
+			end
+
+			table.insert(self.connections, RunService.Stepped:Connect(function()
+				self:_recoverBody()
+			end))
+		end
+		function a:setEnabled(F)
+			local R = F == true
+
+			if self.enabled == R then
+				return
+			end
+
+			self.enabled = R
+
+			if self.enabled then
+				self:_recoverBody()
+			else
+				self._stickyToken = self._stickyToken + 1
+				self:_restoreLocalState()
+			end
+		end
+		function a:install()
+			if self.destroyed then
+				return false
+			end
+
+			getgenv().__GehleeV4AntiGuard = self
+			self:_installRagdollHooks()
+			self:_bindSignals()
+			self:_recoverBody()
+
+			return true
+		end
+		function a:destroy()
+			if self.destroyed then
+				return
+			end
+
+			self.enabled = false
+			self:_restoreLocalState()
+			self.destroyed = true
+			self._stickyToken = self._stickyToken + 1
+
+			for F, F in ipairs(self.connections) do
+				W(F)
+			end
+
+			table.clear(self.connections)
+
+			for F, R in pairs(self.originalRagdoll) do
+				if type(R) == "function" then
+					_[F] = R
+				end
+			end
+
+			if self._forestGate then
+				pcall(rawset, self._forestGate.comp, "_attackHandler", self._forestGate.orig)
+
+				if genv.__GehleeV4ForestGate == self._forestGate then
+					genv.__GehleeV4ForestGate = nil
+				end
+
+				self._forestGate = nil
+			end
+
+			self.eggRuntime = nil
+
+			if getgenv().__GehleeV4AntiGuard == self then
+				getgenv().__GehleeV4AntiGuard = nil
+			end
+		end
+
+		return a
+	end)()
+	local v3780 = (function()
+		local q = require(ReplicatedStorage.Client.EggState)
+		local _ = {}
+
+		_.__index = _
+
+		function _.new(s)
+			local W = setmetatable({}, _)
+
+			W.eggRuntime = s
+			W.enabled = gehleeV4Config.GodMode == nil and true or (gehleeV4Config.GodMode == true)
+			W.active = false
+			W.activeDroppedUid = nil
+			W.swingSequence = 0
+			W.lastSwingAt = 0
+			W.defendThread = nil
+			W.connections = {}
+			W.targetRange = 35
+			W:_bindSignals()
+
+			return W
+		end
+		function _:_isBat(L)
+			if not L or not L:IsA("Tool") then
+				return false
+			end
+
+			local s = genv.__GehleeV4IsBatTool
+
+			if s and s(L) then
+				return true
+			end
+
+			if not s and (L:GetAttribute("IsBat") == true or L:GetAttribute("GearName") == "Bat") then
+				return true
+			end
+
+			local s = L:GetAttribute("ItemType")
+
+			if s ~= nil and s ~= "Gear" then
+				return false
+			end
+
+			return string.find(string.lower(L.Name), "slap", 1, true) ~= nil
+		end
+		function _:_findBat()
+			for L = 1, 2 do
+				local s = LocalPlayer.Character
+				local W = LocalPlayer:FindFirstChildOfClass("Backpack")
+				local d = s and s:FindFirstChildOfClass("Tool")
+
+				if d and self:_isBat(d) then
+					return d, true
+				end
+
+				local d = genv.__GehleeV4Bats and genv.__GehleeV4Bats.best(s, W)
+
+				if d then
+					return d, d.Parent == s
+				end
+
+				if s then
+					for d, d in ipairs(s:GetChildren()) do
+						if self:_isBat(d) then
+							return d, true
+						end
+					end
+				end
+
+				if W then
+					for s, s in ipairs(W:GetChildren()) do
+						if self:_isBat(s) then
+							return s, false
+						end
+					end
+				end
+
+				if L == 1 then
+					pcall(function()
+						local L = ReplicatedStorage:FindFirstChild("Packages") and ReplicatedStorage.Packages:FindFirstChild("Networking")
+						local s = L and L:FindFirstChild("RF/Codex/AskWearFieldBat")
+
+						if s then
+							s:InvokeServer()
+						end
+					end)
+				end
+			end
+
+			return nil, false
+		end
+		function _:_equipBat(L)
+			local s = LocalPlayer.Character
+			local W = s and s:FindFirstChildOfClass("Humanoid")
+
+			if not W or W.Health <= 0 then
+				return nil
+			end
+
+			local d, M = self:_findBat()
+
+			if not d then
+				return nil
+			end
+
+			if L then
+				L.bat = d
+
+				if self.defendThread ~= L or not self.active or not self.enabled or LocalPlayer.Character ~= L.character then
+					self:_releaseBat(L)
+
+					return nil
+				end
+			end
+
+			if M and d.Parent == s then
+				return d
+			end
+
+			pcall(W.EquipTool, W, d)
+
+			local L = os.clock() + 0.35
+
+			while os.clock() < L do
+				if d.Parent == s then
+					return d
+				end
+
+				task.wait(0.05)
+			end
+
+			return d.Parent == s and d or nil
+		end
+		function _:_releaseBat(L)
+			if not L or not L.bat then
+				return
+			end
+
+			local s = L.bat
+
+			L.bat = nil
+
+			local W, d = genv.__GehleeV4PlayerSteal, genv.__GehleeHalloweenFarm
+
+			if (W and W.running) or (d and d.mobBat == s) or (self.defendThread and self.defendThread ~= L and self.defendThread.bat == s) then
+				return
+			end
+
+			local W = LocalPlayer:FindFirstChildOfClass("Backpack")
+
+			if W and LocalPlayer.Character == L.character and s.Parent == L.character then
+				pcall(function()
+					s.Parent = W
+				end)
+			end
+		end
+		function _:_getNearbyEnemies()
+			local L = LocalPlayer.Character
+			local s = L and L:FindFirstChild("HumanoidRootPart")
+
+			if not s then
+				return {}
+			end
+
+			local L = {}
+
+			for W, W in ipairs(Players:GetPlayers()) do
+				if W ~= LocalPlayer and W.Character then
+					local F = W.Character:FindFirstChild("HumanoidRootPart")
+					local d = W.Character:FindFirstChildOfClass("Humanoid")
+
+					if F and d and d.Health > 0 then
+						local M = (F.Position - s.Position).Magnitude
+
+						if M <= self.targetRange then
+							table.insert(L, { player = W, root = F, humanoid = d, distance = M })
+						end
+					end
+				end
+			end
+
+			table.sort(L, function(F, s)
+				return F.distance < s.distance
+			end)
+
+			return L
+		end
+		function _:_swing(F, L)
+			if not F or F.Parent ~= LocalPlayer.Character then
+				return false
+			end
+
+			local s = self.defendThread
+			local W = workspace:GetServerTimeNow()
+
+			if W - self.lastSwingAt < 0.22 then
+				return false
+			end
+
+			self.lastSwingAt = W
+			pcall(F.Activate, F)
+
+			local d = F:FindFirstChild("Handle") or F:FindFirstChildWhichIsA("BasePart", true)
+
+			if d and L and type(firetouchinterest) == "function" then
+				pcall(function()
+					firetouchinterest(d, L, 0)
+					task.wait(0.01)
+					firetouchinterest(d, L, 1)
+				end)
+			end
+
+			if self.defendThread ~= s or not self.active or not self.enabled or F.Parent ~= LocalPlayer.Character then
+				return false
+			end
+
+			pcall(function()
+				local F = require(ReplicatedStorage.Shared.Remotes)
+				local L = F.BatSwing
+
+				if L and L.Trigger then
+					self.swingSequence = self.swingSequence + 1
+
+					local F = string.format("%d:%d:%d", LocalPlayer.UserId, self.swingSequence, math.floor(W * 1000))
+
+					L.Trigger:FireServer(nil, F)
+				end
+			end)
+
+			return true
+		end
+		function _:startDefend(F)
+			if not self.enabled or (self.eggRuntime and (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked())) then
+				return
+			end
+
+			if LocalPlayer:GetAttribute("InHalloweenDimension") == true or genv.__GehleeV4OnTrain == true then
+				return
+			end
+
+			if self.eggRuntime and self.eggRuntime.instantPhase == "priming" then
+				return
+			end
+
+			if F and self.eggRuntime and self.eggRuntime:isSkippedEgg(F) then
+				return
+			end
+
+			local L = genv.__GehleeV4PlayerSteal
+
+			if L and L.running then
+				return
+			end
+
+			self.active = true
+			self.activeDroppedUid = F
+
+			if self.defendThread then
+				return
+			end
+
+			local F = { character = LocalPlayer.Character }
+
+			self.defendThread = F
+			task.spawn(function()
+				local L, s = pcall(function()
+					while self.defendThread == F and self.active and self.enabled and v20() and not (self.eggRuntime and (self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked())) do
+						local a = LocalPlayer.Character
+						local W = a and a:FindFirstChildOfClass("Humanoid")
+
+						if a ~= F.character or not W or W.Health <= 0 then
+							break
+						end
+
+						if LocalPlayer:GetAttribute("InHalloweenDimension") == true or genv.__GehleeV4OnTrain == true then
+							break
+						end
+
+						if self.eggRuntime and (self.eggRuntime.destroyed or self.eggRuntime.instantPhase == "priming" or (self.eggRuntime.carry and self.eggRuntime.carry.active)) then
+							break
+						end
+
+						local a = genv.__GehleeV4PlayerSteal
+
+						if a and a.running then
+							break
+						end
+
+						local a = self.activeDroppedUid
+
+						if a then
+							if F.uid ~= a then
+								F.uid, F.seen, F.missingUntil = a, false, os.clock() + 5
+							end
+
+							if self.eggRuntime and self.eggRuntime:isSkippedEgg(a) then
+								break
+							end
+
+							local z = q.ReadFieldEgg(a)
+
+							if z then
+								if z.CarrierUserId or (z.State ~= "Dropped" and z.State ~= "Slot") then
+									break
+								end
+
+								F.seen = true
+							elseif F.seen or os.clock() >= F.missingUntil then
+								break
+							end
+						end
+
+						local q = self:_getNearbyEnemies()
+
+						if #q == 0 then
+							break
+						end
+
+						if #q > 0 then
+							local a = self:_equipBat(F)
+
+							if a then
+								for z, z in ipairs(q) do
+									if self.defendThread ~= F or not self.active or not self.enabled or (self.eggRuntime and ((self.eggRuntime._s2rInstantToken or self.eggRuntime:_isS2RTreadmillParked()) or (self.eggRuntime.carry and self.eggRuntime.carry.active))) or (genv.__GehleeV4PlayerSteal and genv.__GehleeV4PlayerSteal.running) then
+										break
+									end
+
+									if z.root and z.root.Parent then
+										self:_swing(a, z.root)
+									end
+								end
+							end
+						end
+
+						task.wait(0.1)
+					end
+				end)
+
+				if self.defendThread == F then
+					self.active, self.activeDroppedUid, self.defendThread = false, nil, nil
+				end
+
+				self:_releaseBat(F)
+
+				if not L then
+					warn("[Gehlee God Mode] defense stopped: " .. tostring(s))
+				end
+			end)
+		end
+		function _:stopDefend()
+			local q = self.defendThread
+
+			self.active = false
+			self.activeDroppedUid = nil
+			self.defendThread = nil
+			self:_releaseBat(q)
+		end
+		function _:setEnabled(q)
+			self.enabled = q == true
+
+			if not self.enabled then
+				self:stopDefend()
+			end
+		end
+		function _:_bindSignals()
+			pcall(function()
+				local q = require(ReplicatedStorage.Client.EggState)
+
+				table.insert(self.connections, q.CarryChanged:Connect(function(q)
+					if q.IsCarrying then
+						self:stopDefend()
+					else
+						if self.enabled then
+							self:startDefend(q.Uid)
+						end
+					end
+				end))
+			end)
+			pcall(function()
+				local q = require(ReplicatedStorage.Shared.Remotes)
+				local a = q.GuardPatrol and q.GuardPatrol.ForestStrike
+
+				if a then
+					table.insert(self.connections, a.OnClientEvent:Connect(function()
+						if self.enabled then
+							self:startDefend()
+						end
+					end))
+				end
+			end)
+		end
+		function _:destroy()
+			self:stopDefend()
+
+			for q, q in ipairs(self.connections) do
+				pcall(q.Disconnect, q)
+			end
+
+			table.clear(self.connections)
+		end
+
+		return _
+	end)()
+	local v3839 = (function()
+		local a = require(ReplicatedStorage.Shared.Remotes)
+		local _ = require(ReplicatedStorage.Client.PlotState)
+		local s = require(ReplicatedStorage.Shared.Save)
+		local W = require(ReplicatedStorage.Data.Treadmills)
+
+		local function L()
+			local d = t8.blocker("treadmill")
+
+			if d then
+				return "Yielding to " .. t8.TITLES[d]
+			end
+
+			local d = t8.holder("treadmill")
+
+			if d then
+				return "Waiting for " .. t8.TITLES[d]
+			end
+
+			return nil
+		end
+		local function d()
+			return L() ~= nil
+		end
+		local function M()
+			return t8.blocker("treadmill") == "auto_steal"
+		end
+		local function I()
+			return L() or "Yielding"
+		end
+
+		local L = {}
+
+		L.__index = L
+
+		function L.new(Q, T)
+			local x = setmetatable({}, L)
+
+			x.coordinator = Q
+			x.travel = T
+			x.destroyed = false
+			x.listeners = {}
+			x.resources = {}
+			x.config = { disableDuringAutomation = true, idleFarm = false, autoUpgrade = false }
+			x.stats = { mode = "Idle", boost = "Waiting" }
+			x.busy = Q and Q:getSnapshot().busy == true or false
+			x.idleGeneration = 0
+			x.lastEquipAt = 0
+			x.activeTreadmill = nil
+			x.travelingToTreadmill = false
+			x.treadmillEquipPending = false
+			x.unequipGuardRunning = false
+			x.backgroundYieldRunning = false
+			x.lastBackgroundYieldAt = 0
+			x.carryPulseRunning = false
+			x.treadmillStateRevision = 0
+			x:_listenActiveTreadmill()
+			task.spawn(function()
+				pcall(function()
+					x:_syncActiveTreadmillSnapshot()
+				end)
+			end)
+			x:_listenCoordinator()
+			x:_listenSpeedGain()
+
+			return x
+		end
+		function L:_snapshot()
+			return { mode = self.stats.mode, boost = self.stats.boost, disableDuringAutomation = self.config.disableDuringAutomation, idleFarm = self.config.idleFarm }
+		end
+		function L:_emit()
+			local Q = self:_snapshot()
+
+			for T, T in ipairs(self.listeners) do
+				pcall(T, Q)
+			end
+		end
+		function L:_setStatus(Q, T)
+			if Q ~= nil then
+				self.stats.mode = Q
+			end
+
+			if T ~= nil then
+				self.stats.boost = T
+			end
+
+			self:_emit()
+		end
+		function L:subscribe(Q)
+			table.insert(self.listeners, Q)
+			pcall(Q, self:_snapshot())
+
+			return function()
+				local T = table.find(self.listeners, Q)
+
+				if T then
+					table.remove(self.listeners, T)
+				end
+			end
+		end
+		function L:_requestUnequip()
+            local owner = genv.__GehleeV4EggRuntime
+            if owner and owner._s2rInstantToken then return true end
+			local Q, T, x = pcall(function()
+				return a.Treadmill.AskDoff:InvokeServer()
+			end)
+
+			if not Q then
+				return false, tostring(T)
+			end
+
+			if T == false then
+				return false, tostring(x or "Server rejected")
+			end
+
+			return true
+		end
+		function L:_shouldBlockTreadmill()
+			if self.destroyed or self.carryPulseRunning then
+				return false
+			end
+
+            local Q = genv.__GehleeV4EggRuntime
+            if Q and (Q._treadmillResetting or Q._s2rInstantToken) then return false end
+            if Q and Q:_isS2RTreadmillParked() and (not self.busy or Q.operationToken ~= nil) then return false end
+
+			if self.busy and self.config.disableDuringAutomation then
+				return true
+			end
+
+			local Q, T = pcall(t8.holder, "treadmill")
+
+			return Q and T ~= nil
+		end
+		function L:_startUnequipGuard()
+			if self.unequipGuardRunning or not self:_shouldBlockTreadmill() or self.activeTreadmill == nil then
+				return
+			end
+
+			self.unequipGuardRunning = true
+			task.spawn(function()
+				local F = 0.15
+
+				while self:_shouldBlockTreadmill() and self.activeTreadmill ~= nil do
+					local Q, T = self:_requestUnequip()
+
+					self:_setStatus("Automation active", Q and "Blocked" or ("Release retry: " .. tostring(T)))
+					task.wait(F)
+					F = math.min(F * 2, 0.75)
+				end
+
+				self.unequipGuardRunning = false
+
+				if self:_shouldBlockTreadmill() and self.activeTreadmill ~= nil then
+					self:_startUnequipGuard()
+				end
+			end)
+		end
+		function L:_cancelIdle(F)
+			self.idleGeneration += 1
+
+			if F then
+				self:_requestUnequip()
+			end
+		end
+		function L:setDisableDuringAutomation(F)
+			self.config.disableDuringAutomation = true
+
+			if self.busy and self.config.disableDuringAutomation then
+				self:_cancelIdle(true)
+				self:_startUnequipGuard()
+				self:_setStatus("Automation active", "Blocked")
+			elseif not self.busy and self.config.idleFarm then
+				self:_startIdle()
+			end
+		end
+		function L:setIdleFarm(F)
+			self.config.idleFarm = F == true
+
+			if not self.config.idleFarm then
+				self:_cancelIdle(true)
+				self:_setStatus(self.busy and "Automation active" or "Idle", "Disabled")
+
+				return
+			end
+
+			if not self.busy then
+				self:_startIdle()
+			end
+
+			if self.idleWatchdog then
+				return
+			end
+
+			self.idleWatchdog = task.spawn(function()
+				while not self.destroyed and self.config.idleFarm do
+					task.wait(2)
+
+					if LocalPlayer:GetAttribute("InHalloweenDimension") == true then
+						local F = getgenv().__GehleeV4GoHomeForTreadmill
+
+						if type(F) == "function" then
+							pcall(F)
+						end
+					end
+
+					if self.idleRunning == nil and not self.busy and self.config.idleFarm and not self.destroyed then
+						self:_startIdle()
+					end
+				end
+
+				self.idleWatchdog = nil
+			end)
+		end
+		function L:_readUpgradeState()
+			local F, Q, T, x = pcall(function()
+				local h = (s.Peek or s.Get)()
+
+				if not h then
+					return nil
+				end
+
+				local s = tonumber(h.TreadmillUpgradeLevel) or 0
+
+				return s, h.Money, W.GetByUpgradeLevel(s + 1)
+			end)
+
+			if not F or Q == nil then
+				return nil
+			end
+
+			return Q, T, x
+		end
+		function L:_raiseTier()
+			local _, F, s = self:_readUpgradeState()
+
+			if not s then
+				return false, "Max tier"
+			end
+
+			if (tonumber(F) or 0) < (tonumber(s.Price) or 0) then
+				return false, "Not enough money"
+			end
+
+			local F, W, Q = pcall(function()
+				return a.Treadmill.AskTierRaise:InvokeServer(s._id)
+			end)
+
+			if not F then
+				return false, tostring(W)
+			end
+
+			if W ~= true then
+				return false, tostring(Q or "Server rejected")
+			end
+
+			return true, s.DisplayName or s._id
+		end
+		function L:setAutoUpgrade(F)
+			self.config.autoUpgrade = F == true
+
+			if not self.config.autoUpgrade or self.autoUpgradeRunning then
+				return
+			end
+
+			self.autoUpgradeRunning = true
+			task.spawn(function()
+				while not self.destroyed and self.config.autoUpgrade do
+					local F, s = self:_raiseTier()
+
+					if F then
+						self:_setStatus(self.busy and "Automation active" or "Idle", "Upgraded to " .. tostring(s))
+						task.wait(1)
+					elseif s == "Max tier" then
+						self:_setStatus(self.busy and "Automation active" or "Idle", "Treadmill maxed")
+						task.wait(30)
+					else
+						task.wait(5)
+					end
+				end
+
+				self.autoUpgradeRunning = false
+			end)
+		end
+		function L:_resolveStandCFrame()
+			if LocalPlayer:GetAttribute("InHalloweenDimension") == true then
+				return nil
+			end
+
+			local F = _.ResolveLocalSlot()
+			local s = _.ResolveFolder()
+			local _ = s and F and s:FindFirstChild(tostring(F))
+			local F = _ and _:FindFirstChild("TreadmillBottom")
+
+			if not (F and F:IsA("BasePart")) then
+				return nil
+			end
+
+			local _, _, s = v8()
+
+			if not _ or not s then
+				return nil
+			end
+
+			local W
+
+			if s.RigType == Enum.HumanoidRigType.R15 then
+				W = _.Size.Y * 0.5 + math.max(s.HipHeight, 0.5)
+			else
+				W = _.Size.Y * 0.5 + 2
+			end
+
+			return F.CFrame * CFrame.new(0, F.Size.Y * 0.5 + W + 0.05, 0)
+		end
+		function L:isEngaged()
+			return self.activeTreadmill ~= nil or self.travelingToTreadmill or self.treadmillEquipPending or self.carryPulseRunning
+		end
+		function L:_startIdle()
+			if self.destroyed or self.busy or not self.config.idleFarm then
+				return
+			end
+
+			self:_cancelIdle(false)
+
+			local F = self.idleGeneration
+			local _ = os.clock()
+
+			self.idleRunning = F
+			task.spawn(function()
+				local s, W = xpcall(function()
+					while not self.destroyed and not self.busy and self.config.idleFarm and F == self.idleGeneration do
+						if self.coordinator and self.coordinator:isBackgroundBusy() then
+							_ = os.clock()
+							self:_setStatus("Idle", "Waiting for background inventory")
+							task.wait(0.25)
+
+							continue
+						end
+
+						local Q = genv.__GehleeV4EnsureNormalWorld
+
+						if (genv.__GehleeV4DimTravelUntil or 0) > os.clock() or type(Q) ~= "function" or not Q("treadmill", function()
+							return not self.destroyed and self.config.idleFarm and F == self.idleGeneration
+						end) then
+							_ = os.clock()
+							self:_setStatus("Idle", "Switching dimension")
+							task.wait(0.25)
+
+							continue
+						end
+
+						if M() then
+							do
+								_ = os.clock()
+								self:_setStatus("Idle", "Yielding to Auto Steal")
+								task.wait(0.25)
+
+								continue
+							end
+						end
+
+						if d() then
+							_ = os.clock()
+							self:_setStatus("Idle", I())
+							task.wait(0.25)
+
+							continue
+						end
+
+						local Q = 1 - (os.clock() - _)
+
+						if Q > 0 then
+							self:_setStatus("Idle", string.format("Starting in %.0fs", math.ceil(Q)))
+							task.wait(math.min(Q, 0.25))
+
+							continue
+						end
+
+						local _ = self:_resolveStandCFrame()
+
+						if not _ then
+							self:_setStatus("Idle", "Position unavailable")
+							task.wait(2)
+
+							continue
+						end
+
+						self.travelingToTreadmill = true
+						self:_setStatus("Moving", "Waiting")
+
+						local Q = false
+						local T = self.travel
+						local _, x, h = v8()
+
+						if T and x and h and type(T._teleportRoot) == "function" and type(T._isInSafeArea) == "function" and T:_isInSafeArea(x) and (x.Position - _.Position).Magnitude < 250 then
+							local z, k = pcall(T._teleportRoot, T, x, h, _)
+
+							Q = z and k == true
+						end
+
+						Q = Q or self.travel and self.travel:travelAndWait(_, { abort = function()
+							return self.destroyed or self.busy or not self.config.idleFarm or F ~= self.idleGeneration or (self.coordinator and self.coordinator:isBackgroundBusy()) or not genv.__GehleeV4MovementWorldReady(false) or d()
+						end })
+						self.travelingToTreadmill = false
+
+						if not Q then
+							if not self.busy and self.config.idleFarm then
+								self:_setStatus("Idle", "Travel failed")
+								task.wait(1)
+							end
+
+							continue
+						end
+
+						if self.busy or not self.config.idleFarm or F ~= self.idleGeneration or (self.coordinator and self.coordinator:isBackgroundBusy()) or not genv.__GehleeV4MovementWorldReady(false) or d() then
+							continue
+						end
+
+						task.wait(0.35)
+
+						if self.busy or not self.config.idleFarm or F ~= self.idleGeneration or (self.coordinator and self.coordinator:isBackgroundBusy()) or not genv.__GehleeV4MovementWorldReady(false) or d() then
+							continue
+						end
+
+						self.treadmillEquipPending = true
+
+						local R, z = pcall(function()
+							return a.Treadmill.AskWearStill:InvokeServer()
+						end)
+
+						if not R or z == false then
+							self.treadmillEquipPending = false
+							self:_setStatus("Preparing carry", "Activation failed: " .. tostring(_ or z))
+						else
+							self.lastEquipAt = os.clock()
+							self:_setStatus("Active", "Waiting for gain")
+							task.delay(2, function()
+								if not self.destroyed and self.activeTreadmill == nil then
+									self.treadmillEquipPending = false
+								end
+							end)
+						end
+
+						local R = os.clock() + 8
+
+						while (self.activeTreadmill ~= nil or os.clock() < R) and not self.destroyed and not self.busy and self.config.idleFarm and F == self.idleGeneration and not (self.coordinator and self.coordinator:isBackgroundBusy()) do
+							if M() then
+								do
+									self:_cancelIdle(true)
+									self:_setStatus("Idle", "Yielding to Auto Steal")
+
+									break
+								end
+							end
+
+							if d() then
+								self:_requestUnequip()
+								self:_setStatus("Idle", I())
+
+								break
+							end
+
+							task.wait(0.25)
+						end
+					end
+				end, debug.traceback)
+
+				if not s then
+					warn("[SAE][treadmill] idle error:\n" .. tostring(W))
+				end
+
+				if self.idleRunning == F then
+					self.idleRunning = nil
+				end
+			end)
+		end
+		function L:_onCoordinator(F)
+			local R = self.busy
+
+			self.busy = F.busy == true
+
+			if self.busy then
+				self:_cancelIdle(self.config.disableDuringAutomation)
+				self:_startUnequipGuard()
+				self:_setStatus("Automation active", self.config.disableDuringAutomation and "Blocked" or "Unchanged")
+			elseif R or self.config.idleFarm then
+				if self.config.idleFarm then
+					self:_startIdle()
+				else
+					self:_setStatus("Idle", "Disabled")
+				end
+			end
+		end
+		function L:_listenCoordinator()
+			if not self.coordinator then
+				return
+			end
+
+			table.insert(self.resources, self.coordinator:subscribe(function(F)
+				self:_onCoordinator(F)
+			end))
+			table.insert(self.resources, self.coordinator:subscribeBackground(function(F)
+				if F.busy then
+					self:_cancelIdle(false)
+					self:_setStatus("Idle", "Waiting for background inventory")
+				elseif not self.destroyed and not self.busy and self.config.idleFarm then
+					self:_startIdle()
+				end
+			end))
+		end
+		function L:_syncActiveTreadmillSnapshot()
+			local F, R = pcall(function()
+				return a.Treadmill.AskRenderSnapshot:InvokeServer()
+			end)
+
+			if not F or type(R) ~= "table" then
+				return self.activeTreadmill ~= nil
+			end
+
+			local F = table.find(R, LocalPlayer.UserId) ~= nil
+
+			self.activeTreadmill = F and "snapshot" or nil
+
+			if not F then
+				self.treadmillEquipPending = false
+			end
+
+			return F
+		end
+		function L:_listenActiveTreadmill()
+			local function F(R)
+                local owner = genv.__GehleeV4EggRuntime
+                if R == nil and owner and not owner._s2rInstantToken then owner._s2rTreadmillParked = nil end
+				self.treadmillStateRevision += 1
+				self.activeTreadmill = R
+				self.treadmillEquipPending = false
+
+				if R ~= nil and self:_shouldBlockTreadmill() then
+					self:_startUnequipGuard()
+				elseif R == nil and self:_shouldBlockTreadmill() then
+					self:_setStatus("Automation active", "Blocked")
+				elseif R == nil then
+					self:_setStatus("Idle", self.config.idleFarm and "Released" or "Disabled")
+				elseif not self.busy then
+					self:_setStatus("Active", "Waiting for gain")
+				end
+			end
+
+			local R, z = nil, nil
+
+			pcall(function()
+				R = a.Treadmill.AssignedBeltShifted
+			end)
+			pcall(function()
+				z = a.Treadmill.RenderStateShifted
+			end)
+
+			if R then
+				table.insert(self.resources, R.OnClientEvent:Connect(function(R)
+					F(R)
+				end))
+
+				return
+			end
+
+			if z then
+				table.insert(self.resources, z.OnClientEvent:Connect(function(R, z)
+					if R ~= LocalPlayer.Name then
+						return
+					end
+
+					F(z and R or nil)
+				end))
+			end
+		end
+		function L:_listenSpeedGain()
+			local S = a.Treadmill.SpeedGained
+
+			if S then
+				table.insert(self.resources, S.OnClientEvent:Connect(function()
+					self.activeTreadmill = self.activeTreadmill or true
+					self.treadmillEquipPending = false
+
+					if self:_shouldBlockTreadmill() then
+						self:_startUnequipGuard()
+
+						return
+					end
+
+					self:_setStatus("Active", "Gain ticking")
+				end))
+			end
+		end
+		function L:destroy()
+			if self.destroyed then
+				return
+			end
+
+			self.destroyed = true
+            self.idleGeneration = (self.idleGeneration or 0) + 1
+            self.config.idleFarm = false
+            self.config.autoUpgrade = false
+
+			for a, a in ipairs(self.resources) do
+				pcall(function()
+					if typeof(a) == "RBXScriptConnection" then
+						a:Disconnect()
+					elseif type(a) == "function" then
+						a()
+					elseif type(a) == "table" and type(a.Disconnect) == "function" then
+						a:Disconnect()
+					end
+				end)
+			end
+
+			table.clear(self.resources)
+			table.clear(self.listeners)
+            -- GEHLEE_V10_TREADMILL_SHUTDOWN_BEGIN
+            -- Disconnect owned work before asking the server to dismount.
+            -- A slow server cannot hold up closing the hub or a later reload.
+            local worker = task.spawn(function()
+                local current = genv.__GehleeV4TreadmillManager
+                if current ~= nil and current ~= self then return end
+                pcall(self._requestUnequip, self)
+            end)
+            task.delay(3, function()
+                if type(worker) == "thread" and coroutine.status(worker) ~= "dead" then
+                    pcall(task.cancel, worker)
+                end
+            end)
+            -- GEHLEE_V10_TREADMILL_SHUTDOWN_END
+		end
+
+		L.Destroy = L.destroy
+
+		return L
+	end)()
+	local v3916 = v2218.new()
+
+	v2216 = v2274.new(v2214, v2273, v3916)
+	genv.__GehleeV4EggRuntime = v2216
+
+	local v3917 = v3839.new(v3916, v2216)
+
+	genv.__GehleeV4TreadmillManager = v3917
+	t8.register("treadmill", {
+		wants = function()
+			return v3917.config.idleFarm == true and not v3917.destroyed and not (genv.__GehleeV4DesiredTask and genv.__GehleeV4DesiredTask() == "hw_fish")
+		end,
+		active = function()
+			return not v3917.destroyed and v3917:isEngaged() == true
+		end,
+		enabled = function()
+			return v3917.config.idleFarm == true
+		end,
+		status = function()
+			local a = v3917.stats or {}
+			local S, F = tostring(a.mode or ""), tostring(a.boost or "")
+
+			if F ~= "" and F ~= "Waiting" then
+				return S .. "  ·  " .. F
+			end
+
+			return S
+		end
+	})
+	v2216:setTreadmillManager(v3917)
+	v3917:setDisableDuringAutomation(true)
+
+	if gehleeV4Config.AutoTreadmillIdle then
+		v3917:setIdleFarm(true)
+	end
+
+	if gehleeV4Config.AutoIndex then
+		v2216:setIndexObjective(true)
+	end
+
+	if gehleeV4Config.AutoTreadmillUpgrade then
+		v3917:setAutoUpgrade(true)
+	end
+
+
+	-- ===== host additions (Pilat) =====
+	genv.__GehleeV4MovementWorldReady = function(inDim)
+		local char = LocalPlayer.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local dim = LocalPlayer:GetAttribute("InHalloweenDimension") == true
+
+		return genv.__GehleeV4OnTrain ~= true and root ~= nil and dim == (inDim == true) and ((root.Position.Y < -100.0) == (inDim == true))
+	end
+
+	local hostAnti = v3724.new(v2216)
+
+	hostAnti:install()
+	hostAnti:setEnabled(gehleeV4Config.AntiGuardKnockback == true)
+	genv.__GehleeV4AntiGuard = hostAnti
+	v2217 = v3780.new(v2216)
+	v2217:setEnabled(gehleeV4Config.GodMode == nil and true or gehleeV4Config.GodMode == true)
+	genv.__GehleeV4GodMode = v2217
+
+	local t35 = {
+		at = 0,
+		value = false
+	}
+
+	genv.__GehleeV4StealWantsCharacter = function()
+		local a = genv.__GehleeV4PlayerSteal
+
+		if a and (a.running or (a.enabled and a.wantsTarget)) then
+			return true
+		end
+
+		local a = genv.__GehleeV4EggRuntime
+
+		if not (a and a.enabled and not a.destroyed) then
+			return false
+		end
+
+		if a:_eventBlocksSteal() then
+			return false
+		end
+
+		local R = a.activeTween and not a.activeTween.sharedTravel
+
+		if a.running or R or (a.carry and a.carry.active) then
+			return true
+		end
+
+		local R = genv.__GehleeV4NormalWorldReady
+
+		if type(R) == "function" and not R() then
+			return false
+		end
+
+		if type(a._eggInventoryFull) == "function" and a:_eggInventoryFull() then
+			return false
+		end
+
+		local F = os.clock()
+
+		if F - t35.at < 0.5 then
+			return t35.value
+		end
+
+		t35.at = F
+
+		local F, R = pcall(function()
+			return a:_wallOpen() and a:_chooseTarget() or nil
+		end)
+
+		t35.value = F and R ~= nil
+
+		return t35.value
+	end
+	t8.register("auto_steal", {
+		wants = genv.__GehleeV4StealWantsCharacter,
+		active = function()
+			local a = genv.__GehleeV4PlayerSteal
+
+			if a and a.running then
+				return true
+			end
+
+			local a = genv.__GehleeV4EggRuntime
+
+			if not a or a.destroyed then
+				return false
+			end
+
+			local S = a.activeTween and not a.activeTween.sharedTravel
+
+			return a.running == true or S == true or (a.carry ~= nil and a.carry.active == true)
+		end,
+		enabled = function()
+			local a = genv.__GehleeV4PlayerSteal
+			local F = genv.__GehleeV4EggRuntime
+
+			return (F ~= nil and F.enabled == true) or (a ~= nil and a.enabled == true)
+		end,
+		status = function()
+			local a = genv.__GehleeV4PlayerSteal
+
+			if a and a.running then
+				return tostring(a.status or "Stealing from a player")
+			end
+
+			local a = genv.__GehleeV4EggRuntime
+
+			return a and a.stats and tostring(a.stats.status or "") or ""
+		end
+	})
+
+	-- Low Speed User defaults, same as the Gehlee UI defaults (host controls what it steals)
+	gehleeV4Config.StealMode = "Instant"
+	gehleeV4Config.FlyAerial = false
+	gehleeV4Config.FlyZigzag = false
+	gehleeV4Config.LowSpeedBoost = true
+	gehleeV4Config.StealHoldSeconds = 5
+	gehleeV4Config.SnipeDroppedEggs = false
+	gehleeV4Config.HelpFriend = false
+	gehleeV4Config.ReturnTreadmillAfterSteal = false -- the host treadmill manager does the return
+	v2216:setStealMode("Instant", false, false)
+	v2216:setSpeed(gehleeV4Config.TweenSpeedMultiplier or 60)
+
+	local EggStateMod = require(ReplicatedStorage.Client.EggState)
+	local api = {runtime = v2216, treadmill = v3917, config = gehleeV4Config, genv = genv}
+
+	function api.busy()
+		return v2216._instantReturnToken ~= nil
+	end
+	function api.release()
+		v2216.grabHandoff = nil
+		v2216.onFinish = nil
+		v2216.manualQueue = {}
+		v2216.manualOrder = {}
+		v2216.manualObjectiveEnabled = false
+		pcall(v2216._reconcileRunningState, v2216)
+	end
+	function api.steal(uid, opts)
+		opts = opts or {}
+		gehleeV4Config.LowSpeedBoost = opts.handoff ~= true
+		v2216:setStealMode("Instant", false, false)
+		v2216.onFinish = opts.onFinish
+		if opts.handoff then
+			v2216.grabHandoff = function(huid)
+				api.release()
+				if opts.onGrab then pcall(opts.onGrab, huid) end
+			end
+		else
+			v2216.grabHandoff = nil
+		end
+		local n, res = v2216:queueManual({uid})
+		return n > 0, type(res) == "table" and res.reason or nil
+	end
+	function api.deliver(uid)
+		local okRead, rec = pcall(EggStateMod.ReadFieldEgg, uid)
+		return v2216:deliverCarriedEgg(uid, okRead and type(rec) == "table" and rec or nil) == true
+	end
+	function api.destroy()
+		pcall(api.release)
+		pcall(v2216.destroy, v2216)
+		pcall(v3917.destroy, v3917)
+		pcall(hostAnti.destroy, hostAnti)
+		pcall(v2217.destroy, v2217)
+	end
+	genv.__GehleeV4Api = api
+	genv.__GehleeV4ApiHolder = {api}
+end
+
+return genv.__GehleeV4Api
+
+]=====]
+                        local gehleeCoreCache, gehleeCoreErr
+                        ctx.state.gehleeCore = function()
+                                if gehleeCoreCache then
+                                        return gehleeCoreCache
+                                end
+                                if gehleeCoreErr then
+                                        return nil, gehleeCoreErr
+                                end
+                                local fn, err = loadstring(GEHLEE_SRC, "=GehleeLowSpeedCore")
+                                if not fn then
+                                        gehleeCoreErr = "compile: " .. tostring(err)
+                                        warn("[Pilat/Gehlee core] " .. gehleeCoreErr)
+                                        return nil, gehleeCoreErr
+                                end
+                                local okInit, api = pcall(fn)
+                                if not okInit or type(api) ~= "table" then
+                                        gehleeCoreErr = "init: " .. tostring(api)
+                                        warn("[Pilat/Gehlee core] " .. gehleeCoreErr)
+                                        return nil, gehleeCoreErr
+                                end
+                                gehleeCoreCache = api
+                                return api
+                        end
+
+                        local legacyGrab = ctx.state.tpV2Grab
+                        ctx.state.tpV2GrabLegacy = legacyGrab
+
+                        -- Teleport V2 move-to-egg: Gehlee "Low Speed User" steal (primer egg, treadmill decoy, hover pad, spoof movement, boost)
+                        ctx.state.tpV2Grab = function(input, callback)
+                                local core = ctx.state.gehleeCore()
+                                if not core then
+                                        return legacyGrab(input, callback)
+                                end
+
+                                local uid = input.Uid
+                                local localPlayer = ctx.localPlayer
+                                local character = localPlayer.Character
+                                local Egg = ctx.modules and ctx.modules.Egg
+
+                                if not character or not Egg or type(Egg.ReadFieldEgg) ~= "function" then
+                                        return false, "Egg module unavailable"
+                                end
+                                if not ctx.waitRootAnchored(callback) or not ctx.leaveFuse(callback) then
+                                        return false, "Stuck on treadmill"
+                                end
+                                pcall(ctx2.hasTimedOut3)
+
+                                local stable = ctx.hubSettings.tpDel == "Stable"
+                                local function alive()
+                                        return callback() and localPlayer.Character == character
+                                end
+                                local function read()
+                                        local okRead, rec = pcall(Egg.ReadFieldEgg, uid)
+                                        if okRead and type(rec) == "table" then
+                                                return rec
+                                        end
+                                        return nil
+                                end
+
+                                ctx.state.stableDone = nil
+                                ctx.setStatus("Low Speed User: " .. tostring(input.Name))
+
+                                local grabbed, finishReason = false, nil
+                                local started, why = core.steal(uid, {
+                                        handoff = not stable,
+                                        onGrab = function()
+                                                grabbed = true
+                                        end,
+                                        onFinish = function(reason)
+                                                finishReason = reason
+                                        end,
+                                })
+                                if not started then
+                                        core.release()
+                                        return false, tostring(why or "Target unavailable")
+                                end
+
+                                local deadline = os.clock() + (stable and 150 or 90)
+                                local sawCarry = false
+                                while alive() do
+                                        local rec = read()
+                                        if grabbed then
+                                                ctx.state.tpFT = nil
+                                                return true, "grabbed"
+                                        end
+                                        if rec and rec.State == "Carried" then
+                                                if tonumber(rec.CarrierUserId) ~= localPlayer.UserId then
+                                                        core.release()
+                                                        return false, "Taken by someone"
+                                                end
+                                                sawCarry = true
+                                        end
+                                        if stable then
+                                                if finishReason == "Safe return complete" or (sawCarry and (not rec or rec.State == "Claimed") and not core.busy()) then
+                                                        core.release()
+                                                        ctx.state.stableDone = uid
+                                                        ctx.state.tpFT = nil
+                                                        return true, "grabbed"
+                                                end
+                                        end
+                                        if not rec then
+                                                core.release()
+                                                return false, "Target unavailable"
+                                        end
+                                        if rec.State ~= "Slot" and rec.State ~= "Dropped" and rec.State ~= "GuardCarried" and rec.State ~= "Carried" then
+                                                core.release()
+                                                return false, "Target changed"
+                                        end
+                                        if core.runtime.manualObjectiveEnabled ~= true and not sawCarry then
+                                                core.release()
+                                                return false, "Egg went back to its nest"
+                                        end
+                                        if os.clock() > deadline then
+                                                core.release()
+                                                return false, "Could not reach"
+                                        end
+                                        ctx.waitHeartbeat()
+                                end
+                                core.release()
+                                return false, "Cancelled"
+                        end
+
+                        -- "Stable" teleport delivery: Gehlee's own return (_instantReturn through deliverCarriedEgg)
+                        ctx.state.stableDeliver = function(uid, callback, core)
+                                local localPlayer = ctx.localPlayer
+                                local character = localPlayer.Character
+                                local Egg = ctx.modules and ctx.modules.Egg
+                                local function read()
+                                        if not Egg or type(Egg.ReadFieldEgg) ~= "function" then
+                                                return nil
+                                        end
+                                        local okRead, rec = pcall(Egg.ReadFieldEgg, uid)
+                                        if okRead and type(rec) == "table" then
+                                                return rec
+                                        end
+                                        return nil
+                                end
+
+                                ctx.setStatus("Carrying home (Stable)")
+                                if not core.deliver(uid) then
+                                        core.release()
+                                        return false, "Stable could not start"
+                                end
+
+                                local t0 = os.clock()
+                                while callback() and localPlayer.Character == character and core.busy() and os.clock() - t0 < 60 do
+                                        ctx.waitHeartbeat()
+                                end
+
+                                local rec = read()
+                                local delivered = (rec == nil) or rec.State == "Claimed"
+                                if not core.busy() and delivered then
+                                        core.release()
+                                        return true, "delivered"
+                                end
+                                core.release()
+                                if not callback() or localPlayer.Character ~= character then
+                                        return false, "Cancelled"
+                                end
+                                if rec and rec.State == "Dropped" then
+                                        return false, "Dropped on the way"
+                                end
+                                return false, "Delivery failed"
+                        end
+
                 end
 
                 local handlerSteal, state12 = function(input, inputSteal)
@@ -19870,7 +33184,7 @@ end)()
 
                 ctx2.fieldValue3 = hasTimedOut2
 
-                local function doStep12(input, callback)
+                local function doStep12Pilat(input, callback)
                         local exitTo = nil
                         local exitTo3 = nil
                         local exitTo6 = nil
@@ -20302,6 +33616,22 @@ end)()
                         ctx2.tryCall(tempValue9)
                         return tempValue10, tempValue11
                 end
+
+                local function doStep12(input, callback)
+                        local hs = ctx.hubSettings
+                        if hs.tpDel == "Stable" and ctx.isTp(hs.moveTo) then
+                                if ctx.state.stableDone == input then
+                                        ctx.state.stableDone = nil
+                                        return true, "delivered"
+                                end
+                                local core = ctx.state.gehleeCore and ctx.state.gehleeCore()
+                                if core and ctx.state.stableDeliver then
+                                        return ctx.state.stableDeliver(input, callback, core)
+                                end
+                        end
+                        return doStep12Pilat(input, callback)
+                end
+
 
                 local function scanTable3(input)
                         local readFieldEggs = ctx.readFieldEggs
@@ -30136,7 +43466,7 @@ end)()
 
                 local MOVE_OPTS = {{"Teleport", "Teleport"}, {"Teleport V2", "Teleport V2"}, {"Walk", "Tween"}, {"Instant", "Instant"}}
                 local DEL_OPTS = {{"Walk", "Walk"}, {"Instant Steps", "Instant Steps"}, {"Fast Tween", "Fast Tween"}}
-                local TPDEL_OPTS = {{"Walk", "Walk"}, {"Quick Steps", "Quick Steps"}, {"Fast Tween", "Fast Tween"}}
+                local TPDEL_OPTS = {{"Walk", "Walk"}, {"Quick Steps", "Quick Steps"}, {"Fast Tween", "Fast Tween"}, {"Stable", "Stable"}}
 
                 local function applySetting(ctl, key, value)
                         ctx.hubSettings[key] = value
