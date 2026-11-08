@@ -7455,7 +7455,7 @@ end
 
 local function loadAllSections()
         local ctx = {}
-        local totalSteps, completedSteps, milestoneStep, parts = 44, 0, 0, {}
+        local totalSteps, completedSteps, milestoneStep, parts = 45, 0, 0, {}
 
         local function runStep(stepName, stepFunction)
                 pcall(writefile, "PilatLibrary/SAE_LoadPart.txt", stepName)
@@ -8083,87 +8083,6 @@ local function loadAllSections()
                 return true
         end
 
-        do
-                pcall(function()
-                        if type(listfiles) ~= "function" or type(readfile) ~= "function" or type(writefile) ~= "function" then
-                                return
-                        end
-                        local httpScrub = game:GetService("HttpService")
-                        local hwNames = {["Halloween Dimension"] = true, ["Halloween Monsters"] = true, ["Ghost Dog & Fishing"] = true,
-                                ["Pumpkin Boss"] = true, ["Phantom Express"] = true, ["Priority Rotation"] = true,
-                                ["Auto Farm Monsters"] = true, ["Teleport To Pumpkins"] = true, ["Auto Ghost Dog Quest"] = true,
-                                ["Auto Fishing"] = true, ["Auto Pumpkin Boss"] = true, ["Auto Dodge Attacks"] = true,
-                                ["Auto Claim Boss Mastery"] = true, ["Auto Manor Key"] = true, ["Auto Phantom Express"] = true,
-                                ["Fly While Riding (10 studs)"] = true, ["Auto Vacuum Ghouler Boss"] = true, ["Teleport To Ghosts"] = true,
-                                ["Auto Trade Souls"] = true, ["Rotate Fishing And Treadmill"] = true,
-                                ["Take Halloween Eggs From Holders"] = true, ["Place And Hatch Missing Index Eggs"] = true,
-                                hwEggs = true, hwInstant = true, thief = true, hwIndex = true, placeIdx = true, hwMon = true, hwPumpTp = true,
-                                hwBuy = true, hwDog = true, hwFish = true, pumpkin = true, pbDodge = true, pbClaim = true, hwKey = true,
-                                train = true, trainFly = true, hwBoss = true, hwGhostTp = true, hwSouls = true, rot = true}
-                        local function isHw(key)
-                                if type(key) ~= "string" then
-                                        return false
-                                end
-                                return hwNames[key] == true or key:find("Halloween", 1, true) ~= nil
-                        end
-                        local function walk(node, inHw, depth)
-                                local changed = false
-                                if type(node) ~= "table" or depth > 14 then
-                                        return false
-                                end
-                                for key, value in pairs(node) do
-                                        local hw = inHw or isHw(key)
-                                        if type(value) == "boolean" then
-                                                if hw and value == true then
-                                                        node[key] = false
-                                                        changed = true
-                                                end
-                                        elseif type(value) == "table" then
-                                                if hw and value.Value == true then
-                                                        value.Value = false
-                                                        changed = true
-                                                end
-                                                if walk(value, hw, depth + 1) then
-                                                        changed = true
-                                                end
-                                        end
-                                end
-                                return changed
-                        end
-                        local function scan(folder, depth)
-                                if depth > 4 then
-                                        return
-                                end
-                                local okList, files = pcall(listfiles, folder)
-                                if not okList or type(files) ~= "table" then
-                                        return
-                                end
-                                for _, path in ipairs(files) do
-                                        path = tostring(path)
-                                        if type(isfolder) == "function" and isfolder(path) then
-                                                scan(path, depth + 1)
-                                        elseif path:lower():match("%.json$") then
-                                                pcall(function()
-                                                        local raw = readfile(path)
-                                                        if type(raw) ~= "string" or #raw > 3000000 or not raw:find("{", 1, true) then
-                                                                return
-                                                        end
-                                                        local data = httpScrub:JSONDecode(raw)
-                                                        if type(data) == "table" and walk(data, false, 0) then
-                                                                writefile(path, httpScrub:JSONEncode(data))
-                                                        end
-                                                end)
-                                        end
-                                end
-                        end
-                        for _, root in ipairs({"PilatSAEv7", "Pilat", "PilatLibrary", "PilatLibrary"}) do
-                                if type(isfolder) ~= "function" or isfolder(root) then
-                                        scan(root, 0)
-                                end
-                        end
-                end)
-        end
-
         print("[Pilat] 02_sae: about to call uiLibrary.Window()")
         local mainWindow = uiLibrary.Window({
                 Title = "Pilat 7.0 |",
@@ -8308,7 +8227,7 @@ local function loadAllSections()
 
                 local state = ctx.state
                 state.AREAS = {"Forest", "Desert", "Snow", "Lake", "Jungle", "Volcano", "Prehistoric", "Cosmic",
-                        "Abyss Ocean", "Cherry Blossom", "Light Dark", "Titan Temple", "Enchanted Forest"}
+                        "Abyss Ocean", "Cherry Blossom", "Light Dark", "Titan Temple", "Enchanted Forest", "Alien"}
                 local stateCore, state3, state4 = ctx.state, ctx.state, ctx.state
                 stateCore.RANY = {"Any"}
                 state3.RNUM = {}
@@ -9358,7 +9277,7 @@ local function loadAllSections()
         end
 
         local cacheCore, entries4, itemsCore = {}, {}, {{"Farm", nil, {"+Auto Steal", "+Egg Checker", "Auto Progression",
-                "Auto Mutation", "Auto Place Egg", "Auto Treadmill", "Auto Hatch & Equip", "Auto Sell", "Auto Fuse Machine", "Auto Favorite", "Priority"}}, {"Event", nil, {"UFO Sightings", "Shooting Star", "Butterfly Bloom", "The Hollow"}}, {"Admin Abuse", "Right", {"Capture The Egg", "Admin Treadmill", "Instant Steal V3", "Minigame Eggs", "Cursed Island Wars"}}, {"Player", nil, {"ESP", "+Movement", "+Character", "+Combat"}}, {"Predictor", nil, {"Discord Webhook", "+Egg Predictor"}}, {"Server", nil, {"+Server"}}, {"Misc", nil, {"+Performance", "+Utility"}}, {"Auto Hop", nil, {"+Pilat Finder"}}, {"Quick", nil, {"Quick Buttons"}}}
+                "Auto Mutation", "Auto Place Egg", "Auto Treadmill", "Auto Hatch & Equip", "Auto Sell", "Auto Fuse Machine", "Auto Favorite", "Priority"}}, {"Event", nil, {"UFO Sightings", "Alien Fishing", "Alien Mastery & Trade", "Shooting Star", "Butterfly Bloom", "The Hollow"}}, {"Admin Abuse", "Right", {"Capture The Egg", "Admin Treadmill", "Instant Steal V3", "Minigame Eggs", "Cursed Island Wars"}}, {"Player", nil, {"ESP", "+Movement", "+Character", "+Combat"}}, {"Predictor", nil, {"Discord Webhook", "+Egg Predictor"}}, {"Server", nil, {"+Server"}}, {"Misc", nil, {"+Performance", "+Utility"}}, {"Auto Hop", nil, {"+Pilat Finder"}}, {"Quick", nil, {"Quick Buttons"}}}
 
         for index, item in ipairs(itemsCore) do
                 index = mainWindow:Tab(item[1], item[2])
@@ -9368,15 +9287,6 @@ local function loadAllSections()
                         cache2 = itemCore:sub(1, 1) == "+"
                         itemCore = (cache2 and itemCore:sub(2)) or itemCore
                         cacheCore[itemCore] = index:Section(itemCore, cache2)
-                end
-        end
-
-        for _, hiddenName in ipairs({"Pumpkin Boss", "Halloween Dimension", "Halloween Monsters", "Ghost Dog & Fishing", "Phantom Express", "Priority Rotation"}) do
-                local okHidden, hiddenSec = pcall(function()
-                        return entries4["Event"]:HiddenSection(hiddenName, false)
-                end)
-                if okHidden and hiddenSec then
-                        cacheCore[hiddenName] = hiddenSec
                 end
         end
 
@@ -10812,7 +10722,8 @@ local ISLANDS = {
 	{ "Cherry Blossom", 3928, 4170 },
 	{ "Titan Temple", 4411, 5129 },
 	{ "Light Dark", 5577, 6000 },
-	{ "Enchanted Forest", 6524, math.huge },
+	{ "Enchanted Forest", 6524, 7523 },
+	{ "Alien", 7524, math.huge },
 }
 
 local function safeRequire(getter)
@@ -14824,12 +14735,6 @@ end
 local MAX_ATTEMPTS = 3
 
 local function stealAndDeliver(uid, attempt, autoRun)
-    if runtime.halloween and runtime.halloween.blocksNormal() then
-        status(runtime.halloween.TrainReserved and not runtime.halloween.hasCarry()
-            and "Halloween: use Return home to finish the train session"
-            or "Halloween: stop farming and put down carried items before normal stealing")
-        return false
-    end
 	attempt = attempt or 1
     if not isAlive() or state.Busy or state.Aborting or type(uid) ~= "string" then return false end
     if runtime.bigEggFinder and runtime.bigEggFinder.IsJoining then
@@ -15384,10 +15289,6 @@ local function stealAndDeliver(uid, attempt, autoRun)
 end
 
 runtime.abortTrip = function(message)
-    if runtime.halloween and runtime.halloween.Active then
-        runtime.halloween.cancel(message or "Cancelled")
-        return
-    end
     if not state.Busy or state.Aborting then return end
     state.Aborting = true
     if runtime.autoTreadmill and runtime.autoTreadmill.cancel then runtime.autoTreadmill.cancel() end
@@ -15844,7 +15745,7 @@ end)()
                         end
                 end)
 
-                local scanTableResult, state5 = scanTable({"Enchanted Forest", "Light Dark", "Titan Temple"}), ctx.state
+                local scanTableResult, state5 = scanTable({"Enchanted Forest", "Alien", "Light Dark", "Titan Temple"}), ctx.state
 
                 state5.cmode = function(input)
                         local hubSettings4 = ctx.hubSettings
@@ -15866,7 +15767,7 @@ end)()
 
                 networkingSteal = ctx.state
                 networkingSteal.TZ = {"Prehistoric", "Cosmic", "Cherry Blossom", "Titan Temple", "Light Dark",
-                        "Enchanted Forest"}
+                        "Enchanted Forest", "Alien"}
                 local state6 = ctx.state
 
                 state6.tpCodium = function()
@@ -16010,7 +15911,7 @@ end)()
                 hubSettingsSteal = ctx.state
                 ctx.state.instantHide = {doStep7Result, doStep7ResultSteal}
                 table.insert(ctx.state.instantHide, doStep7(hubSettings, "Teleport Zones", "tpZones", hubSettingsSteal.TZ, {"Titan Temple", "Light Dark",
-                        "Enchanted Forest"}, nil, true):When(hubSettings3, (getValue("Teleport"))))
+                        "Enchanted Forest", "Alien"}, nil, true):When(hubSettings3, (getValue("Teleport"))))
 
                 table.insert(ctx.state.instantHide, hubSettings:Slider("Delivery Speed", 80, 110, 100, function(amountSteal)
                         local hubSettings4 = ctx.hubSettings
@@ -18188,17 +18089,12 @@ local gehleeV4Config = {
 	StealPriority = "Rarity",
 	TaskOrder = {
 		"auto_steal",
-		"hw_steal",
 		"star",
 		"butterfly",
-		"phantom",
-		"hw_mobs",
-		"hw_pumpkin",
 		"auto_place",
 		"use_scrambled",
 		"ring_event",
 		"treadmill",
-		"hw_fish"
 	},
 	AutoFavorite = false,
 	FavMode = "Rarity",
@@ -18281,33 +18177,14 @@ local gehleeV4Config = {
 	SnipePunch = true,
 	FastPull = true,
 	FastPullSpeed = 3500,
-	AutoStealHalloween = false,
 	RaceAuto = false,
 	RaceSpeedMultiplier = 1,
 	RaceMode = "Drive (legit)",
 	RaceGlideSpeed = 420,
-	HalloweenNames = { "None" },
-	HalloweenZonePriority = true,
-	HalloweenCarrySpeed = 290,
-	HalloweenAutoBuy = false,
-	HalloweenHitMobs = false,
-	HalloweenMobTypes = { "Soul Phantom" },
 	CheckerCardSize = "Medium",
 	CheckerStealMode = "Queue for Auto Steal",
 	MobFishShare = 50,
 	TreadFishShare = 50,
-	HalloweenEggRarities = { "None" },
-	HalloweenMobRarities = { "None" },
-	HalloweenCollectPumpkin = false,
-	HalloweenAutoBoss = false,
-	HalloweenBossDodge = false,
-	HalloweenBossClaim = false,
-	HalloweenManorKey = false,
-	HalloweenVoidFusion = false,
-	HalloweenCrossWorld = true,
-	HalloweenAutoFish = false,
-	HalloweenPhantomExpress = false,
-	HalloweenTradeSouls = false,
 	WalkSpeedMultiplier = 1,
 	AntiGuardKnockback = true,
 	GodMode = true,
@@ -18324,31 +18201,17 @@ local t7 = {}
 local t8 = {
 	DEFAULT = {
 		"auto_steal",
-		"hw_steal",
-		"hw_boss",
-		"hw_manor",
 		"star",
 		"butterfly",
-		"phantom",
-		"hw_mobs",
-		"hw_pumpkin",
 		"auto_place",
 		"use_scrambled",
 		"ring_event",
 		"treadmill",
-		"hw_fish"
 	},
 	TITLES = {
 		auto_steal = "Auto Steal",
-		hw_boss = "Pumpkin Boss",
-		hw_manor = "Manor Quest",
 		star = "Shooting Star",
 		butterfly = "Butterfly Bloom",
-		phantom = "Phantom Express",
-		hw_steal = "Steal Halloween",
-		hw_mobs = "Hit Mobs",
-		hw_pumpkin = "Collect Pumpkins",
-		hw_fish = "Auto Fish",
 		auto_place = "Auto Place",
 		ring_event = "Ring Event",
 		use_scrambled = "Auto Mutation",
@@ -18356,7 +18219,6 @@ local t8 = {
 	},
 	PINNED = {
 		treadmill = true,
-		hw_fish = true
 	},
 	register = function(a, F)
 		t7[a] = F
@@ -23718,7 +23580,7 @@ do
 			end)
 		end
 
-		local S = { ["Titan Temple"] = true, ["Light Dark"] = true, ["Enchanted Forest"] = true, ["Cherry Blossom"] = true, ["Cosmic"] = true, ["Prehistoric"] = true, ["Abyss Ocean"] = true, ["Volcano"] = true, ["Snow"] = true, ["Jungle"] = true, ["Desert"] = true, ["Lake"] = true }
+		local S = { ["Titan Temple"] = true, ["Light Dark"] = true, ["Enchanted Forest"] = true, ["Alien"] = true, ["Cherry Blossom"] = true, ["Cosmic"] = true, ["Prehistoric"] = true, ["Abyss Ocean"] = true, ["Volcano"] = true, ["Snow"] = true, ["Jungle"] = true, ["Desert"] = true, ["Lake"] = true }
 
 		function F7:_nearestRival(F, _)
 			local s, W
@@ -41192,7 +41054,7 @@ return genv.__GehleeV4Api
 
         runStep("20_farm#3", function()
                 local labelMap3 = {Boss = "Fractured", Scrambled = "Scrambled", Enchanted = "Enchanted", Nitro = "Nitro",
-                        Spectral = "Spectral"}
+                        Spectral = "Spectral", Alien = "Abducted"}
                 local doStep9ResultFarm = doStep9({name = "Mutate", mover = true, gap = 1, pri = 3, soft = true, bad = {}})
                 local autoMutation = cacheCore["Auto Mutation"]
 
@@ -41203,10 +41065,10 @@ return genv.__GehleeV4Api
                 end)
 
                 local mst, enabledFlags = getSet("mst", autoMutation:Text("Mutate Status", "Off", autoMutate)), {Boss = true,
-                        Scrambled = true, Enchanted = true, Nitro = true, Spectral = true}
+                        Scrambled = true, Enchanted = true, Nitro = true, Spectral = true, Alien = true}
 
-                autoMutation:Dropdown("Mutations To Use", {"Fractured", "Scrambled", "Enchanted", "Nitro", "Spectral"},
-                        {"Fractured", "Scrambled", "Enchanted", "Nitro", "Spectral"}, function(input)
+                autoMutation:Dropdown("Mutations To Use", {"Fractured", "Scrambled", "Enchanted", "Nitro", "Spectral", "Abducted"},
+                        {"Fractured", "Scrambled", "Enchanted", "Nitro", "Spectral", "Abducted"}, function(input)
                         for key, value in next, labelMap3, nil do
                                 enabledFlags[key] = table.find(input, value) ~= nil
                         end
@@ -41252,7 +41114,7 @@ return genv.__GehleeV4Api
 
                 local function scanItemsFarm()
                         local attributeMap, valueMap, ipairsFn, cache, localPlayerFarm, localPlayer2 = {}, {Boss = 0, Scrambled = 0,
-                                Enchanted = 0, Nitro = 0, Spectral = 0}, ipairs, {}, ctx.localPlayer, ctx.localPlayer
+                                Enchanted = 0, Nitro = 0, Spectral = 0, Alien = 0}, ipairs, {}, ctx.localPlayer, ctx.localPlayer
                         cache[1], cache[2] = localPlayerFarm.Character or (doStep4()), localPlayer2.Character and (doStep4())
 
                         for index, item in ipairsFn(cache) do
@@ -41280,7 +41142,7 @@ return genv.__GehleeV4Api
                 doStep9Result2.fn = function()
                         local scanItemsFarmResult, tempValueFarm = scanItemsFarm()
                         scanTable2("bag", nostat, {Fractured = tostring(tempValueFarm.Boss),
-                                Scrambled = tostring(tempValueFarm.Scrambled), Enchanted = tostring(tempValueFarm.Enchanted), Nitro = tostring(tempValueFarm.Nitro), Spectral = tostring(tempValueFarm.Spectral)})
+                                Scrambled = tostring(tempValueFarm.Scrambled), Enchanted = tostring(tempValueFarm.Enchanted), Nitro = tostring(tempValueFarm.Nitro), Spectral = tostring(tempValueFarm.Spectral), Abducted = tostring(tempValueFarm.Alien)})
                 end
 
                 local function scanItems3(input)
@@ -41388,7 +41250,7 @@ return genv.__GehleeV4Api
                         return mutPick
                 end
 
-                local valueMap = {Boss = 10, Scrambled = 10, Nitro = 10, Enchanted = 100, Spectral = 25}
+                local valueMap = {Boss = 10, Scrambled = 10, Nitro = 10, Enchanted = 100, Spectral = 25, Alien = 15}
 
                 pcall(function()
                         local bossMasteryFlags, scrambleMutationFlags = ReplicatedStorage.Shared:FindFirstChild("BossMasteryFlags",
@@ -42133,8 +41995,21 @@ return genv.__GehleeV4Api
                         text2 = text:lower() .. "s at or below this rarity"
                         autoSell:Dropdown(handler, rnum, input, helper, false, "Sell " .. text2, doStepCoreResult)
 
+                        local function parseSellValue(raw)
+                                local n = tonumber(raw)
+                                if n then return n end
+                                local t = tostring(raw or ""):gsub("[%s,]", ""):upper()
+                                local num, suf = t:match("^([%d%.]+)(%a*)$")
+                                local mult = ({[""] = 1, K = 1e3, M = 1e6, B = 1e9, T = 1e12, QA = 1e15})[suf or ""]
+                                if tonumber(num) and mult then return tonumber(num) * mult end
+                                return nil
+                        end
                         state.ctrl = autoSell:Slider(text .. " Sell Value", 0, 0, 0, function(inputFarm)
-                                state.v = tonumber(inputFarm) or state.v
+                                local parsed = parseSellValue(inputFarm)
+                                if parsed then
+                                        state.v = parsed
+                                        state.preset = nil -- user typed manually, clear preset
+                                end
                         end, "log", nil, "Sell " .. (text:lower() .. "s worth less than this (0 = off)"), doStepCoreResult)
 
                         local presetMap = {["Use typed value"] = false, ["Off (0)"] = 0, ["100M"] = 1e8, ["500M"] = 5e8, ["1B"] = 1e9,
@@ -42208,45 +42083,12 @@ return genv.__GehleeV4Api
 
                 local dbg = {read = 0, placed = 0, held = 0, err = 0}
 
-                local function findBox(title)
-                        local roots = {}
-                        pcall(function() if gethui then roots[#roots + 1] = gethui() end end)
-                        pcall(function() roots[#roots + 1] = game:GetService("CoreGui") end)
-                        pcall(function() roots[#roots + 1] = ctx.localPlayer:FindFirstChildOfClass("PlayerGui") end)
-                        for _, root in ipairs(roots) do
-                                local okD, desc = pcall(function() return root:GetDescendants() end)
-                                if okD then
-                                        for _, lbl in ipairs(desc) do
-                                                if lbl:IsA("TextLabel") and tostring(lbl.Text):lower():find(title:lower(), 1, true) then
-                                                        local up = lbl.Parent
-                                                        for _ = 1, 4 do
-                                                                if not up then break end
-                                                                local tb = up:FindFirstChildWhichIsA("TextBox", true)
-                                                                if tb then return tb end
-                                                                up = up.Parent
-                                                        end
-                                                end
-                                        end
-                                end
-                        end
-                end
-                local function parseLimit(raw)
-                        local n = tonumber(raw)
-                        if n then return n end
-                        local t = tostring(raw or ""):gsub("[%s,]", ""):upper()
-                        local num, suf = t:match("^([%d%.]+)(%a*)$")
-                        local mult = ({[""] = 1, K = 1e3, M = 1e6, B = 1e9, T = 1e12, QA = 1e15})[suf or ""]
-                        if tonumber(num) and mult then return tonumber(num) * mult end
-                        return nil
-                end
-                for _, pair in ipairs({{Pet, "Pet Sell Value"}, {Egg, "Egg Sell Value"}}) do
-                        local st, title = pair[1], pair[2]
-                        if not (st.box and st.box.Parent) then st.box = findBox(title) end
+                -- Baca nilai sell terbaru dari ctrl (input text log slider) atau preset
+                for _, st in ipairs({Pet, Egg}) do
                         if st.preset ~= nil then
                                 st.v = st.preset
-                        elseif st.box then
-                                local n = parseLimit(st.box.Text)
-                                if n then st.v = n end
+                        elseif st.ctrl and type(st.ctrl.Value) == "number" then
+                                st.v = st.ctrl.Value
                         end
                 end
                 do
@@ -46423,8 +46265,8 @@ return genv.__GehleeV4Api
         end)
 
         runStep("22_prio#1", function()
-                local priorityConfig = {Default = {"StealFilter", "Star", "UFO", "Hollow", "Train", "PumpkinBoss", "HwPumpkin",
-                        "HwBlood", "Butterfly", "StealWisp", "HwIndex", "StealIndex", "Place", "Essence", "HwDog", "HwMonsters", "HwFishing", "Treadmill"}, Labels = {Star = "Shooting Star", UFO = "UFO Sightings", Hollow = "The Hollow Race", StealIndex = "Steal Missing Index Eggs", HwIndex = "Steal Missing Halloween Index", StealFilter = "Steal Filter Eggs", Place = "Auto Place Egg", Treadmill = "Treadmill", Butterfly = "Butterfly Bloom", Essence = "Auto Mutate", StealWisp = "Steal Wisp Quest Eggs", Train = "Phantom Express", PumpkinBoss = "Pumpkin Boss", HwPumpkin = "Pumpkin Moon", HwBlood = "Farm Monsters In Blood Moon", HwDog = "Ghost Dog Quest", HwMonsters = "Farm Monsters", HwFishing = "Fishing"}, Order = {}, Rank = {}, Listeners = {}, Path = "PilatLibrary/SAE_Priority.json"}
+                local priorityConfig = {Default = {"StealFilter", "Star", "UFO", "AlienFish", "Hollow", "Train", "PumpkinBoss", "HwPumpkin",
+                        "HwBlood", "Butterfly", "StealWisp", "HwIndex", "StealIndex", "Place", "Essence", "HwDog", "HwMonsters", "HwFishing", "Treadmill"}, Labels = {Star = "Shooting Star", UFO = "UFO Sightings", AlienFish = "Alien Fishing", Hollow = "The Hollow Race", StealIndex = "Steal Missing Index Eggs", HwIndex = "Steal Missing Halloween Index", StealFilter = "Steal Filter Eggs", Place = "Auto Place Egg", Treadmill = "Treadmill", Butterfly = "Butterfly Bloom", Essence = "Auto Mutate", StealWisp = "Steal Wisp Quest Eggs", Train = "Phantom Express", PumpkinBoss = "Pumpkin Boss", HwPumpkin = "Pumpkin Moon", HwBlood = "Farm Monsters In Blood Moon", HwDog = "Ghost Dog Quest", HwMonsters = "Farm Monsters", HwFishing = "Fishing"}, Order = {}, Rank = {}, Listeners = {}, Path = "PilatLibrary/SAE_Priority.json"}
 
                 for _, hwKey in ipairs({"PumpkinBoss", "HwPumpkin", "HwBlood", "HwIndex", "HwDog", "HwMonsters", "HwFishing", "Train"}) do
                         priorityConfig.Labels[hwKey] = nil
@@ -46919,7 +46761,7 @@ return genv.__GehleeV4Api
                 end})
 
                 local labelMap3, eggMap, labelMap4, statePrio = {StealIndex = "Steal:index", HwIndex = "Steal:hwindex",
-                        StealWisp = "Steal:wisp", StealFilter = "Steal:filter", Star = "Star", UFO = "UFO", Hollow = "Hollow", Butterfly = "Bloom", Essence = "Mutate", Place = "Place", Train = "Train", PumpkinBoss = "PumpkinBoss", Treadmill = "Treadmill", HwPumpkin = "HwPump", HwBlood = "HwBlood", HwDog = "HwDog", HwMonsters = "HwMon", HwFishing = "HwFish"}, {pick = "picked egg", index = "missing index egg", wisp = "wisp egg", filter = "filter egg", hwfilter = "Halloween egg", hwindex = "missing Halloween egg", carry = "carried egg", wait = "egg at daybreak"}, {Hollow = "The Hollow Race", UFO = "UFO Sightings", Star = "Shooting Star", Place = "Auto Place Egg", Mutate = "Auto Mutate", Bloom = "Butterfly Bloom", WispGo = "Wisp quest", Train = "Phantom Express", PumpkinBoss = "Pumpkin Boss", PumpkinDrops = "Pumpkin drops", Machine = "Butterfly machine", HwPump = "Pumpkin Moon", HwBlood = "Farm Monsters In Blood Moon", HwDog = "Ghost Dog Quest", HwMon = "Farm Monsters", HwFish = "Fishing", Ghouler = "Ghouler boss", IslandWars = "Cursed Island Wars", Capture = "Capture The Egg", Stage = "Wait for the field", NightHome = "Night, safe zone", GoTo = "Go to egg", Combat = "Auto hit", Banjo = "Banjo cricket"}, ctx.state
+                        StealWisp = "Steal:wisp", StealFilter = "Steal:filter", Star = "Star", UFO = "UFO", AlienFish = "AlienFish", Hollow = "Hollow", Butterfly = "Bloom", Essence = "Mutate", Place = "Place", Train = "Train", PumpkinBoss = "PumpkinBoss", Treadmill = "Treadmill", HwPumpkin = "HwPump", HwBlood = "HwBlood", HwDog = "HwDog", HwMonsters = "HwMon", HwFishing = "HwFish"}, {pick = "picked egg", index = "missing index egg", wisp = "wisp egg", filter = "filter egg", hwfilter = "Halloween egg", hwindex = "missing Halloween egg", carry = "carried egg", wait = "egg at daybreak"}, {Hollow = "The Hollow Race", UFO = "UFO Sightings", AlienFish = "Alien Fishing", Star = "Shooting Star", Place = "Auto Place Egg", Mutate = "Auto Mutate", Bloom = "Butterfly Bloom", WispGo = "Wisp quest", Train = "Phantom Express", PumpkinBoss = "Pumpkin Boss", PumpkinDrops = "Pumpkin drops", Machine = "Butterfly machine", HwPump = "Pumpkin Moon", HwBlood = "Farm Monsters In Blood Moon", HwDog = "Ghost Dog Quest", HwMon = "Farm Monsters", HwFish = "Fishing", Ghouler = "Ghouler boss", IslandWars = "Cursed Island Wars", Capture = "Capture The Egg", Stage = "Wait for the field", NightHome = "Night, safe zone", GoTo = "Go to egg", Combat = "Auto hit", Banjo = "Banjo cricket"}, ctx.state
                 statePrio.rank = {}
 
                 local function scanItems3(itemsPrio)
@@ -50439,6 +50281,670 @@ return genv.__GehleeV4Api
                                 .. (" live, " .. (clampValue2(math.max(endsAt - now, 0)) .. (" left, eggs "
                                 .. (tostring(st.Delivered or 0) .. ("/" .. tostring(st.Required or "?"))))))))
                                 or ("Next UFO in " .. clampValue2(1800 - (now % 1800)))))
+                end
+        end)
+
+        runStep("39_alien#1", function()
+                -- Alien Lagoon fishing / Fishing Mastery / Void Pearl trade (ported from nasi_rendang_sae)
+                local RS = game:GetService("ReplicatedStorage")
+                local lp = ctx.localPlayer
+                local DOCK, LANE_Z, DOCK_NEAR = Vector3.new(7846, 70.7, -346), -364, 14
+                local DIR_MAIN, CHARGE, CLICKS_PS, PAUSE = 75, 1.09, 12, 1.15
+                local NIGHT_MAIN, NIGHT_LAGOON = 8, 35
+                local A = {sess = {casts = 0, caught = 0, empty = 0, pearls = 0}, last = "-", say = "Off", exitNeed = false,
+                        lagoonDelay = 0, lagoonMsg = "-", claimTry = {}, travel = false, dir = nil, spot = nil, id = nil, trade = "-"}
+                ctx.state.ALIEN = A
+
+                local function hs() return ctx.hubSettings end
+
+                -- remotes: RF/ or RE/ under ctx.networking
+                local function remote(ns, name)
+                        local nw = ctx.networking
+                        return nw and (nw:FindFirstChild("RF/" .. ns .. "/" .. name) or nw:FindFirstChild("RE/" .. ns .. "/" .. name))
+                end
+                local function invoke(ns, name, ...)
+                        local r = remote(ns, name)
+                        if r and r:IsA("RemoteFunction") then
+                                return pcall(r.InvokeServer, r, ...)
+                        end
+                        return false
+                end
+                local function fire(ns, name, ...)
+                        local r = remote(ns, name)
+                        if r and r:IsA("RemoteEvent") then
+                                pcall(r.FireServer, r, ...)
+                        end
+                end
+
+                local function req(...)
+                        local inst = RS
+                        for _, n in ipairs({...}) do
+                                inst = inst and inst:FindFirstChild(n)
+                        end
+                        if not inst then return nil end
+                        local ok, r = pcall(require, inst)
+                        return (ok and type(r) == "table") and r or nil
+                end
+                local function flag(mod, key, def)
+                        local m = req("Shared", "Flags", mod)
+                        local f = m and m[key]
+                        if type(f) == "table" and type(f.Get) == "function" then
+                                local ok, v = pcall(function() return f:Get() end)
+                                if ok and v ~= nil then return v end
+                        end
+                        return def
+                end
+                local function save()
+                        local sv = req("Shared", "Save")
+                        if sv and type(sv.Peek) == "function" then
+                                local ok, r = pcall(sv.Peek)
+                                if ok and type(r) == "table" then return r end
+                        end
+                        return {}
+                end
+                local function data()
+                        local s = save()
+                        local fm = type(s.FishingMastery) == "table" and s.FishingMastery or {}
+                        local al = type(s.AlienLagoon) == "table" and s.AlienLagoon or {}
+                        return tonumber(fm.Caught) or 0, tonumber(al.VoidPearls) or 0, s
+                end
+                local function now() return workspace:GetServerTimeNow() end
+                local function night(lead)
+                        local t = now()
+                        if ctx.callModule("Cycle", "IsNightPhase", t) then return true end
+                        return lead ~= nil and ctx.callModule("Cycle", "IsNightPhase", t + lead) == true
+                end
+                local function inLagoon() return lp:GetAttribute("InAlienLagoon") == true end
+                local function lagoonOpen()
+                        local caught = data()
+                        return caught >= (tonumber(flag("AlienLagoonFlags", "FishRequired", 20)) or 20), caught
+                end
+                local function speedInfo()
+                        local _, _, s = data()
+                        local have = tonumber(s.SpeedPower) or 0
+                        local need = tonumber(flag("AlienLagoonFlags", "MinSpeedPower", 2.5e11)) or 2.5e11
+                        local L = req("Shared", "Util", "AlienLagoon")
+                        local ok = true
+                        if L and type(L.FastEnough) == "function" then
+                                local o, r = pcall(L.FastEnough, s.SpeedPower)
+                                ok = (not o) or r == true
+                        end
+                        return have, need, ok
+                end
+                local function short(n)
+                        n = tonumber(n) or 0
+                        if n >= 1e15 then return ("%.2fQd"):format(n / 1e15) end
+                        if n >= 1e12 then return ("%.2fT"):format(n / 1e12) end
+                        if n >= 1e9 then return ("%.2fB"):format(n / 1e9) end
+                        if n >= 1e6 then return ("%.2fM"):format(n / 1e6) end
+                        if n >= 1e3 then return ("%.1fK"):format(n / 1e3) end
+                        return tostring(math.floor(n))
+                end
+
+                -- movement
+                local function glide(target, alive, speed)
+                        local root = ctx.getRootPart()
+                        if not root then return false end
+                        local from = root.Position
+                        local dur = math.max((target - from).Magnitude / speed, 0.05)
+                        local t0 = os.clock()
+                        while alive() do
+                                ctx.waitHeartbeat()
+                                root = ctx.getRootPart()
+                                if not root then return false end
+                                local k = math.min((os.clock() - t0) / dur, 1)
+                                ctx.teleportRoot(ctx.cFrameNew(from:Lerp(target, k)) * root.CFrame.Rotation)
+                                if k >= 1 then return true end
+                        end
+                        return false
+                end
+                local function prep(alive)
+                        if not ctx.waitRootAnchored(alive) then return false end
+                        if not ctx.leaveFuse(alive) then return false end
+                        local root = ctx.getRootPart()
+                        if root and ctx.isBeforeAreas(root.Position) then
+                                if not ctx.retryUntil(alive, "Alien Fishing") then return false end
+                        end
+                        return true
+                end
+                local function atDock()
+                        local root = ctx.getRootPart()
+                        return root ~= nil and (root.Position - DOCK).Magnitude <= DOCK_NEAR
+                end
+                local function toDock(alive)
+                        if atDock() then return true end
+                        if not prep(alive) then return false end
+                        local root = ctx.getRootPart()
+                        if not root then return false end
+                        if (root.Position - DOCK).Magnitude > 300 and ctx.state.ragTo then
+                                pcall(ctx.state.ragTo, DOCK + Vector3.new(0, 3, 0), alive)
+                        end
+                        root = ctx.getRootPart()
+                        if not root then return false end
+                        if math.abs(root.Position.X - DOCK.X) > 40 then
+                                if not glide(Vector3.new(DOCK.X, DOCK.Y + 2, LANE_Z), alive, 250) then return false end
+                        end
+                        return glide(DOCK + Vector3.new(0, 2, 0), alive, 120) and atDock()
+                end
+
+                -- rod
+                local function bestRod()
+                        local Rods = req("Shared", "Util", "AlienRods")
+                        local tool, tier = nil, -1
+                        for _, holder in ipairs({lp.Character, lp:FindFirstChildOfClass("Backpack")}) do
+                                for _, t in ipairs(holder and holder:GetChildren() or {}) do
+                                        if t:IsA("Tool") and t:GetAttribute("GhostDogRod") == true then
+                                                local tr = 0
+                                                if Rods and type(Rods.TierOf) == "function" then
+                                                        tr = tonumber(Rods.TierOf(t:GetAttribute("GearName") or t.Name)) or 0
+                                                end
+                                                if tr > tier then tool, tier = t, tr end
+                                        end
+                                end
+                        end
+                        return tool, tier
+                end
+                local function ensureRod()
+                        local char, hum = lp.Character, ctx.getHumanoid()
+                        if not char or not hum then return nil end
+                        local tool, tier = bestRod()
+                        if not tool or tier < 1 then
+                                fire("AlienLagoon", "MetFerryman")
+                                local dl = os.clock() + 4
+                                while os.clock() < dl do
+                                        task.wait(0.25)
+                                        tool, tier = bestRod()
+                                        if tool and tier >= 1 then break end
+                                end
+                        end
+                        if not tool then return nil end
+                        if tool.Parent ~= char then
+                                pcall(function() hum:EquipTool(tool) end)
+                                local dl = os.clock() + 2
+                                while tool.Parent ~= char and os.clock() < dl do task.wait(0.05) end
+                        end
+                        return tool.Parent == char and tool or nil
+                end
+                local function unequip()
+                        local char, hum = lp.Character, ctx.getHumanoid()
+                        local t = char and char:FindFirstChildOfClass("Tool")
+                        if hum and t and t:GetAttribute("GhostDogRod") == true then
+                                pcall(function() hum:UnequipTools() end)
+                        end
+                end
+
+                -- water probing
+                local function aimAt(pos, filter, charge, deg)
+                        local F = req("Shared", "Util", "Fishing")
+                        if not F then return nil end
+                        local function try(d)
+                                local r = math.rad(d)
+                                local v = Vector3.new(math.cos(r), 0, math.sin(r))
+                                local ok, res = pcall(function() return F.Probe(F.Aim(pos, v, charge), filter) end)
+                                if ok and res and res.Water then return v, res.Point, d end
+                        end
+                        local v, p, d = try(deg)
+                        if v then return v, p, d end
+                        for i = 15, 180, 15 do
+                                v, p, d = try(deg + i)
+                                if v then return v, p, d end
+                                v, p, d = try(deg - i)
+                                if v then return v, p, d end
+                        end
+                end
+                local function groundAt(p, filter)
+                        local F = req("Shared", "Util", "Fishing")
+                        local rp = RaycastParams.new()
+                        rp.FilterType = Enum.RaycastFilterType.Exclude
+                        rp.IgnoreWater = false
+                        rp.FilterDescendantsInstances = filter
+                        for _ = 1, 6 do
+                                local hit = workspace:Raycast(p + Vector3.new(0, 30, 0), Vector3.new(0, -120, 0), rp)
+                                if not hit then return nil end
+                                if hit.Instance:IsA("BasePart") and hit.Instance.Transparency >= 0.95 then
+                                        table.insert(filter, hit.Instance)
+                                        rp.FilterDescendantsInstances = filter
+                                else
+                                        local water = F and F.IsWaterHit and select(2, pcall(F.IsWaterHit, hit))
+                                        if water == true or hit.Material == Enum.Material.Water then return nil end
+                                        return hit.Position
+                                end
+                        end
+                end
+                local function findSpot()
+                        local root, F = ctx.getRootPart(), req("Shared", "Util", "Fishing")
+                        if not root or not F then return nil end
+                        local L = req("Shared", "Util", "AlienLagoon")
+                        local bounds = L and L.Marker and select(2, pcall(L.Marker, "Bounds"))
+                        local charge = F.ChargeAt(CHARGE)
+                        local char = {root.Parent}
+                        local pos = root.Position
+                        if aimAt(pos, char, charge, A.dir or 0) then return pos end
+                        for r = 8, 72, 8 do
+                                for i = 0, 11 do
+                                        local a = math.rad(i * 30)
+                                        local g = groundAt(pos + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), {root.Parent})
+                                        if g then
+                                                local v = g + Vector3.new(0, 3, 0)
+                                                local inside = true
+                                                if typeof(bounds) == "Instance" and L.Within then
+                                                        local ok, res = pcall(L.Within, bounds, v, 0)
+                                                        inside = (not ok) or res == true
+                                                end
+                                                if inside then
+                                                        local d = select(3, aimAt(v, {root.Parent}, charge, A.dir or 0))
+                                                        if d then A.dir = d return v end
+                                                end
+                                        end
+                                end
+                        end
+                end
+                local function toSpot(alive)
+                        local root = ctx.getRootPart()
+                        if not root then return false end
+                        if A.spot and (root.Position - A.spot).Magnitude <= 20 then return true end
+                        A.say = "Looking for a fishing spot in the Lagoon"
+                        local spot = findSpot()
+                        if not spot then return false end
+                        A.spot = spot
+                        if (root.Position - spot).Magnitude <= 4 then return true end
+                        A.travel = true
+                        local ok = glide(spot, alive, 60)
+                        A.travel = false
+                        return ok
+                end
+
+                -- lagoon enter / exit
+                local function request()
+                        local res, msg
+                        for _ = 1, 4 do
+                                local ok, a, b = invoke("AlienLagoon", "Request")
+                                res = ok and type(a) == "string" and a or nil
+                                msg = ok and type(b) == "string" and b or nil
+                                if res ~= "Busy" then break end
+                                task.wait(0.8)
+                        end
+                        return res, msg
+                end
+                local function waitLagoon(want, sec)
+                        local dl = os.clock() + sec
+                        while os.clock() < dl do
+                                if inLagoon() == want then return true end
+                                task.wait(0.25)
+                        end
+                        return inLagoon() == want
+                end
+                local function enterLagoon(alive)
+                        if inLagoon() then return true end
+                        local root = ctx.getRootPart()
+                        local L = req("Shared", "Util", "AlienLagoon")
+                        local ferry = L and L.Ferryman and select(2, pcall(L.Ferryman))
+                        if root and typeof(ferry) == "Instance" then
+                                local ok, piv = pcall(function() return ferry:GetPivot().Position end)
+                                if ok and piv then
+                                        local near = Vector3.new(piv.X - 5, DOCK.Y, piv.Z)
+                                        if (root.Position - near).Magnitude > 6 then
+                                                A.travel = true
+                                                glide(near, alive, 40)
+                                                A.travel = false
+                                        end
+                                end
+                        end
+                        unequip()
+                        A.say = "Asking the Ferryman for a ride to the Lagoon"
+                        A.travel = true
+                        local res, msg = request()
+                        if res ~= "Enter" then
+                                A.travel = false
+                                A.lagoonMsg = tostring(msg or res or "no answer")
+                                A.lagoonDelay = os.clock() + 30
+                                return false
+                        end
+                        local inside = waitLagoon(true, 30)
+                        task.wait(1.5)
+                        A.travel, A.spot = false, nil
+                        if inside then
+                                A.lagoonMsg = "inside the Lagoon"
+                                return true
+                        end
+                        A.lagoonMsg = "boat trip timed out"
+                        A.lagoonDelay = os.clock() + 20
+                        return false
+                end
+                local function returnPoint()
+                        local L = req("Shared", "Util", "AlienLagoon")
+                        local m = L and L.Marker and select(2, pcall(L.Marker, "Return"))
+                        local pos = typeof(m) == "Instance" and m.Position or nil
+                        local pn = L and L.ReturnPromptName
+                        if pn then
+                                for _, d in ipairs(workspace:GetDescendants()) do
+                                        if d:IsA("ProximityPrompt") and d.Name == pn and d.Parent and d.Parent:IsA("BasePart") then
+                                                return d.Parent.Position, pos
+                                        end
+                                end
+                        end
+                        return pos, pos
+                end
+                local function exitLagoon(alive)
+                        if not inLagoon() then
+                                A.exitNeed = false
+                                return true
+                        end
+                        if A.id then fire("Fishing", "Cancel", A.id) A.id = nil end
+                        unequip()
+                        A.travel = true
+                        local done = false
+                        for i = 1, 4 do
+                                if not inLagoon() then done = true break end
+                                local p1, p2 = returnPoint()
+                                local root = ctx.getRootPart()
+                                if p1 and root then
+                                        local flat = function(a, b) return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude end
+                                        local far = math.max(flat(root.Position, p1), p2 and flat(root.Position, p2) or 0)
+                                        if far > 7 or math.abs(root.Position.Y - p1.Y) > 10 then
+                                                A.say = "Walking to the boat"
+                                                glide(p1 + Vector3.new(0, 3, 0), alive, 50)
+                                                task.wait(0.4)
+                                        end
+                                end
+                                A.say = "Rowing back from the Lagoon"
+                                request()
+                                if waitLagoon(false, 30) then done = true break end
+                                task.wait(0.6)
+                        end
+                        task.wait(1.5)
+                        A.travel, A.spot = false, nil
+                        if done or not inLagoon() then
+                                A.exitNeed = false
+                                A.lagoonDelay = os.clock() + 15
+                                A.lagoonMsg = "-"
+                                return true
+                        end
+                        A.lagoonMsg = "could not leave the Lagoon"
+                        return false
+                end
+
+                -- one cast / bite / reel cycle
+                local function castOnce(alive)
+                        local root, char = ctx.getRootPart(), lp.Character
+                        local F = req("Shared", "Util", "Fishing")
+                        if not root or not char then return false, "no character" end
+                        if not F then return false, "Fishing module missing" end
+                        local charge = F.ChargeAt(CHARGE)
+                        local deg = inLagoon() and (A.dir or 0) or DIR_MAIN
+                        local v, pt, d = aimAt(root.Position, {char}, charge, deg)
+                        if not v then return false, "no water in reach" end
+                        if inLagoon() then A.dir = d end
+                        ctx.teleportRoot(CFrame.lookAt(root.Position, root.Position + v))
+                        fire("Fishing", "Hold")
+                        local t0 = os.clock()
+                        while os.clock() - t0 < CHARGE do
+                                if not alive() then fire("Fishing", "Cancel") return false, "stopped" end
+                                ctx.waitHeartbeat()
+                        end
+                        A.sess.casts += 1
+                        local ok, res, err = invoke("Fishing", "Cast", CHARGE, pt)
+                        if not ok or type(res) ~= "table" or res.Id == nil then
+                                return false, tostring(err or res or "cast rejected")
+                        end
+                        local id, mode = res.Id, tostring(res.Mode)
+                        A.id = id
+                        A.say = ("Waiting for a bite (%s%s)"):format(mode, res.Perfect and ", perfect" or "")
+                        local dl = os.clock() + (tonumber(res.Wait) or 3) + 0.25
+                        while os.clock() < dl do
+                                if not alive() then fire("Fishing", "Cancel", id) A.id = nil return false, "interrupted" end
+                                task.wait()
+                        end
+                        if mode == "Nothing" or mode == "Hint" or mode == "Quest" or mode == "GhostFish" then
+                                fire("Fishing", "Cancel", id)
+                                A.id = nil
+                                A.sess.empty += 1
+                                return true, "nothing biting (" .. mode .. ")"
+                        end
+                        A.say = "Reeling"
+                        local rs = tonumber(flag("FishingFlags", "ReelStart", 0.3)) or 0.3
+                        local gain = tonumber(flag("FishingFlags", "ReelClickGain", 0.075)) or 0.075
+                        local drain = tonumber(flag("FishingFlags", "ReelDrainPerSecond", 0.3)) or 0.3
+                        local minSec = (tonumber(flag("FishingFlags", "ReelMinSeconds", 0.6)) or 0.6) + 0.1
+                        local r0 = os.clock()
+                        local nextClick, clicks = r0, 0
+                        while true do
+                                ctx.waitHeartbeat()
+                                if not alive() then fire("Fishing", "Cancel", id) A.id = nil return false, "interrupted" end
+                                local t = os.clock()
+                                if nextClick <= t then
+                                        nextClick += 1 / CLICKS_PS
+                                        clicks += 1
+                                end
+                                local f = math.clamp(rs + gain * clicks - drain * (t - r0), 0, 1)
+                                if (f >= 1 and t - r0 >= minSec) or t - r0 > 8 then break end
+                        end
+                        local ok2, a, b = invoke("Fishing", "Reel", id, "Caught", clicks)
+                        A.id = nil
+                        if ok2 and a == true and type(b) == "table" then
+                                A.sess.caught += 1
+                                if tostring(b.Kind) == "VoidPearl" then
+                                        A.sess.pearls += tonumber(b.Amount) or 0
+                                end
+                                A.last = ("%s x%s"):format(tostring(b.DisplayName or b.Id or b.Kind or "?"), tostring(b.Amount or 1))
+                                return true, "caught " .. A.last
+                        end
+                        if ok2 and a == true then return true, "nothing on the line" end
+                        return true, "it got away"
+                end
+
+                -- mastery + trade
+                local function claimMastery()
+                        local M = req("Data", "FishingMastery")
+                        if not M or type(M.Milestones) ~= "table" then return 0 end
+                        local ok, open = pcall(M.IsOpen, now())
+                        if ok and open == false then return 0 end
+                        local caught, _, s = data()
+                        local fm = s.FishingMastery
+                        if type(fm) ~= "table" then return 0 end
+                        local claimed = type(fm.ClaimedMilestoneIds) == "table" and fm.ClaimedMilestoneIds or {}
+                        local function has(id)
+                                if claimed[id] then return true end
+                                for _, c in pairs(claimed) do
+                                        if c == id then return true end
+                                end
+                                return false
+                        end
+                        local n = 0
+                        for _, m in ipairs(M.Milestones) do
+                                local need = tonumber(m.Fish)
+                                if need ~= nil and need <= caught and not has(m.Id)
+                                        and os.clock() - (A.claimTry[m.Id] or -1e9) > 60 then
+                                        A.claimTry[m.Id] = os.clock()
+                                        local o, a = invoke("Fishing", "AskClaimMastery", m.Id)
+                                        if o and a == true then n += 1 end
+                                        task.wait(0.3)
+                                end
+                        end
+                        return n
+                end
+                local function tradeCost()
+                        return tonumber(flag("AlienLagoonFlags", "TradePearlCost", 1750)) or 1750
+                end
+                local function tradePearls()
+                        local _, pearls = data()
+                        local cost = tradeCost()
+                        if pearls < cost then
+                                A.trade = ("need %d Void Pearls (have %d)"):format(cost, pearls)
+                                return false, A.trade
+                        end
+                        local ok, a, b = invoke("AlienLagoon", "Trade")
+                        A.trade = ok and (tostring(a) .. (b ~= nil and (" " .. tostring(b)) or "")) or "trade call failed"
+                        return ok and a ~= false and a ~= nil, A.trade
+                end
+
+                -- UI
+                local sec = cacheCore["Alien Fishing"]
+                local sec2 = cacheCore["Alien Mastery & Trade"]
+                local tInfo = sec:Text("Rod / Fish", "-")
+                local tSpeed = sec:Text("Speed", "-")
+                local tStatus = sec:Text("Alien Fishing Status", "Off")
+                local tLagoon = sec:Text("Lagoon", "-")
+                local tSess = sec:Text("Session", "-")
+                local tLast = sec:Text("Last catch", "-")
+                local doStep9Result = doStep9({name = "AlienFish", mover = true, gap = 1, pri = 8, soft = true})
+                doStepCore(sec, "Auto Alien Fishing", "alienFish", false, function(input)
+                        if not input then
+                                doStep10(doStep9Result)
+                        end
+                end)
+                doStepCore(sec, "Fish In The Lagoon", "alienLagoon", false, function(input)
+                        if input then
+                                A.lagoonDelay = 0
+                        else
+                                A.exitNeed = inLagoon()
+                        end
+                end)
+                local tBat = sec2:Text("Alien Bat / Staff", "-")
+                local tPearls = sec2:Text("Void Pearls", "-")
+                local tTrade = sec2:Text("Last trade", "-")
+                doStepCore(sec2, "Auto Claim Fishing Milestones", "alienClaim", true)
+                doStepCore(sec2, "Auto Trade Void Pearls", "alienTrade", false)
+                sec2:Button("Claim Fishing Milestones Now", "Claim", function()
+                        task.spawn(function()
+                                table.clear(A.claimTry)
+                                local ok, n = pcall(claimMastery)
+                                ctx.setStatus(ok and (tostring(n) .. " milestone(s) claimed") or ("Claim error: " .. tostring(n)), ok and "ok" or "warn")
+                        end)
+                end)
+                sec2:Button("Trade Void Pearls Now", "Trade", function()
+                        task.spawn(function()
+                                local ok, res = pcall(tradePearls)
+                                ctx.setStatus("Alien trade: " .. tostring(ok and res or "error"), "ok")
+                        end)
+                end)
+
+                -- scheduler hooks
+                doStep9Result.on = function()
+                        return ctx.hubSettings.alienFish == true
+                end
+                local function canRun()
+                        if night(inLagoon() and NIGHT_LAGOON or NIGHT_MAIN) and not inLagoon() then return false end
+                        local _, _, fast = speedInfo()
+                        if not fast then return false end
+                        if ctx.isSelectedUid() then return false end
+                        return true
+                end
+                doStep9Result.ready = function()
+                        if inLagoon() then return true end
+                        return canRun()
+                end
+                doStep9Result.want = function()
+                        if inLagoon() or canRun() then return "fish" end
+                end
+
+                doStep9Result.run = function(_, alive)
+                        local function ok()
+                                return alive() and ctx.hubSettings.alienFish == true
+                        end
+                        local function say(s) A.say = s end
+                        say("Starting")
+                        local lastClaim = 0
+                        while ok() do
+                                doStep9Result.soft = not (inLagoon() or A.travel)
+                                local h = ctx.hubSettings
+                                local open = lagoonOpen()
+                                if inLagoon() and (A.exitNeed or not h.alienLagoon or night(NIGHT_LAGOON) or not open) then
+                                        if not exitLagoon(ok) then task.wait(3) end
+                                        continue
+                                end
+                                if not inLagoon() and night(NIGHT_MAIN) then
+                                        say("Night, waiting for day")
+                                        break
+                                end
+                                local _, _, fast = speedInfo()
+                                if not fast then
+                                        say("Too slow for the Lagoon fish")
+                                        break
+                                end
+                                if ctx.isSelectedUid() then
+                                        say("Holding an egg, waiting")
+                                        break
+                                end
+                                if inLagoon() then
+                                        if not toSpot(ok) then
+                                                A.exitNeed = true
+                                                A.lagoonDelay = os.clock() + 120
+                                                continue
+                                        end
+                                else
+                                        if not atDock() and not toDock(ok) then
+                                                say("Could not reach the dock, retrying")
+                                                task.wait(2)
+                                                continue
+                                        end
+                                        if h.alienLagoon and open and not A.exitNeed and os.clock() >= A.lagoonDelay and not night(NIGHT_LAGOON) then
+                                                if ensureRod() then
+                                                        enterLagoon(ok)
+                                                        continue
+                                                end
+                                        end
+                                end
+                                if not ensureRod() then
+                                        say("No fishing rod")
+                                        task.wait(3)
+                                        continue
+                                end
+                                local done, msg = castOnce(ok)
+                                say(tostring(msg))
+                                if h.alienClaim and os.clock() - lastClaim > 20 then
+                                        lastClaim = os.clock()
+                                        pcall(claimMastery)
+                                end
+                                if h.alienTrade then
+                                        local _, pearls = data()
+                                        if pearls >= tradeCost() then pcall(tradePearls) end
+                                end
+                                task.wait(PAUSE)
+                        end
+                        if A.id then fire("Fishing", "Cancel", A.id) A.id = nil end
+                        unequip()
+                        doStep9Result.soft = true
+                        return true
+                end
+
+                local info = doStep9({name = "AlienInfo", gap = 1, info = true})
+                info.on = function()
+                        return getOpen("Event")
+                end
+                info.fn = function()
+                        local caught, pearls = data()
+                        local have, need, fast = speedInfo()
+                        local rod, tier = bestRod()
+                        local open, c = lagoonOpen()
+                        local need2 = tonumber(flag("AlienLagoonFlags", "FishRequired", 20)) or 20
+                        tInfo:Set(("Rod: %s | Fish caught: %d"):format(rod and tostring(rod:GetAttribute("GearName") or rod.Name) or "none", caught))
+                        tSpeed:Set(fast and ("OK | %s / %s"):format(short(have), short(need))
+                                or ("Short %s | need %s, have %s"):format(short(math.max(0, need - have)), short(need), short(have)))
+                        tStatus:Set(ctx.hubSettings.alienFish and tostring(A.say) or "Off")
+                        local l
+                        if not ctx.hubSettings.alienLagoon then
+                                l = "Off, fishing at the main dock"
+                        elseif not open then
+                                l = ("Locked %d/%d fish, main dock until then"):format(c, need2)
+                        elseif inLagoon() then
+                                l = "Inside, fishing in the Lagoon"
+                        elseif A.lagoonMsg ~= "-" then
+                                l = "Unlocked | last: " .. A.lagoonMsg
+                        else
+                                l = "Unlocked, rides the boat on its turn"
+                        end
+                        tLagoon:Set(l)
+                        local s = A.sess
+                        tSess:Set(("%d casts, %d caught, %d empty | +%d pearls"):format(s.casts, s.caught, s.empty, s.pearls))
+                        tLast:Set(tostring(A.last))
+                        tPearls:Set(("%d / %d per trade | can trade: %dx"):format(pearls, tradeCost(), pearls // math.max(tradeCost(), 1)))
+                        tTrade:Set(tostring(A.trade))
+                        local owned = false
+                        for _, holder in ipairs({lp.Character, lp:FindFirstChildOfClass("Backpack")}) do
+                                if holder and (holder:FindFirstChild("Alien Bat") or holder:FindFirstChild("Alien Staff")) then owned = true end
+                        end
+                        tBat:Set(owned and "OWNED" or "NOT OWNED (Farm Rare UFO)")
                 end
         end)
 
