@@ -30646,7 +30646,7 @@ do
 	end
 	function api.steal(uid, opts)
 		opts = opts or {}
-		gehleeV4Config.LowSpeedBoost = opts.handoff ~= true
+		gehleeV4Config.LowSpeedBoost = true -- Teleport V2 / Low Speed User: boost always on
 		v2216:setStealMode("Instant", false, false)
 		v2216.onFinish = opts.onFinish
 		if opts.handoff then
@@ -30738,7 +30738,7 @@ return genv.__GehleeV4Api
                                 end
 
                                 ctx.state.stableDone = nil
-                                ctx.setStatus("Low Speed User: " .. tostring(input.Name))
+                                ctx.setStatus("Low Speed User + Boost: " .. tostring(input.Name))
 
                                 local grabbed, finishReason = false, nil
                                 local started, why = core.steal(uid, {
@@ -30816,20 +30816,45 @@ return genv.__GehleeV4Api
                                         return nil
                                 end
 
-                                ctx.setStatus("Carrying home (Stable)")
+                                -- Stable = Gehlee low-speed return 100% (deliverCarriedEgg / _instantReturn path)
+                                ctx.setStatus("Stable return (Gehlee)")
+                                pcall(function()
+                                        if core.setBoost then core.setBoost(true) end
+                                end)
                                 if not core.deliver(uid) then
-                                        core.release()
-                                        return false, "Stable could not start"
+                                        -- retry once: re-read record and deliver again
+                                        task.wait(0.15)
+                                        if not core.deliver(uid) then
+                                                core.release()
+                                                return false, "Stable could not start"
+                                        end
                                 end
 
                                 local t0 = os.clock()
-                                while callback() and localPlayer.Character == character and core.busy() and os.clock() - t0 < 60 do
+                                local sawClaim = false
+                                while callback() and localPlayer.Character == character and os.clock() - t0 < 90 do
+                                        local recNow = read()
+                                        if recNow and recNow.State == "Claimed" then
+                                                sawClaim = true
+                                                break
+                                        end
+                                        if recNow == nil and not core.busy() then
+                                                sawClaim = true
+                                                break
+                                        end
+                                        if not core.busy() and recNow and recNow.State == "Dropped" then
+                                                break
+                                        end
+                                        if not core.busy() and recNow and recNow.State == "Carried" then
+                                                -- engine stopped while still carrying — poke deliver again
+                                                pcall(core.deliver, uid)
+                                        end
                                         ctx.waitHeartbeat()
                                 end
 
                                 local rec = read()
-                                local delivered = (rec == nil) or rec.State == "Claimed"
-                                if not core.busy() and delivered then
+                                local delivered = sawClaim or (rec == nil) or rec.State == "Claimed"
+                                if delivered then
                                         core.release()
                                         return true, "delivered"
                                 end
