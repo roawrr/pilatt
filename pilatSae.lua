@@ -1238,6 +1238,9 @@ local function createUiLibrary()
 end
 
 pilatV4Config = pilatV4Config or {}
+pilatV4Config.SnipeDroppedEggs = pilatV4Config.SnipeDroppedEggs ~= false
+pilatV4Config.SnipePunch = pilatV4Config.SnipePunch ~= false
+pilatV4Config.TeleportDecoy = pilatV4Config.TeleportDecoy ~= false
 local uiLibrary = createUiLibrary()
 pcall(getgenv().PilatHubLoadStep, 1)
 
@@ -13925,6 +13928,13 @@ local function semiGo(uid, egg)
 	if (egg - startRoot.Position).Magnitude <= 60
         and math.abs(startRoot.Position.Y - (egg.Y + 3)) < 6 then
 
+		if gehleeV4Config and gehleeV4Config.TeleportDecoy == false then
+			semi.Kind = "semi"
+			semi.AtDrop = true
+			semi.Home = startRoot.Position
+			slog("egg close: decoy OFF — continuing without freeze")
+			return true, { Decoy = false, Plain = true }
+		end
 		semi.Kind = "decoy"
 		semi.AtDrop = true
 		local spotAt = startRoot.Position
@@ -18279,6 +18289,7 @@ local gehleeV4Config = {
 		Desert = true
 	},
 	SnipePunch = true,
+	TeleportDecoy = true,
 	FastPull = true,
 	FastPullSpeed = 3500,
 	AutoStealHalloween = false,
@@ -20993,6 +21004,10 @@ do
 		end
 
 		function F7:_showTreadmillDecoy()
+			if gehleeV4Config.TeleportDecoy == false then
+				self:_hideTreadmillDecoy(true)
+				return false
+			end
 			if self.treadmillDecoy and self.treadmillDecoy.Parent then
 				return true
 			end
@@ -23894,6 +23909,34 @@ do
 				end
 
 				local A = self:_resolveEggDestination(F, x, k)
+
+				-- Far from Forest: hard teleport to egg like Teleport V2 (Low Speed path)
+				do
+					local forestNear = false
+					local px = x.Position.X
+					-- ISLANDS Forest band ~600-661 on primary axis used by hub; also accept nearby magnitude
+					if px >= 500 and px <= 780 then
+						forestNear = true
+					end
+					if typeof(F.BottomCFrame) == "CFrame" then
+						local eggPos = F.BottomCFrame.Position
+						local dist = (x.Position - eggPos).Magnitude
+						if not forestNear or dist > 120 then
+							self:_setStatus("Snipe far — Teleport V2 to egg")
+							if A then
+								self:_teleportRoot(x, k, A)
+								self:_setArrivalHold(A, d)
+								-- second snap like V2 hold
+								task.wait(0.05)
+								x, k = I()
+								if x and k and A then
+									self:_teleportRoot(x, k, A)
+									self:_setArrivalHold(A, d)
+								end
+							end
+						end
+					end
+				end
 
 				if A then
 					task.spawn(function()
@@ -30624,7 +30667,8 @@ do
 	gehleeV4Config.FlyZigzag = false
 	gehleeV4Config.LowSpeedBoost = true
 	gehleeV4Config.StealHoldSeconds = 5
-	gehleeV4Config.SnipeDroppedEggs = false
+	gehleeV4Config.SnipeDroppedEggs = (pilatV4Config and pilatV4Config.SnipeDroppedEggs) ~= false
+	gehleeV4Config.TeleportDecoy = (pilatV4Config and pilatV4Config.TeleportDecoy) ~= false
 	gehleeV4Config.HelpFriend = false
 	gehleeV4Config.ReturnTreadmillAfterSteal = false -- the host treadmill manager does the return
 	v2216:setStealMode("Instant", false, false)
@@ -69149,10 +69193,25 @@ return genv.__GehleeV4Api
             if autoStealSection then
                 autoStealSection:Toggle("Steal Other Script", true, function(v)
                     pilatV4Config.SnipeDroppedEggs = v == true
+                    if gehleeV4Config then gehleeV4Config.SnipeDroppedEggs = v == true end
                 end, "Steal eggs that other players' scripts drop on their way home, before they can grab them back. Runs alongside Auto Steal as a fallback, then banks safely. Keep it on.")
                 autoStealSection:Toggle("Snipe Punch", true, function(v)
                     pilatV4Config.SnipePunch = v == true
+                    if gehleeV4Config then gehleeV4Config.SnipePunch = v == true end
                 end, "Bat rivals away from dropped eggs while sniping.")
+                autoStealSection:Toggle("Teleport Decoy", true, function(v)
+                    pilatV4Config.TeleportDecoy = v == true
+                    if gehleeV4Config then gehleeV4Config.TeleportDecoy = v == true end
+                    -- if turned off mid-run, drop any live decoy + unfreeze camera
+                    if v ~= true then
+                        pcall(function()
+                            local core = rawget(getgenv and getgenv() or _G, "__GehleeV4EggRuntime")
+                            if type(core) == "table" and type(core._hideTreadmillDecoy) == "function" then
+                                core:_hideTreadmillDecoy(true)
+                            end
+                        end)
+                    end
+                end, "Decoy character in the safe zone + camera freeze while stealing. OFF = no decoy, real body stays visible.")
             end
         end)
 
