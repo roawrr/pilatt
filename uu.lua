@@ -1,9 +1,9 @@
-local PILAT_LOGO_URL = "https://raw.githubusercontent.com/roawrr/pilatt/main/pilat_256.png"
+local PILAT_LOGO_URL = "https://raw.githubusercontent.com/roawrr/pilatHub/refs/heads/main/pilat.png"
 local PILAT_LOGO = PILAT_LOGO_URL
 do
 	local assetfn = type(getcustomasset) == "function" and getcustomasset or (type(getsynasset) == "function" and getsynasset or nil)
 	if assetfn then
-		for _, path in ipairs({"pilat_256.png", "Pilat/pilat_256.png"}) do
+		for _, path in ipairs({"pilat.png", "Pilat/pilat.png"}) do
 			local ok, asset = pcall(assetfn, path)
 			if ok and type(asset) == "string" and asset ~= "" then
 				PILAT_LOGO = asset
@@ -34,38 +34,38 @@ local sv = {
 }
 
 local theme = {
-	-- Pilat modern glass / blue palette
-	Accent = Color3.fromRGB(62, 139, 255),
-	Accent2 = Color3.fromRGB(45, 202, 255),
-	AccentSoft = Color3.fromRGB(148, 198, 255),
+	-- Pilat black / iOS dark palette (system blue accent, #1C1C1E cards, #3A3A3C hairlines)
+	Accent = Color3.fromRGB(10, 132, 255),
+	Accent2 = Color3.fromRGB(64, 156, 255),
+	AccentSoft = Color3.fromRGB(100, 190, 255),
 	AccentText = Color3.fromRGB(255, 255, 255),
-	Backdrop = Color3.fromRGB(8, 16, 28),
-	Sidebar = Color3.fromRGB(10, 21, 36),
-	Card = Color3.fromRGB(14, 28, 47),
-	Element = Color3.fromRGB(19, 38, 63),
-	ElementHover = Color3.fromRGB(28, 56, 91),
-	Track = Color3.fromRGB(35, 61, 91),
-	Stroke = Color3.fromRGB(43, 82, 125),
-	StrokeSoft = Color3.fromRGB(27, 53, 81),
-	Text = Color3.fromRGB(239, 246, 255),
-	SubText = Color3.fromRGB(157, 181, 212),
-	Dim = Color3.fromRGB(104, 132, 166),
-	Good = Color3.fromRGB(56, 224, 129),
-	Bad = Color3.fromRGB(248, 113, 113),
-	Gold = Color3.fromRGB(245, 196, 81),
-	Blue = Color3.fromRGB(82, 161, 255),
-	Row = Color3.fromRGB(15, 31, 51),
-	Inner = Color3.fromRGB(22, 43, 69),
-	InnerHover = Color3.fromRGB(31, 61, 96),
-	Field = Color3.fromRGB(16, 34, 56),
-	Bar = Color3.fromRGB(54, 91, 130),
-	Pill = Color3.fromRGB(16, 33, 53),
-	TabActive = Color3.fromRGB(24, 69, 126),
-	Option = Color3.fromRGB(19, 39, 64),
-	ChatBg = Color3.fromRGB(10, 23, 39),
-	Mine = Color3.fromRGB(24, 69, 126),
-	Mention = Color3.fromRGB(54, 46, 25),
-	Box = Color3.fromRGB(11, 25, 42),
+	Backdrop = Color3.fromRGB(0, 0, 0),
+	Sidebar = Color3.fromRGB(0, 0, 0),
+	Card = Color3.fromRGB(28, 28, 30),
+	Element = Color3.fromRGB(28, 28, 30),
+	ElementHover = Color3.fromRGB(44, 44, 46),
+	Track = Color3.fromRGB(58, 58, 60),
+	Stroke = Color3.fromRGB(58, 58, 60),
+	StrokeSoft = Color3.fromRGB(38, 38, 40),
+	Text = Color3.fromRGB(255, 255, 255),
+	SubText = Color3.fromRGB(152, 152, 157),
+	Dim = Color3.fromRGB(99, 99, 102),
+	Good = Color3.fromRGB(48, 209, 88),
+	Bad = Color3.fromRGB(255, 69, 58),
+	Gold = Color3.fromRGB(255, 214, 10),
+	Blue = Color3.fromRGB(10, 132, 255),
+	Row = Color3.fromRGB(20, 20, 22),
+	Inner = Color3.fromRGB(28, 28, 30),
+	InnerHover = Color3.fromRGB(44, 44, 46),
+	Field = Color3.fromRGB(28, 28, 30),
+	Bar = Color3.fromRGB(72, 72, 74),
+	Pill = Color3.fromRGB(28, 28, 30),
+	TabActive = Color3.fromRGB(38, 38, 42),
+	Option = Color3.fromRGB(28, 28, 30),
+	ChatBg = Color3.fromRGB(0, 0, 0),
+	Mine = Color3.fromRGB(10, 100, 220),
+	Mention = Color3.fromRGB(60, 50, 10),
+	Box = Color3.fromRGB(18, 18, 20),
 }
 
 local function elevate()
@@ -2453,6 +2453,7 @@ function Chloex:Window(guiconfig)
 
 	local guifunc = {}
 	getgenv().ChloeX_Instance = guifunc
+	local PX = {} -- Pilat extras: PX.dots (menu), PX.home, PX.config
 	local chloeex = instance.screengui(sv.coregui)
 	chloeex.Name = "Chloeex"
 	chloeex.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -2556,10 +2557,10 @@ function Chloex:Window(guiconfig)
 	main.Size = UDim2.new(1, -47, 1, -47)
 
 	local uicorner = instance.uicorner(main)
-	uicorner.CornerRadius = UDim.new(0, 14)
-	mainstroke.Thickness = 1.5
+	uicorner.CornerRadius = UDim.new(0, 18)
+	mainstroke.Thickness = 1
 	mainstroke.Color = Color3.fromRGB(255, 255, 255)
-	mainstroke.Transparency = 0.35
+	mainstroke.Transparency = 0.78
 
 	-- animated accent border: the gradient slowly rotates around the window
 	local strokegrad = Instance.new("UIGradient")
@@ -2583,7 +2584,7 @@ function Chloex:Window(guiconfig)
 	local glowgrad = Instance.new("UIGradient")
 	glowgrad.Rotation = 90
 	glowgrad.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.9),
+		NumberSequenceKeypoint.new(0, 0.96),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	glowgrad.Parent = headglow
@@ -2651,7 +2652,7 @@ function Chloex:Window(guiconfig)
 	textlabel1.Size = UDim2.new(0, 0, 1, 0)
 	textlabel1.Position = UDim2.new(0, 10, 0, 0)
 
-	local headerreserve = isMobile and (120 + 66 + 12) or (300 + 100 + 12)
+	local headerreserve = isMobile and (120 + 96 + 12) or (300 + 130 + 12)
 	local headerchips = { rows = {} }
 	headerchips.holder = instance.frame(top)
 	headerchips.holder.Name = "HeaderChips"
@@ -2843,10 +2844,172 @@ function Chloex:Window(guiconfig)
 		end)
 	end
 
+	-- iOS-style "more" button: three dots + popover menu. Entries are filled at the
+	-- end of Window() (Home / Presets / Hide UI + guiconfig.Menu from the main script).
+	do
+		local dots = {}
+		PX.dots = dots
+		local dotsbtn = instance.textbutton(top)
+		dotsbtn.Name = "More"
+		dotsbtn.Text = ""
+		dotsbtn.AutoButtonColor = false
+		dotsbtn.AnchorPoint = Vector2.new(1, 0.5)
+		dotsbtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		dotsbtn.BackgroundTransparency = 1
+		dotsbtn.BorderSizePixel = 0
+		dotsbtn.Position = UDim2.new(1, isMobile and -68 or -98, 0.5, 0)
+		dotsbtn.Size = UDim2.new(0, 25, 0, 25)
+		dotsbtn.ZIndex = 5
+		instance.uicorner(dotsbtn).CornerRadius = UDim.new(1, 0)
+		local dotparts = {}
+		for i = 1, 3 do
+			local d = instance.frame(dotsbtn)
+			d.Name = "Dot"
+			d.AnchorPoint = Vector2.new(0.5, 0.5)
+			d.BackgroundColor3 = theme.SubText
+			d.BorderSizePixel = 0
+			d.Position = UDim2.new(0.5, (i - 2) * 6, 0.5, 0)
+			d.Size = UDim2.new(0, 4, 0, 4)
+			d.ZIndex = 5
+			instance.uicorner(d).CornerRadius = UDim.new(1, 0)
+			dotparts[i] = d
+		end
+		dotsbtn.MouseEnter:Connect(function()
+			for _, d in ipairs(dotparts) do d.BackgroundColor3 = theme.Text end
+			sv.ts:Create(dotsbtn, TweenInfo.new(0.15), { BackgroundTransparency = 0.88 }):Play()
+		end)
+		dotsbtn.MouseLeave:Connect(function()
+			for _, d in ipairs(dotparts) do d.BackgroundColor3 = theme.SubText end
+			sv.ts:Create(dotsbtn, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play()
+		end)
+
+		-- full-window catcher: a press outside the popover closes it
+		local catcher = instance.textbutton(main)
+		catcher.Name = "MoreCatcher"
+		catcher.Text = ""
+		catcher.AutoButtonColor = false
+		catcher.BackgroundTransparency = 1
+		catcher.BorderSizePixel = 0
+		catcher.Size = UDim2.new(1, 0, 1, 0)
+		catcher.ZIndex = 58
+		catcher.Visible = false
+
+		local pop = instance.frame(main)
+		pop.Name = "MoreMenu"
+		pop.Visible = false
+		pop.ZIndex = 60
+		pop.AnchorPoint = Vector2.new(1, 0)
+		pop.Position = UDim2.new(1, -12, 0, 48)
+		pop.Size = UDim2.new(0, 214, 0, 0)
+		pop.AutomaticSize = Enum.AutomaticSize.Y
+		pop.BackgroundColor3 = Color3.fromRGB(28, 28, 30)
+		pop.BackgroundTransparency = 0.02
+		pop.BorderSizePixel = 0
+		instance.uicorner(pop).CornerRadius = UDim.new(0, 14)
+		local popstroke = instance.uistroke(pop)
+		popstroke.Color = theme.Stroke
+		popstroke.Transparency = 0.2
+		local poppad = instance.uipadding(pop)
+		poppad.PaddingTop = UDim.new(0, 6)
+		poppad.PaddingBottom = UDim.new(0, 6)
+		poppad.PaddingLeft = UDim.new(0, 6)
+		poppad.PaddingRight = UDim.new(0, 6)
+		local poplay = instance.uilistlayout(pop)
+		poplay.SortOrder = Enum.SortOrder.LayoutOrder
+		poplay.Padding = UDim.new(0, 2)
+		local popscale = Instance.new("UIScale")
+		popscale.Parent = pop
+
+		local rows = {}
+		dots.open = false
+		local function closepop()
+			dots.open = false
+			catcher.Visible = false
+			pop.Visible = false
+		end
+		dots.close = closepop
+
+		function dots.set(list)
+			for _, r in ipairs(rows) do
+				r:Destroy()
+			end
+			rows = {}
+			for i, item in ipairs(type(list) == "table" and list or {}) do
+				if item.Divider then
+					local line = instance.frame(pop)
+					line.LayoutOrder = i
+					line.BorderSizePixel = 0
+					line.BackgroundColor3 = theme.Stroke
+					line.BackgroundTransparency = 0.4
+					line.Size = UDim2.new(1, 0, 0, 1)
+					line.ZIndex = 61
+					rows[#rows + 1] = line
+				else
+					local b = instance.textbutton(pop)
+					b.LayoutOrder = i
+					b.Text = ""
+					b.AutoButtonColor = false
+					b.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+					b.BackgroundTransparency = 1
+					b.BorderSizePixel = 0
+					b.Size = UDim2.new(1, 0, 0, 38)
+					b.ZIndex = 61
+					instance.uicorner(b).CornerRadius = UDim.new(0, 9)
+					local tint = item.Danger and theme.Bad or theme.Accent
+					local ic = instance.imagelabel(b)
+					ic.AnchorPoint = Vector2.new(0, 0.5)
+					ic.BackgroundTransparency = 1
+					ic.ImageColor3 = tint
+					ic.Position = UDim2.new(0, 10, 0.5, 0)
+					ic.Size = UDim2.new(0, 18, 0, 18)
+					ic.ZIndex = 62
+					applyicon(ic, tostring(item.Icon or "circle"), 48)
+					local tx = instance.textlabel(b)
+					tx.BackgroundTransparency = 1
+					tx.Font = FONT_MEDIUM
+					tx.Text = tostring(item.Name or item.Title or "Action")
+					tx.TextColor3 = item.Danger and theme.Bad or theme.Text
+					tx.TextSize = 13
+					tx.TextXAlignment = Enum.TextXAlignment.Left
+					tx.TextTruncate = Enum.TextTruncate.AtEnd
+					tx.Position = UDim2.new(0, 38, 0, 0)
+					tx.Size = UDim2.new(1, -46, 1, 0)
+					tx.ZIndex = 62
+					b.MouseEnter:Connect(function()
+						sv.ts:Create(b, TweenInfo.new(0.1), { BackgroundTransparency = 0.9 }):Play()
+					end)
+					b.MouseLeave:Connect(function()
+						sv.ts:Create(b, TweenInfo.new(0.1), { BackgroundTransparency = 1 }):Play()
+					end)
+					b.Activated:Connect(function()
+						closepop()
+						if type(item.Callback) == "function" then
+							task.spawn(item.Callback)
+						end
+					end)
+					rows[#rows + 1] = b
+				end
+			end
+		end
+
+		dotsbtn.Activated:Connect(function()
+			if dots.open then
+				closepop()
+				return
+			end
+			dots.open = true
+			catcher.Visible = true
+			pop.Visible = true
+			popscale.Scale = 0.92
+			sv.ts:Create(popscale, TweenInfo.new(0.16, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		end)
+		catcher.Activated:Connect(closepop)
+	end
+
 	local searchbox = instance.textbox(top)
 	searchbox.Name = "SearchBox"
 	searchbox.AnchorPoint = Vector2.new(1, 0.5)
-	searchbox.Position = UDim2.new(1, isMobile and -66 or -100, 0.5, 0)
+	searchbox.Position = UDim2.new(1, isMobile and -96 or -130, 0.5, 0)
 	searchbox.Size = UDim2.new(0, isMobile and 150 or 300, 0, 34)
 	searchbox.BackgroundColor3 = theme.Pill
 	searchbox.BackgroundTransparency = 0
@@ -3075,9 +3238,10 @@ function Chloex:Window(guiconfig)
 	local headshot = instance.imagelabel(userfooter)
 	headshot.Name = "Headshot"
 	headshot.BackgroundColor3 = theme.Element
-	headshot.BackgroundTransparency = 0.3
-	headshot.Size = UDim2.new(0, 28, 0, 28)
-	headshot.Position = UDim2.new(0, 10, 0.5, 0)
+	headshot.BackgroundTransparency = 0
+	headshot.AnchorPoint = Vector2.new(0, 0.5)
+	headshot.Size = UDim2.new(0, 30, 0, 30)
+	headshot.Position = UDim2.new(0, 12, 0.5, 0)
 
 	local hscorner = instance.uicorner(headshot)
 	hscorner.Name = "HS_Corner"
@@ -3090,8 +3254,10 @@ function Chloex:Window(guiconfig)
 	username.TextColor3 = Color3.fromRGB(255, 255, 255)
 	username.TextSize = 12
 	username.TextXAlignment = Enum.TextXAlignment.Left
-	username.Position = UDim2.new(0, 46, 0, 0)
-	username.Size = UDim2.new(0, 140, 1, 0)
+	username.TextYAlignment = Enum.TextYAlignment.Center
+	username.AnchorPoint = Vector2.new(0, 0.5)
+	username.Position = UDim2.new(0, 52, 0.5, 0)
+	username.Size = UDim2.new(0, 130, 1, 0)
 	username.TextTruncate = Enum.TextTruncate.AtEnd
 
 	local localplayer = sv.plrs.LocalPlayer
@@ -5492,6 +5658,103 @@ function Chloex:Window(guiconfig)
 				countitem = countitem + 1
 				yieldbuild()
 				return herofunc
+			end
+
+			-- Profile card for a Home page: avatar and name sit on one vertically centred row.
+			function items:AddProfileCard(cfg)
+				cfg = cfg or {}
+				local profile = {}
+				local lpl = sv.plrs.LocalPlayer
+				local card = instance.frame(sectionadd)
+				card.Name = "ProfileCard"
+				card.LayoutOrder = countitem
+				card.BackgroundColor3 = theme.Card
+				card.BorderSizePixel = 0
+				card.Size = UDim2.new(1, 0, 0, 84)
+				instance.uicorner(card).CornerRadius = UDim.new(0, 18)
+				local cstroke = instance.uistroke(card)
+				cstroke.Color = theme.Stroke
+				cstroke.Transparency = 0.4
+				cstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+				local avatar = instance.imagelabel(card)
+				avatar.Name = "Avatar"
+				avatar.AnchorPoint = Vector2.new(0, 0.5)
+				avatar.Position = UDim2.new(0, 16, 0.5, 0)
+				avatar.Size = UDim2.new(0, 52, 0, 52)
+				avatar.BackgroundColor3 = theme.ElementHover
+				avatar.BorderSizePixel = 0
+				instance.uicorner(avatar).CornerRadius = UDim.new(1, 0)
+				local astroke = instance.uistroke(avatar)
+				astroke.Color = theme.Accent
+				astroke.Thickness = 2
+				astroke.Transparency = 0.15
+				if lpl then
+					pcall(function()
+						avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(lpl.UserId) .. "&w=150&h=150"
+					end)
+				end
+
+				local texts = instance.frame(card)
+				texts.Name = "Texts"
+				texts.BackgroundTransparency = 1
+				texts.BorderSizePixel = 0
+				texts.AnchorPoint = Vector2.new(0, 0.5)
+				texts.Position = UDim2.new(0, 80, 0.5, 0)
+				texts.Size = UDim2.new(1, -96 - (isMobile and 0 or 120), 0, 44)
+				local tl = instance.uilistlayout(texts)
+				tl.SortOrder = Enum.SortOrder.LayoutOrder
+				tl.VerticalAlignment = Enum.VerticalAlignment.Center
+				tl.Padding = UDim.new(0, 2)
+
+				local nm = instance.textlabel(texts)
+				nm.LayoutOrder = 1
+				nm.BackgroundTransparency = 1
+				nm.Font = FONT_BOLD
+				nm.Text = tostring(cfg.Title or ("Hi, " .. (lpl and lpl.DisplayName or "player")))
+				nm.TextColor3 = theme.Text
+				nm.TextSize = 17
+				nm.TextXAlignment = Enum.TextXAlignment.Left
+				nm.TextYAlignment = Enum.TextYAlignment.Center
+				nm.TextTruncate = Enum.TextTruncate.AtEnd
+				nm.Size = UDim2.new(1, 0, 0, 22)
+
+				local sb = instance.textlabel(texts)
+				sb.LayoutOrder = 2
+				sb.BackgroundTransparency = 1
+				sb.Font = FONT_MEDIUM
+				sb.Text = tostring(cfg.Content or ("@" .. (lpl and lpl.Name or "player")))
+				sb.TextColor3 = theme.SubText
+				sb.TextSize = 12
+				sb.TextXAlignment = Enum.TextXAlignment.Left
+				sb.TextYAlignment = Enum.TextYAlignment.Center
+				sb.TextTruncate = Enum.TextTruncate.AtEnd
+				sb.Size = UDim2.new(1, 0, 0, 16)
+
+				if not isMobile then
+					local pill = instance.textlabel(card)
+					pill.Name = "ExecutorPill"
+					pill.AnchorPoint = Vector2.new(1, 0.5)
+					pill.Position = UDim2.new(1, -16, 0.5, 0)
+					pill.Size = UDim2.new(0, 0, 0, 26)
+					pill.AutomaticSize = Enum.AutomaticSize.X
+					pill.BackgroundColor3 = theme.ElementHover
+					pill.BackgroundTransparency = 0
+					pill.Font = FONT_MEDIUM
+					pill.Text = tostring(cfg.Pill or executorname())
+					pill.TextColor3 = theme.SubText
+					pill.TextSize = 12
+					instance.uicorner(pill).CornerRadius = UDim.new(1, 0)
+					local ppad = instance.uipadding(pill)
+					ppad.PaddingLeft = UDim.new(0, 12)
+					ppad.PaddingRight = UDim.new(0, 12)
+				end
+
+				function profile:SetTitle(t) nm.Text = tostring(t) end
+				function profile:SetContent(t) sb.Text = tostring(t) end
+				countitem = countitem + 1
+				yieldbuild()
+				return profile
 			end
 
 			function items:AddFeatureGrid(gridconfig)
@@ -12928,6 +13191,103 @@ function Chloex:Window(guiconfig)
 		return sections
 	end
 
+	-- Built-in Home tab. Configure it from the main script:
+	--   Window({ Home = { Title=, Subtitle=, Quick = { {Title=, Content=, Icon=, Callback=} }, Cards = {...},
+	--                     Presets = true, DefaultQuick = true, Build = function(homeTab) end } })
+	-- Home = false removes it.
+	if guiconfig.Home ~= false then
+		local homecfg = type(guiconfig.Home) == "table" and guiconfig.Home or {}
+		local HomeTab = tabs:AddTab({
+			Name = homecfg.Name or "Home",
+			Icon = homecfg.Icon or "home",
+			LayoutOrder = -1,
+			Gate = false,
+		})
+		PX.home = HomeTab
+		tabs.Home = HomeTab
+
+		local function openconfig()
+			if PX.config then
+				PX.config:Select()
+			end
+		end
+
+		local top = HomeTab:AddSection({ Header = false })
+		local profilecard = top:AddProfileCard({ Title = homecfg.Title, Content = homecfg.Subtitle or homecfg.Content, Pill = homecfg.Pill })
+		tabs.HomeProfile = profilecard
+
+		local quick = {}
+		for _, item in ipairs(homecfg.Quick or guiconfig.QuickAccess or {}) do
+			quick[#quick + 1] = item
+		end
+		if homecfg.DefaultQuick ~= false then
+			quick[#quick + 1] = {
+				Title = "Presets",
+				Content = "Save, load and auto-load configs",
+				Icon = "save",
+				Callback = openconfig,
+			}
+			quick[#quick + 1] = {
+				Title = "Hide UI",
+				Content = "Minimise the window",
+				Icon = "eye-off",
+				Callback = function()
+					dropshadowholder.Visible = false
+				end,
+			}
+		end
+		if #quick > 0 then
+			local qs = HomeTab:AddSection({ Title = homecfg.QuickTitle or "Quick Access", Icon = "zap", AlwaysOpen = true })
+			qs:AddFeatureGrid({ Columns = isMobile and 1 or 2, Items = quick })
+		end
+
+		if homecfg.Presets ~= false then
+			local ps = HomeTab:AddSection({ Title = "Presets", Icon = "save", AlwaysOpen = true })
+			local plist
+			local function refreshpresets()
+				local entries = {}
+				local auto = config:getautoload()
+				for _, name in ipairs(config:getlist() or {}) do
+					entries[#entries + 1] = {
+						name = name,
+						sub = (name == config.current) and "Loaded now" or ((name == auto) and "Auto-load" or "Saved preset"),
+						button = "Load",
+						onClick = function()
+							if config:load(name) then
+								chloex("Preset loaded: " .. name, 3, theme.Good)
+								refreshpresets()
+							end
+						end,
+					}
+				end
+				plist:Update(entries)
+			end
+			plist = ps:AddActionList({
+				Title = "Saved presets",
+				EmptyText = "No presets yet. Save one in the Config tab.",
+				VisibleRows = 4,
+			})
+			refreshpresets()
+			ps:AddButton({
+				Title = "Refresh",
+				SubTitle = "Manage",
+				Callback = refreshpresets,
+				SubCallback = openconfig,
+			})
+		end
+
+		if type(homecfg.Cards) == "table" and #homecfg.Cards > 0 then
+			local cs = HomeTab:AddSection({ Title = homecfg.CardsTitle or "Info", Icon = "info", AlwaysOpen = true })
+			cs:AddFeatureGrid({ Columns = isMobile and 1 or 2, Items = homecfg.Cards })
+		end
+		if type(homecfg.Build) == "function" then
+			local okb, errb = pcall(homecfg.Build, HomeTab)
+			if not okb then
+				warn("[PILAT] Home.Build error:", errb)
+			end
+		end
+	end
+
 	if guiconfig.AutoConfigTab then
 		local ConfigTab = tabs:AddTab({
 			Name = "Config",
@@ -12936,6 +13296,7 @@ function Chloex:Window(guiconfig)
 			StartActive = false,
 		})
 
+		PX.config = ConfigTab
 		local function buildConfigTab()
 			local ConfigSection = ConfigTab:AddSection("Config Configuration", true)
 			ConfigSection:AddConfigPanel()
@@ -12969,6 +13330,39 @@ function Chloex:Window(guiconfig)
 		local forumtabconfig = type(guiconfig.ForumTab) == "table" and guiconfig.ForumTab or {}
 		forumtabconfig.LayoutOrder = forumtabconfig.LayoutOrder or 999999
 		tabs:AddForum(forumtabconfig)
+	end
+
+	-- three-dot menu: defaults first, then guiconfig.Menu = { {Name=, Icon=, Callback=, Danger=} | {Divider=true} }
+	do
+		local function builtmenu()
+			local list = {}
+			if guiconfig.MenuDefaults ~= false then
+				if PX.home then
+					list[#list + 1] = { Name = "Home", Icon = "home", Callback = function() PX.home:Select() end }
+				end
+				if PX.config then
+					list[#list + 1] = { Name = "Presets", Icon = "save", Callback = function() PX.config:Select() end }
+				end
+				list[#list + 1] = { Name = "Hide UI", Icon = "eye-off", Callback = function() dropshadowholder.Visible = false end }
+			end
+			if type(guiconfig.Menu) == "table" and #guiconfig.Menu > 0 then
+				if #list > 0 then
+					list[#list + 1] = { Divider = true }
+				end
+				for _, item in ipairs(guiconfig.Menu) do
+					list[#list + 1] = item
+				end
+			end
+			return list
+		end
+		if PX.dots then
+			PX.dots.set(builtmenu())
+		end
+		function tabs:SetMenu(list)
+			if PX.dots then
+				PX.dots.set(list)
+			end
+		end
 	end
 
 	tabs.Notify = function(self, ...)

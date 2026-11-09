@@ -379,7 +379,7 @@ local function createUiLibrary()
                                 Folder = "PilatSAEv7",
                                 Version = 1,
                                 Color = Color3.fromRGB(92, 130, 214),
-                                ToggleImage = "https://raw.githubusercontent.com/roawrr/pilatt/main/pilat_256.png",
+                                ToggleImage = "https://raw.githubusercontent.com/roawrr/pilatHub/refs/heads/main/pilat.png",
                                 KeyGate = false,
                                 AutoConfigTab = true,
                                 LazyConfigTab = true,
@@ -8090,7 +8090,7 @@ local function loadAllSections()
                 Folder = "PilatSAEv7",
                 Version = 1,
                 Color = Color3.fromRGB(232, 232, 238),
-                ToggleImage = "https://raw.githubusercontent.com/roawrr/pilatt/main/pilat_256.png",
+                ToggleImage = "https://raw.githubusercontent.com/roawrr/pilatHub/refs/heads/main/pilat.png",
                 Game = ((gameRef.GameId ~= 0) and gameRef.GameId) or gameRef.PlaceId,
                 Key = Enum.KeyCode.LeftControl,
                 KeyGate = false,
@@ -33504,8 +33504,101 @@ return genv.__GehleeV4Api
                         return tempValue10, tempValue11
                 end
 
+                -- Teleport V2 + Quick Steps / Fast Tween: same home run as Teleport V1
+                -- (port of handlerSteal post-grab states 134-231; tail after the drop is simplified)
+                local function v1Tail(uid, callback)
+                        local lp = ctx.localPlayer
+                        local character = lp.Character
+                        local function alive() return callback() and lp.Character == character end
+                        local function carrying() return ctx.isSelectedUid(uid) end
+                        local fast = ctx.state.tpRapid and ctx.state.tpRapid() or false
+                        local X = ctx.getAreasPosition().X
+                        local cframe = CFrame.lookAt(Vector3.new(X + 15.4, 70.6, -382), Vector3.new(0, 70.6, -382))
+                        local y = fast and 152 or 110.5
+                        local dropCF = cframe.Rotation + Vector3.new(X - 11.8, 70.6, -383.3)
+                        local stage = Vector3.new(X + 15.4, y, -382)
+                        local function hold(cf, secs)
+                                local t0 = os.clock()
+                                while alive() do
+                                        ctx.teleportRoot(cf)
+                                        ctx.waitHeartbeat()
+                                        if os.clock() - t0 >= secs then break end
+                                end
+                        end
+                        local function finish(ok, why)
+                                ctx.state.tpFT = nil
+                                return ok, why
+                        end
+
+                        if not fast and ctx.state.ready then
+                                ctx.state.tpFT = true
+                                ctx.state.ready(callback, 1)
+                        end
+                        local root = ctx.getRootPart()
+                        local cur = root and Vector3.new(root.Position.X, y, fast and -382 or root.Position.Z) or nil
+                        ctx.setStatus("Bringing the egg home")
+
+                        if fast and cur then
+                                ctx.teleportRoot(CFrame.new(cur) * cframe.Rotation)
+                                local hum = ctx.getHumanoid()
+                                local speed = math.clamp((hum and hum.WalkSpeed) or 200, 100, 320) * 24
+                                local start = cur
+                                while (stage - cur).Magnitude > 1 and carrying() and alive() do
+                                        local d = stage - cur
+                                        local step = ((cur - start).Magnitude > 800) and 2200 or speed
+                                        local dt = math.min(tonumber(ctx.waitHeartbeat()) or 0.016, 0.05)
+                                        cur = cur + d.Unit * math.min(d.Magnitude, step * dt)
+                                        ctx.teleportRoot(CFrame.new(cur) * cframe.Rotation)
+                                end
+                        end
+                        while cur and (stage - cur).Magnitude > 500 and carrying() and alive() do
+                                cur = cur + (stage - cur).Unit * 500
+                                hold(CFrame.new(cur) * cframe.Rotation, 0.155)
+                        end
+                        hold(cframe, 0.3)
+                        if not carrying() then
+                                return finish(false, "Dropped on the way")
+                        end
+
+                        task.spawn(ctx.invokeServer, "RF/EggWorld/AskFieldEggDrop", {Reason = "PlayerRequest"})
+                        local t0 = os.clock()
+                        while carrying() and alive() and os.clock() - t0 < 2 do
+                                ctx.waitHeartbeat()
+                        end
+                        local okF, inField = pcall(ctx2.field)
+                        if okF and inField then
+                                return finish(true, "delivered")
+                        end
+
+                        local Egg = ctx.modules and ctx.modules.Egg
+                        local t1 = os.clock()
+                        while alive() and os.clock() - t1 < 4 do
+                                local okR, rec = false, nil
+                                if Egg and type(Egg.ReadFieldEgg) == "function" then
+                                        okR, rec = pcall(Egg.ReadFieldEgg, uid)
+                                end
+                                if okR and rec == nil then return finish(true, "delivered") end
+                                if okR and type(rec) == "table" then
+                                        if rec.State == "Claimed" then return finish(true, "delivered") end
+                                        if rec.State == "Dropped" and typeof(rec.BottomCFrame) == "CFrame"
+                                                and rec.BottomCFrame.X - X < 600 then
+                                                ctx.teleportRoot(CFrame.new(rec.BottomCFrame.Position + Vector3.new(0, 3, 0)) * cframe.Rotation)
+                                        else
+                                                ctx.teleportRoot(dropCF)
+                                        end
+                                else
+                                        ctx.teleportRoot(dropCF)
+                                end
+                                ctx.waitHeartbeat()
+                        end
+                        return finish(false, "Delivery failed")
+                end
+
                 local function doStep12(input, callback)
                         local hs = ctx.hubSettings
+                        if hs.moveTo == "Teleport V2" and (hs.tpDel == "Quick Steps" or hs.tpDel == "Fast Tween") then
+                                return v1Tail(input, callback)
+                        end
                         if hs.tpDel == "Stable" and ctx.isTp(hs.moveTo) then
                                 if ctx.state.stableDone == input then
                                         ctx.state.stableDone = nil
@@ -41956,7 +42049,7 @@ return genv.__GehleeV4Api
                         info = true}), cacheCore["Auto Sell"], {"Rarity Only", "Value Only", "Rarity And Value", "Rarity Or Value"}
 
                 local function doStepFarm(text, textFarm, keyName, input)
-                        local defRule = (text == "Egg") and "Value Only" or "Rarity And Value"
+                        local defRule = "Value Only" -- value only, rule/rarity pickers removed
                         local state = {rule = defRule, mx = keyName}
                         local tempValueFarm, doStepCoreResult = autoSell:Text(text .. " Sell Preview",
                                 text .. (" matches  -  0 " .. (text:lower() .. "s"))), doStepCore(autoSell, "Auto Sell " .. text, textFarm, false, nil, input)
@@ -41974,8 +42067,6 @@ return genv.__GehleeV4Api
                                 state.rule = rule
                         end
 
-                        autoSell:Dropdown("Sell " .. text2, onlyList, defRule, handler, false,
-                                "Which checks must pass to sell", doStepCoreResult)
                         handler, text2 = text .. " Max Rarity", ctx.state
                         local rnum, state3 = text2.RNUM, ctx.state
                         text2, input = state3.RNUM[keyName]
@@ -41993,7 +42084,6 @@ return genv.__GehleeV4Api
                         end
 
                         text2 = text:lower() .. "s at or below this rarity"
-                        autoSell:Dropdown(handler, rnum, input, helper, false, "Sell " .. text2, doStepCoreResult)
 
                         local function parseSellValue(raw)
                                 local n = tonumber(raw)
@@ -42196,20 +42286,45 @@ return genv.__GehleeV4Api
                         return #petUids, #eggUids
                 end
 
+                local sellBusy, sellStop = false, false
+                local function guardedSell(...)
+                        if sellBusy then return 0, 0 end
+                        sellBusy = true
+                        local okG, a, b = pcall(scanItems3, ...)
+                        sellBusy = false
+                        if not okG then error(a, 0) end
+                        return a, b
+                end
+
+                -- own loop: auto sell never waits behind mover priorities
+                task.spawn(function()
+                        while not sellStop do
+                                task.wait(3)
+                                local hs = ctx.hubSettings
+                                if ctx.flag and hs and (hs.sellPets or hs.sellEggs) and not sellBusy then
+                                        local okL, errL = pcall(guardedSell)
+                                        if not okL then warn("[Pilat] Auto Sell loop: " .. tostring(errL)) end
+                                end
+                        end
+                end)
+                if ctx.state.cleanup then
+                        table.insert(ctx.state.cleanup, function() sellStop = true end)
+                end
+
                 doStep9ResultFarm.on = function()
                         local hs = ctx.hubSettings
                         return hs.sellPets or hs.sellEggs or getOpen("Farm")
                 end
 
                 doStep9ResultFarm.fn = function(...)
-                        local okS, errS = pcall(scanItems3, ...)
+                        local okS, errS = pcall(guardedSell, ...)
                         if not okS then
                                 warn("[Pilat] Auto Sell error: " .. tostring(errS))
                                 pcall(function() tempValue7:Set("Egg matches  -  ERROR: " .. tostring(errS):sub(1, 90)) end)
                         end
                 end
                 doStepFarm = ctx.state
-                doStepFarm.sellRun = scanItems3
+                doStepFarm.sellRun = guardedSell
         end)
 
         runStep("20_farm#6", function()
@@ -50800,6 +50915,47 @@ return genv.__GehleeV4Api
                                 A.exitNeed = inLagoon()
                         end
                 end)
+                doStepCore(sec, "Stay In Lagoon", "alienStay", true, nil,
+                        "Once inside, never leave on its own (night / no spot). Only a higher priority task pulls you out")
+
+                -- Alien Fishing <-> Treadmill rotation (minutes or in-game days)
+                ctx.hubSettings.alienRotMode = "min"
+                local R = {phase = "fish", t0 = os.clock(), days = 0, wasNight = nil, base = nil}
+                doStepCore(sec, "Rotate Alien Fishing And Treadmill", "alienRot", false, function(input)
+                        if input then
+                                R.base = R.base or table.clone(ctx.state.prioGet() or {})
+                                R.phase, R.t0, R.days = "fish", os.clock(), 0
+                        elseif R.base then
+                                ctx.state.prioSet(R.base)
+                                R.base = nil
+                        end
+                end, "Swap Alien Fishing / Treadmill priority every N minutes or N in-game days")
+                sec:Dropdown("Alien Rotation Unit", {"Minutes", "Game days"}, "Minutes", function(v)
+                        if type(v) == "table" then v = v[1] end
+                        ctx.hubSettings.alienRotMode = (v == "Game days") and "days" or "min"
+                        R.t0, R.days = os.clock(), 0
+                end)
+                doStep8(sec, "Alien Fishing Duration", "alienRotFishN", 1, 120, 5, "", 1).Quick = false
+                doStep8(sec, "Treadmill Duration", "alienRotTreadN", 1, 120, 5, "", 1).Quick = false
+
+                local rotItem = doStep9({name = "AlienRotate", gap = 1, info = true})
+                rotItem.on = function() return ctx.hubSettings.alienRot == true end
+                rotItem.fn = function()
+                        local h, st = ctx.hubSettings, ctx.state
+                        local order = st.prioGet and st.prioGet()
+                        if not order or not st.prioPlace or not table.find(order, "Treadmill") or not table.find(order, "AlienFish") then return end
+                        local isNight = ctx.callModule("Cycle", "IsNightPhase", workspace:GetServerTimeNow()) == true
+                        if R.wasNight == true and not isNight then R.days += 1 end -- night -> day = new game day
+                        R.wasNight = isNight
+                        local limit = math.max(1, tonumber(R.phase == "fish" and h.alienRotFishN or h.alienRotTreadN) or 5)
+                        local spent = (h.alienRotMode == "days") and R.days or ((os.clock() - R.t0) / 60)
+                        if spent >= limit then
+                                R.phase = (R.phase == "fish") and "tread" or "fish"
+                                R.t0, R.days = os.clock(), 0
+                        end
+                        local want = st.prioPlace(order, "Treadmill", {"AlienFish"}, R.phase == "tread")
+                        if table.concat(want, "|") ~= table.concat(order, "|") then st.prioSet(want) end
+                end
                 local tBat = sec2:Text("Alien Bat / Staff", "-")
                 local tPearls = sec2:Text("Void Pearls", "-")
                 local tTrade = sec2:Text("Last trade", "-")
@@ -50846,10 +51002,12 @@ return genv.__GehleeV4Api
                         say("Starting")
                         local lastClaim = 0
                         while ok() do
-                                doStep9Result.soft = not (inLagoon() or A.travel)
                                 local h = ctx.hubSettings
+                                local stay = h.alienStay ~= false and h.alienLagoon == true
+                                -- stay mode: preemptable by a higher priority task unless mid boat/glide
+                                doStep9Result.soft = (stay and not A.travel) or not (inLagoon() or A.travel)
                                 local open = lagoonOpen()
-                                if inLagoon() and (A.exitNeed or not h.alienLagoon or night(NIGHT_LAGOON) or not open) then
+                                if inLagoon() and (A.exitNeed or not h.alienLagoon or (not stay and night(NIGHT_LAGOON)) or not open) then
                                         if not exitLagoon(ok) then task.wait(3) end
                                         continue
                                 end
@@ -50868,10 +51026,19 @@ return genv.__GehleeV4Api
                                 end
                                 if inLagoon() then
                                         if not toSpot(ok) then
-                                                A.exitNeed = true
-                                                A.lagoonDelay = os.clock() + 120
+                                                A.spotFail = (A.spotFail or 0) + 1
+                                                if stay and A.spotFail < 8 then
+                                                        A.spot, A.dir = nil, nil
+                                                        say("No spot yet, retrying inside the Lagoon")
+                                                        task.wait(2)
+                                                else
+                                                        A.spotFail = 0
+                                                        A.exitNeed = true
+                                                        A.lagoonDelay = os.clock() + 120
+                                                end
                                                 continue
                                         end
+                                        A.spotFail = 0
                                 else
                                         if not atDock() and not toDock(ok) then
                                                 say("Could not reach the dock, retrying")
@@ -50903,6 +51070,11 @@ return genv.__GehleeV4Api
                                 task.wait(PAUSE)
                         end
                         if A.id then fire("Fishing", "Cancel", A.id) A.id = nil end
+                        -- preempted by a higher priority task while inside: leave the Lagoon cleanly first
+                        if inLagoon() and ctx.flag and not alive() and ctx.hubSettings.alienFish == true
+                                and ctx.hubSettings.alienStay ~= false then
+                                pcall(exitLagoon, function() return ctx.flag == true end)
+                        end
                         unequip()
                         doStep9Result.soft = true
                         return true
